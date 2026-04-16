@@ -1532,7 +1532,7 @@ def create_app() -> Flask:
             # Fetch last 5 unresolved responses as notifications
             cursor.execute(
                 """
-                SELECT r.id, r.user_email, r.submitted_at, s.store_name
+                SELECT r.id, r.user_email, r.submitted_at, s.store_name, s.id as store_id
                 FROM responses r
                 JOIN stores s ON r.store_id = s.id
                 WHERE r.status = 'unresolved'

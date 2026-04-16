@@ -98,6 +98,41 @@ PURPOSE: This is the main "shell" for all Admin pages. It contains the
 
       .store-card {
         transition: all 0.3s ease;
+      }
+
+      /* Fix for overlapping text and flex layouts */
+      .min-width-0 {
+        min-width: 0;
+      }
+
+      .text-truncate {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .topnav-link:hover {
+        background-color: var(--neutral-200);
+        color: var(--primary-600) !important;
+      }
+
+      /* Custom dropdown styling */
+      .dropdown-menu {
+        animation: dropdownFadeIn 0.2s ease-out;
+      }
+
+      @keyframes dropdownFadeIn {
+        from {
+          opacity: 0;
+          transform: translateY(10px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      .store-card {
         cursor: pointer;
         border: 1px solid var(--neutral-200);
         background: white;
@@ -270,7 +305,7 @@ PURPOSE: This is the main "shell" for all Admin pages. It contains the
         const countText = document.getElementById('unread-count-text');
         const list = document.getElementById('notification-list');
         const bellIcon = document.querySelector('#notificationDropdown i');
-        let lastCount = 0;
+        let lastCount = -1; // Initialize with -1 to trigger update on first load
 
         async function updateNotifications() {
           try {
@@ -287,49 +322,56 @@ PURPOSE: This is the main "shell" for all Admin pages. It contains the
                 countText.textContent = `${count} New`;
                 
                 // Animate bell if new feedback arrived
-                if (count > lastCount) {
+                if (lastCount !== -1 && count > lastCount) {
                   bellIcon.classList.add('bi-bell-fill', 'text-danger');
                   bellIcon.classList.remove('bi-bell', 'text-muted');
+                  // Add a subtle shake animation if we wanted to be fancy
                   setTimeout(() => {
                     bellIcon.classList.add('bi-bell');
                     bellIcon.classList.remove('bi-bell-fill', 'text-danger');
-                  }, 2000);
+                  }, 3000);
                 }
               } else {
                 badge.classList.add('d-none');
                 countText.textContent = '0 New';
               }
 
-              lastCount = count;
-
-              // Update list
-              if (data.notifications && data.notifications.length > 0) {
-                list.innerHTML = data.notifications.map(n => `
-                  <li>
-                    <a href="/admin/stores/${n.id}/feedback" class="dropdown-item px-3 py-3 border-bottom text-wrap" style="transition: background 0.2s;">
-                      <div class="d-flex align-items-center">
-                        <div class="rounded-circle bg-primary bg-opacity-10 p-2 me-3 flex-shrink-0">
-                          <i class="bi bi-chat-left-text text-primary small"></i>
-                        </div>
-                        <div class="flex-grow-1 min-width-0">
-                          <div class="d-flex justify-content-between align-items-center mb-1">
-                            <span class="fw-bold small text-dark">${n.user_email || 'Anonymous'}</span>
-                            <small class="text-muted" style="font-size: 0.7rem;">${n.submitted_at}</small>
+              // Only update list if count changed or first load
+              if (count !== lastCount) {
+                if (data.notifications && data.notifications.length > 0) {
+                  list.innerHTML = data.notifications.map(n => `
+                    <li>
+                      <a href="/admin/stores/${n.store_id}/feedback" class="dropdown-item px-3 py-3 border-bottom" style="transition: all 0.2s ease;">
+                        <div class="d-flex align-items-center">
+                          <div class="rounded-circle bg-primary bg-opacity-10 p-2 me-3 flex-shrink-0">
+                            <i class="bi bi-chat-square-text text-primary small"></i>
                           </div>
-                          <p class="mb-0 text-muted small text-truncate">New feedback for <strong>${n.store_name}</strong></p>
+                          <div class="flex-grow-1 min-width-0">
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                              <span class="fw-bold text-dark text-truncate" style="font-size: 0.85rem; max-width: 140px;">${n.user_email || 'Anonymous'}</span>
+                              <small class="text-muted flex-shrink-0" style="font-size: 0.7rem;">${n.submitted_at}</small>
+                            </div>
+                            <p class="mb-0 text-muted small text-truncate" style="font-size: 0.8rem;">
+                              New feedback for <span class="fw-bold text-dark">${n.store_name}</span>
+                            </p>
+                          </div>
                         </div>
+                      </a>
+                    </li>
+                  `).join('');
+                } else {
+                  list.innerHTML = `
+                    <li class="px-3 py-5 text-center text-muted">
+                      <div class="rounded-circle bg-light d-inline-flex p-3 mb-3">
+                        <i class="bi bi-bell-slash fs-4 opacity-50"></i>
                       </div>
-                    </a>
-                  </li>
-                `).join('');
-              } else {
-                list.innerHTML = `
-                  <li class="px-3 py-4 text-center text-muted">
-                    <i class="bi bi-check2-circle fs-3 d-block mb-2 opacity-50"></i>
-                    <small>All caught up!</small>
-                  </li>
-                `;
+                      <p class="small mb-0 fw-medium">No new feedback</p>
+                    </li>
+                  `;
+                }
               }
+
+              lastCount = count;
             }
           } catch (error) {
             console.error('Failed to fetch notifications:', error);

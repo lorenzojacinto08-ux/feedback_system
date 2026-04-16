@@ -2,62 +2,66 @@
 <header class="bg-white border-bottom shadow-sm" style="position: sticky; top: 0; z-index: 1030;">
   <div class="container-fluid px-4">
     <div class="d-flex justify-content-between align-items-center py-3">
-      <div class="d-flex align-items-center">
-        <div class="me-5">
+      <div class="d-flex align-items-center flex-grow-1 min-width-0">
+        <div class="me-4 flex-shrink-0">
           <div class="d-flex align-items-center">
-            <div class="rounded-circle bg-primary bg-opacity-10 p-2 me-3">
+            <div class="rounded-circle bg-primary bg-opacity-10 p-2 me-2">
               <i class="bi bi-chat-left-text fs-5" style="color: var(--primary-600) !important; opacity: 0.7 !important;"></i>
             </div>
-            <div>
-              <h4 class="mb-0 fw-bold text-dark">Feedback System</h4>
-              <small class="text-muted fw-medium">Admin Panel</small>
+            <div class="d-none d-sm-block">
+              <h5 class="mb-0 fw-bold text-dark text-truncate">Feedback System</h5>
+              <small class="text-muted fw-medium d-block">Admin Panel</small>
             </div>
           </div>
         </div>
-        <nav class="d-none d-md-flex">
-          <a href="{{ url_for('admin_dashboard') }}" class="text-decoration-none text-muted topnav-link px-3 py-2 rounded-2">
+        <nav class="d-none d-lg-flex flex-nowrap overflow-hidden">
+          <a href="{{ url_for('admin_dashboard') }}" class="text-decoration-none text-muted topnav-link px-3 py-2 rounded-2 text-nowrap">
             <i class="bi bi-speedometer2 me-2"></i>Dashboard
           </a>
-          <div class="border-start border-2 mx-2" style="border-color: var(--neutral-300); height: 24px;"></div>
-          <a href="{{ url_for('master_questionnaire') }}" class="text-decoration-none text-muted topnav-link px-3 py-2 rounded-2">
+          <div class="border-start border-2 mx-2 flex-shrink-0" style="border-color: var(--neutral-300); height: 20px; align-self: center;"></div>
+          <a href="{{ url_for('master_questionnaire') }}" class="text-decoration-none text-muted topnav-link px-3 py-2 rounded-2 text-nowrap">
             <i class="bi bi-question-square me-2"></i>Master Questionnaire
           </a>
-          <div class="border-start border-2 mx-2" style="border-color: var(--neutral-300); height: 24px;"></div>
-          <a href="{{ url_for('stores_management') }}" class="text-decoration-none text-muted topnav-link px-3 py-2 rounded-2">
+          <div class="border-start border-2 mx-2 flex-shrink-0" style="border-color: var(--neutral-300); height: 20px; align-self: center;"></div>
+          <a href="{{ url_for('stores_management') }}" class="text-decoration-none text-muted topnav-link px-3 py-2 rounded-2 text-nowrap">
             <i class="bi bi-shop me-2"></i>Manage Stores
           </a>
         </nav>
       </div>
-      <div class="d-flex align-items-center">
+      <div class="d-flex align-items-center flex-shrink-0 ms-3">
         <!-- Notification Bell -->
         <div class="dropdown me-3">
           <button class="btn btn-link text-muted p-0 position-relative border-0" type="button" id="notificationDropdown" data-bs-toggle="dropdown" aria-expanded="false" style="box-shadow: none;">
             <i class="bi bi-bell fs-4"></i>
-            <span id="notification-badge" class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger d-none" style="font-size: 0.65rem; padding: 0.35em 0.65em;">
+            <span id="notification-badge" class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger d-none" style="font-size: 0.6rem; padding: 0.25em 0.5em; border: 2px solid white;">
               0
             </span>
           </button>
-          <ul class="dropdown-menu dropdown-menu-end shadow-sm border-0 mt-3 p-0 overflow-hidden" aria-labelledby="notificationDropdown" style="width: 320px; border-radius: 12px;">
-            <li class="px-3 py-2 bg-light border-bottom d-flex justify-content-between align-items-center">
-              <span class="fw-bold small text-uppercase text-muted">Recent Feedback</span>
-              <span id="unread-count-text" class="badge bg-primary bg-opacity-10 text-primary rounded-pill">0 New</span>
+          <ul class="dropdown-menu dropdown-menu-end shadow-lg border-0 mt-3 p-0 overflow-hidden" aria-labelledby="notificationDropdown" style="width: 320px; border-radius: 12px; transform: translateX(10px);">
+            <li class="px-3 py-3 bg-white border-bottom d-flex justify-content-between align-items-center">
+              <h6 class="fw-bold mb-0 text-dark" style="font-size: 0.9rem;">Notifications</h6>
+              <span id="unread-count-text" class="badge bg-primary bg-opacity-10 text-primary rounded-pill fw-bold" style="font-size: 0.75rem;">0 New</span>
             </li>
-            <div id="notification-list" style="max-height: 350px; overflow-y: auto;">
+            <div id="notification-list" style="max-height: 400px; overflow-y: auto;">
               <!-- Notifications will be loaded here -->
-              <li class="px-3 py-4 text-center text-muted">
-                <i class="bi bi-check2-circle fs-3 d-block mb-2 opacity-50"></i>
-                <small>All caught up!</small>
+              <li class="px-3 py-5 text-center text-muted">
+                <div class="rounded-circle bg-light d-inline-flex p-3 mb-3">
+                  <i class="bi bi-bell-slash fs-4 opacity-50"></i>
+                </div>
+                <p class="small mb-0 fw-medium">No new feedback</p>
               </li>
             </div>
-            <li class="bg-light border-top text-center py-2">
-              <a href="{{ url_for('admin_dashboard') }}" class="text-decoration-none small fw-bold text-primary">View All in Dashboard</a>
+            <li class="bg-light border-top">
+              <a href="{{ url_for('admin_dashboard') }}" class="dropdown-item text-center py-3 small fw-bold text-primary">
+                View All Feedback <i class="bi bi-arrow-right ms-1"></i>
+              </a>
             </li>
           </ul>
         </div>
 
-        <div class="d-flex align-items-center bg-light rounded-3 px-3 py-2">
+        <div class="d-none d-sm-flex align-items-center bg-light rounded-3 px-3 py-2">
           <i class="bi bi-person-circle text-muted me-2"></i>
-          <span class="text-muted fw-medium">Admin</span>
+          <span class="text-muted fw-bold small">Admin</span>
         </div>
       </div>
     </div>
