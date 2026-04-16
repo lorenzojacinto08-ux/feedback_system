@@ -369,7 +369,7 @@ PURPOSE: This is the main "shell" for all Admin pages. It contains the
                             <small class="text-muted flex-shrink-0" style="font-size: 0.7rem;">${n.submitted_at}</small>
                           </div>
                           <p class="mb-0 text-muted small text-truncate" style="font-size: 0.8rem;">
-                            Feedback for <span class="${n.is_read ? 'text-muted' : 'fw-bold text-dark'}">${n.store_name}</span>
+                            ${n.store_name ? `Feedback for <span class="${n.is_read ? 'text-muted' : 'fw-bold text-dark'}">${n.store_name}</span>` : 'Feedback submission'}
                           </p>
                         </div>
                       </div>

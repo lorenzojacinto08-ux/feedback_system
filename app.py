@@ -1567,6 +1567,7 @@ def create_app() -> Flask:
                 SELECT r.id, r.user_email, r.submitted_at as created_at, s.store_name, s.id as store_id, r.is_read, 'feedback' as notification_type, NULL as message, NULL as type
                 FROM responses r
                 JOIN stores s ON r.store_id = s.id
+                WHERE s.store_name IS NOT NULL
                 ORDER BY r.submitted_at DESC
                 LIMIT 10
                 """
