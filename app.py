@@ -191,6 +191,50 @@ def create_app() -> Flask:
 
                 # --- UPDATE EXISTING TABLES (MIGRATIONS) ---
                 
+                # Ensure question_options table exists (fixing crash in master_questionnaire)
+                cursor.execute("SHOW TABLES LIKE 'question_options'")
+                if not cursor.fetchone():
+                    logger.info("Table 'question_options' missing. Creating it now...")
+                    cursor.execute("""
+                        CREATE TABLE question_options (
+                            id INT AUTO_INCREMENT PRIMARY KEY,
+                            question_id INT NOT NULL,
+                            option_text VARCHAR(255) NOT NULL
+                        )
+                    """)
+                    conn.commit()
+                
+                # Ensure responses table exists
+                cursor.execute("SHOW TABLES LIKE 'responses'")
+                if not cursor.fetchone():
+                    logger.info("Table 'responses' missing. Creating it now...")
+                    cursor.execute("""
+                        CREATE TABLE responses (
+                            id INT AUTO_INCREMENT PRIMARY KEY,
+                            questionnaire_id INT NOT NULL,
+                            store_id INT NOT NULL,
+                            user_email VARCHAR(255),
+                            submitted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                            status ENUM('unresolved', 'resolved') DEFAULT 'unresolved'
+                        )
+                    """)
+                    conn.commit()
+
+                # Ensure answers table exists
+                cursor.execute("SHOW TABLES LIKE 'answers'")
+                if not cursor.fetchone():
+                    logger.info("Table 'answers' missing. Creating it now...")
+                    cursor.execute("""
+                        CREATE TABLE answers (
+                            id INT AUTO_INCREMENT PRIMARY KEY,
+                            response_id INT NOT NULL,
+                            question_id INT NOT NULL,
+                            answer_text TEXT,
+                            rating_value DECIMAL(3,1)
+                        )
+                    """)
+                    conn.commit()
+                
                 # Check for responses table columns
                 cursor.execute("SHOW COLUMNS FROM responses LIKE 'user_email'")
                 if not cursor.fetchone():
