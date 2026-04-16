@@ -1,6 +1,7 @@
 import os
 import base64
 import io
+import urllib.parse
 from typing import List, Dict, Any
 
 from flask import Flask, render_template, redirect, url_for, request, flash, jsonify
@@ -30,23 +31,43 @@ def create_app() -> Flask:
     # --- ENVIRONMENT CONFIG ---
     app.config["SECRET_KEY"] = os.getenv("SECRET_KEY", "change-me")
 
-    # Railway provides MySQL variables in a specific format
-    # We check for MYSQLHOST first (Railway default), then DB_HOST (local/env default)
-    mysql_host = os.getenv("MYSQLHOST") or os.getenv("DB_HOST", "localhost")
-    mysql_user = os.getenv("MYSQLUSER") or os.getenv("DB_USER", "root")
-    mysql_password = os.getenv("MYSQLPASSWORD") or os.getenv("DB_PASSWORD", "")
-    mysql_db = os.getenv("MYSQLDATABASE") or os.getenv("DB_NAME", "feedback_system")
-    mysql_port = int(os.getenv("MYSQLPORT") or os.getenv("DB_PORT", "3306"))
+    # Database configuration handling
+    mysql_url = os.getenv("MYSQL_URL") or os.getenv("DATABASE_URL")
+    
+    if mysql_url:
+        logger.info("Database URL detected, parsing connection details...")
+        try:
+            parsed = urllib.parse.urlparse(mysql_url)
+            app.config["DB_CONFIG"] = {
+                "host": parsed.hostname or "localhost",
+                "user": parsed.username or "root",
+                "password": parsed.password or "",
+                "database": parsed.path.lstrip('/') or "feedback_system",
+                "port": parsed.port or 3306,
+            }
+        except Exception as e:
+            logger.error(f"Failed to parse database URL: {e}")
+            # Fall back to individual variables
+    else:
+        # Railway provides MySQL variables in a specific format
+        # We check for MYSQLHOST first (Railway default), then DB_HOST (local/env default)
+        mysql_host = os.getenv("MYSQLHOST") or os.getenv("DB_HOST", "localhost")
+        mysql_user = os.getenv("MYSQLUSER") or os.getenv("DB_USER", "root")
+        mysql_password = os.getenv("MYSQLPASSWORD") or os.getenv("DB_PASSWORD", "")
+        mysql_db = os.getenv("MYSQLDATABASE") or os.getenv("DB_NAME", "feedback_system")
+        mysql_port = int(os.getenv("MYSQLPORT") or os.getenv("DB_PORT", "3306"))
 
-    app.config["DB_CONFIG"] = {
-        "host": mysql_host,
-        "user": mysql_user,
-        "password": mysql_password,
-        "database": mysql_db,
-        "port": mysql_port,
-    }
+        app.config["DB_CONFIG"] = {
+            "host": mysql_host,
+            "user": mysql_user,
+            "password": mysql_password,
+            "database": mysql_db,
+            "port": mysql_port,
+        }
 
-    logger.info(f"App starting with database at {mysql_host}:{mysql_port} (User: {mysql_user}, DB: {mysql_db})")
+    db_host = app.config["DB_CONFIG"]["host"]
+    db_port = app.config["DB_CONFIG"]["port"]
+    logger.info(f"App starting with database at {db_host}:{db_port} (User: {app.config['DB_CONFIG']['user']}, DB: {app.config['DB_CONFIG']['database']})")
 
     def get_db_connection() -> MySQLConnection:
         try:
