@@ -1392,7 +1392,7 @@ def create_app() -> Flask:
             conn.close()
             
         if store_id:
-            return redirect(url_for("feedback_viewer", store_id=store_id))
+            return redirect(url_for("store_feedback", store_id=store_id))
         return redirect(url_for("admin_dashboard"))
 
     # -------------------------
