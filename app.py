@@ -138,6 +138,22 @@ def create_app() -> Flask:
                     if not cursor.fetchone():
                         cursor.execute("ALTER TABLE responses ADD COLUMN status ENUM('unresolved', 'resolved') DEFAULT 'unresolved' AFTER user_email")
                 
+                # Update questionnaires table schema
+                cursor.execute("SHOW TABLES LIKE 'questionnaires'")
+                if cursor.fetchone():
+                    cursor.execute("SHOW COLUMNS FROM questionnaires LIKE 'is_template'")
+                    if not cursor.fetchone():
+                        logger.info("Adding 'is_template' column to questionnaires table...")
+                        cursor.execute("ALTER TABLE questionnaires ADD COLUMN is_template BOOLEAN DEFAULT FALSE AFTER is_active")
+                    
+                    cursor.execute("SHOW COLUMNS FROM questionnaires LIKE 'template_id'")
+                    if not cursor.fetchone():
+                        cursor.execute("ALTER TABLE questionnaires ADD COLUMN template_id INT NULL AFTER is_template")
+                    
+                    cursor.execute("SHOW COLUMNS FROM questionnaires LIKE 'version'")
+                    if not cursor.fetchone():
+                        cursor.execute("ALTER TABLE questionnaires ADD COLUMN version INT DEFAULT 1 AFTER template_id")
+                
                 # Check for questions table
                 cursor.execute("SHOW TABLES LIKE 'questions'")
                 if cursor.fetchone():
