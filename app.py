@@ -122,12 +122,7 @@ def create_app() -> Flask:
                 conn = get_db_connection()
                 cursor = conn.cursor()
                 
-                # Check for responses table before running schema updates
-                cursor.execute("SHOW TABLES LIKE 'responses'")
-                if not cursor.fetchone():
-                    logger.warning("Table 'responses' does not exist yet. Ensure database migrations are handled.")
-                
-                # Add user_email column to responses table if it doesn't exist
+                # Check for responses table
                 cursor.execute("SHOW TABLES LIKE 'responses'")
                 if cursor.fetchone():
                     cursor.execute("SHOW COLUMNS FROM responses LIKE 'user_email'")
@@ -138,22 +133,31 @@ def create_app() -> Flask:
                     if not cursor.fetchone():
                         cursor.execute("ALTER TABLE responses ADD COLUMN status ENUM('unresolved', 'resolved') DEFAULT 'unresolved' AFTER user_email")
                 
-                # Update questionnaires table schema
+                # CRITICAL: Update questionnaires table schema
+                # We need to make sure these columns exist before the app tries to query them
                 cursor.execute("SHOW TABLES LIKE 'questionnaires'")
                 if cursor.fetchone():
+                    # Check for is_template
                     cursor.execute("SHOW COLUMNS FROM questionnaires LIKE 'is_template'")
                     if not cursor.fetchone():
                         logger.info("Adding 'is_template' column to questionnaires table...")
                         cursor.execute("ALTER TABLE questionnaires ADD COLUMN is_template BOOLEAN DEFAULT FALSE AFTER is_active")
+                        conn.commit() # Commit immediately after structural change
                     
+                    # Check for template_id
                     cursor.execute("SHOW COLUMNS FROM questionnaires LIKE 'template_id'")
                     if not cursor.fetchone():
+                        logger.info("Adding 'template_id' column to questionnaires table...")
                         cursor.execute("ALTER TABLE questionnaires ADD COLUMN template_id INT NULL AFTER is_template")
+                        conn.commit()
                     
+                    # Check for version
                     cursor.execute("SHOW COLUMNS FROM questionnaires LIKE 'version'")
                     if not cursor.fetchone():
+                        logger.info("Adding 'version' column to questionnaires table...")
                         cursor.execute("ALTER TABLE questionnaires ADD COLUMN version INT DEFAULT 1 AFTER template_id")
-                
+                        conn.commit()
+
                 # Check for questions table
                 cursor.execute("SHOW TABLES LIKE 'questions'")
                 if cursor.fetchone():
