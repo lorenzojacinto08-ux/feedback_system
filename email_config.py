@@ -21,12 +21,18 @@ class EmailConfig:
         app.config['MAIL_PASSWORD'] = os.getenv('MAIL_PASSWORD', 'your-app-password')
         app.config['MAIL_DEFAULT_SENDER'] = os.getenv('MAIL_DEFAULT_SENDER', 'your-email@gmail.com')
         
+        # Add timeout to underlying socket (Flask-Mail doesn't expose this directly easily)
+        # This helps prevent hanging connections
+        import socket
+        socket.setdefaulttimeout(15)
+        
         self.mail = Mail(app)
     
     def send_feedback_reply(self, to_email, customer_name, reply_message, store_name, feedback_summary, 
                           template_type='standard', cc_emails=None, bcc_emails=None, attachments=None):
-        """Send reply email to customer with enhanced features"""
+        """Send reply email to customer with enhanced features and improved error handling"""
         try:
+            # Create message
             msg = Message(
                 subject=f"Response to your feedback about {store_name}",
                 recipients=[to_email],
@@ -51,6 +57,8 @@ class EmailConfig:
             )
             
             msg.html = html_body
+            
+            # Send email
             self.mail.send(msg)
             
             # Log the email for tracking
@@ -59,7 +67,10 @@ class EmailConfig:
             return True, "Email sent successfully"
             
         except Exception as e:
-            return False, f"Failed to send email: {str(e)}"
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"Unexpected error sending email to {to_email}: {str(e)}")
+            return False, f"An unexpected error occurred: {str(e)}"
     
     def _get_email_template(self, template_type, customer_name, store_name, feedback_summary, reply_message):
         """Get email template based on type"""
