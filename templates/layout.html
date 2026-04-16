@@ -292,6 +292,47 @@ PURPOSE: This is the main "shell" for all Admin pages. It contains the
       .bg-neutral-700 { background-color: var(--neutral-700); }
       .text-neutral-300 { color: var(--neutral-300); }
       .text-neutral-400 { color: var(--neutral-400); }
+
+      /* Bottom Right Flash Message Styling */
+      .flash-container {
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        z-index: 9999;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        pointer-events: none;
+      }
+
+      .flash-message {
+        pointer-events: auto;
+        min-width: 250px;
+        max-width: 350px;
+        padding: 12px 16px;
+        border-radius: 10px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        display: flex;
+        align-items: center;
+        animation: slideInRight 0.3s ease-out;
+        border: 1px solid rgba(0, 0, 0, 0.05);
+      }
+
+      @keyframes slideInRight {
+        from {
+          transform: translateX(100%);
+          opacity: 0;
+        }
+        to {
+          transform: translateX(0);
+          opacity: 1;
+        }
+      }
+
+      .flash-message .btn-close {
+        padding: 0.5rem;
+        margin-left: auto;
+      }
     </style>
     {% block head %}{% endblock %}
   </head>
@@ -300,6 +341,21 @@ PURPOSE: This is the main "shell" for all Admin pages. It contains the
     {% if not hide_header %}
       {% include 'header.html' %}
     {% endif %}
+
+    <!-- Flash Messages Container -->
+    <div class="flash-container" id="global-notification-container">
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          {% for category, message in messages %}
+            <div class="flash-message alert alert-{{ category }} alert-dismissible fade show" role="alert">
+              <i class="bi bi-{% if category == 'success' %}check-circle{% elif category == 'danger' %}exclamation-triangle{% else %}info-circle{% endif %} me-2"></i>
+              <span>{{ message }}</span>
+              <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+          {% endfor %}
+        {% endif %}
+      {% endwith %}
+    </div>
 
     <!-- Main Content Area -->
     <main class="container-fluid px-4 py-3" style="flex:1 1 0; min-height:0; overflow-y:auto;">
@@ -400,6 +456,55 @@ PURPOSE: This is the main "shell" for all Admin pages. It contains the
         // Poll every 30 seconds
         setInterval(updateNotifications, 30000);
       })();
+
+      // Auto-hide flash messages
+      document.addEventListener('DOMContentLoaded', function() {
+        const flashes = document.querySelectorAll('.flash-message');
+        flashes.forEach(flash => {
+          setTimeout(() => {
+            const bsAlert = new bootstrap.Alert(flash);
+            bsAlert.close();
+          }, 5000);
+        });
+      });
+
+      /**
+       * Shows a small banner notification at the bottom right.
+       * @param {string} message - The message to display.
+       * @param {string} category - Bootstrap alert category (success, danger, info, etc.)
+       * @param {number} duration - Time in ms before hiding (default 5000)
+       */
+      window.showNotification = function(message, category = 'success', duration = 5000) {
+        const container = document.getElementById('global-notification-container');
+        if (!container) return;
+
+        const iconMap = {
+          'success': 'check-circle',
+          'danger': 'exclamation-triangle',
+          'warning': 'exclamation-circle',
+          'info': 'info-circle'
+        };
+        const icon = iconMap[category] || 'info-circle';
+
+        const flashDiv = document.createElement('div');
+        flashDiv.className = `flash-message alert alert-${category} alert-dismissible fade show`;
+        flashDiv.setAttribute('role', 'alert');
+        flashDiv.innerHTML = `
+          <i class="bi bi-${icon} me-2"></i>
+          <span>${message}</span>
+          <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        `;
+
+        container.appendChild(flashDiv);
+
+        // Auto-hide
+        setTimeout(() => {
+          if (flashDiv.parentNode) {
+            const bsAlert = new bootstrap.Alert(flashDiv);
+            bsAlert.close();
+          }
+        }, duration);
+      };
     </script>
     {% endif %}
   </body>
