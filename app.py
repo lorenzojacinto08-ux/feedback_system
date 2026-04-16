@@ -150,9 +150,24 @@ def create_app() -> Flask:
                 # Check for questions table
                 cursor.execute("SHOW TABLES LIKE 'questions'")
                 if cursor.fetchone():
+                    # Check for is_active
                     cursor.execute("SHOW COLUMNS FROM questions LIKE 'is_active'")
                     if not cursor.fetchone():
                         cursor.execute("ALTER TABLE questions ADD COLUMN is_active BOOLEAN DEFAULT TRUE AFTER question_order")
+                    
+                    # Check for is_template
+                    cursor.execute("SHOW COLUMNS FROM questions LIKE 'is_template'")
+                    if not cursor.fetchone():
+                        logger.info("Adding 'is_template' column to questions table...")
+                        cursor.execute("ALTER TABLE questions ADD COLUMN is_template BOOLEAN DEFAULT FALSE AFTER is_active")
+                        conn.commit()
+
+                    # Check for template_id
+                    cursor.execute("SHOW COLUMNS FROM questions LIKE 'template_id'")
+                    if not cursor.fetchone():
+                        logger.info("Adding 'template_id' column to questions table...")
+                        cursor.execute("ALTER TABLE questions ADD COLUMN template_id INT NULL AFTER is_template")
+                        conn.commit()
                 
                 # Check for stores table
                 cursor.execute("SHOW TABLES LIKE 'stores'")
@@ -464,7 +479,7 @@ def create_app() -> Flask:
                 """
                 SELECT id, question_text, question_type, is_required, question_order
                 FROM questions
-                WHERE questionnaire_id = %s AND is_template = TRUE
+                WHERE questionnaire_id = %s
                 ORDER BY question_order ASC, id ASC
                 """,
                 (template_questionnaire_id,),
@@ -526,7 +541,7 @@ def create_app() -> Flask:
         conn = get_db_connection()
         try:
             cursor = conn.cursor()
-            cursor.execute("DELETE FROM questions WHERE id = %s AND is_template = TRUE", (template_question_id,))
+            cursor.execute("DELETE FROM questions WHERE id = %s", (template_question_id,))
             conn.commit()
         finally:
             conn.close()

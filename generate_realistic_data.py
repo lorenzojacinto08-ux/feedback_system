@@ -1,5 +1,6 @@
 import os
 import random
+import urllib.parse
 from datetime import datetime, timedelta
 import mysql.connector
 from dotenv import load_dotenv
@@ -54,14 +55,34 @@ customer_names = [
 ]
 
 def get_db_connection():
-    """Get database connection"""
-    return mysql.connector.connect(
-        host=os.getenv("DB_HOST", "localhost"),
-        user=os.getenv("DB_USER", "root"),
-        password=os.getenv("DB_PASSWORD", "root"),
-        database=os.getenv("DB_NAME", "feedback_system"),
-        port=int(os.getenv("DB_PORT", "3306"))
-    )
+    """Get database connection following the same logic as app.py"""
+    if os.getenv("MYSQLHOST"):
+        config = {
+            "host": os.getenv("MYSQLHOST"),
+            "user": os.getenv("MYSQLUSER"),
+            "password": os.getenv("MYSQLPASSWORD"),
+            "database": os.getenv("MYSQLDATABASE"),
+            "port": int(os.getenv("MYSQLPORT", 3306)),
+        }
+    elif os.getenv("MYSQL_URL"):
+        mysql_url = os.getenv("MYSQL_URL").strip()
+        parsed = urllib.parse.urlparse(mysql_url)
+        config = {
+            "host": parsed.hostname,
+            "user": parsed.username,
+            "password": parsed.password,
+            "database": parsed.path.lstrip('/'),
+            "port": parsed.port or 3306,
+        }
+    else:
+        config = {
+            "host": os.getenv("DB_HOST", "localhost"),
+            "user": os.getenv("DB_USER", "root"),
+            "password": os.getenv("DB_PASSWORD", ""),
+            "database": os.getenv("DB_NAME", "feedback_system"),
+            "port": int(os.getenv("DB_PORT", "3306")),
+        }
+    return mysql.connector.connect(**config)
 
 def generate_feedback_for_store(store_id, store_name, num_feedback=15):
     """Generate random feedback for a store"""
@@ -82,30 +103,35 @@ def generate_feedback_for_store(store_id, store_name, num_feedback=15):
         cursor.execute("SELECT id FROM questionnaires WHERE store_id = %s LIMIT 1", (store_id,))
         q_row = cursor.fetchone()
         
-        # If no store-specific questionnaire, create one linked to the template (ID 20)
+        # If no store-specific questionnaire, create one
         if not q_row:
+            # First, find if there is a master template
+            cursor.execute("SELECT id FROM questionnaires WHERE is_template = 1 LIMIT 1")
+            template_row = cursor.fetchone()
+            template_id = template_row[0] if template_row else None
+
             cursor.execute("""
                 INSERT INTO questionnaires (store_id, title, is_active, created_at, is_template, template_id, version)
-                VALUES (%s, 'Feedback Form', 1, NOW(), 0, 20, 1)
-            """, (store_id,))
+                VALUES (%s, 'Feedback Form', 1, NOW(), 0, %s, 1)
+            """, (store_id, template_id))
             questionnaire_id = cursor.lastrowid
             
-            # Copy question 176 (the rating question) to the new questionnaire
+            # Add a rating question
             cursor.execute("""
-                INSERT INTO questions (questionnaire_id, question_text, question_type, question_order, is_active)
-                VALUES (%s, 'how was the food?', 'rating', 1, 1)
+                INSERT INTO questions (questionnaire_id, question_text, question_type, question_order, is_active, is_template)
+                VALUES (%s, 'How would you rate your experience?', 'rating', 1, 1, 0)
             """, (questionnaire_id,))
             question_id = cursor.lastrowid
         else:
             questionnaire_id = q_row[0]
             # Get the rating question for this questionnaire
-            cursor.execute("SELECT id FROM questions WHERE questionnaire_id = %s AND question_type = 'rating' LIMIT 1", (questionnaire_id,))
+            cursor.execute("SELECT id FROM questions WHERE questionnaire_id = %s AND question_type = 'rating' AND is_active = 1 LIMIT 1", (questionnaire_id,))
             ques_row = cursor.fetchone()
             if not ques_row:
                 # Add rating question if missing
                 cursor.execute("""
-                    INSERT INTO questions (questionnaire_id, question_text, question_type, question_order, is_active)
-                    VALUES (%s, 'how was the food?', 'rating', 1, 1)
+                    INSERT INTO questions (questionnaire_id, question_text, question_type, question_order, is_active, is_template)
+                    VALUES (%s, 'How would you rate your experience?', 'rating', 1, 1, 0)
                 """, (questionnaire_id,))
                 question_id = cursor.lastrowid
             else:

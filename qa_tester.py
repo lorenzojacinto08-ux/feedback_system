@@ -21,14 +21,8 @@ class FeedbackSystemQATester(unittest.TestCase):
         cls.app.config['TESTING'] = True
         cls.client = cls.app.test_client()
         
-        # Database config from env
-        cls.db_config = {
-            "host": os.getenv("DB_HOST", "localhost"),
-            "user": os.getenv("DB_USER", "root"),
-            "password": os.getenv("DB_PASSWORD", ""),
-            "database": os.getenv("DB_NAME", "feedback_system"),
-            "port": int(os.getenv("DB_PORT", "3306")),
-        }
+        # Database config from the app's own config (which handles Railway/Local)
+        cls.db_config = cls.app.config['DB_CONFIG']
 
     # 1. DATABASE TESTS
     def test_db_connectivity(self):
