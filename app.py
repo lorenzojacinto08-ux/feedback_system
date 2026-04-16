@@ -142,7 +142,7 @@ def create_app() -> Flask:
                     if not cursor.fetchone():
                         logger.info("Adding 'is_template' column to questionnaires table...")
                         cursor.execute("ALTER TABLE questionnaires ADD COLUMN is_template BOOLEAN DEFAULT FALSE AFTER is_active")
-                        conn.commit() # Commit immediately after structural change
+                        conn.commit() # Commit structural change
                     
                     # Check for template_id
                     cursor.execute("SHOW COLUMNS FROM questionnaires LIKE 'template_id'")
@@ -157,6 +157,13 @@ def create_app() -> Flask:
                         logger.info("Adding 'version' column to questionnaires table...")
                         cursor.execute("ALTER TABLE questionnaires ADD COLUMN version INT DEFAULT 1 AFTER template_id")
                         conn.commit()
+                
+                # Check for a specific known template or create one if needed
+                cursor.execute("SELECT id FROM questionnaires WHERE is_template = 1 LIMIT 1")
+                if not cursor.fetchone():
+                    logger.info("No master template found. Creating default master template...")
+                    cursor.execute("INSERT INTO questionnaires (title, is_active, is_template) VALUES ('Master Questionnaire', 1, 1)")
+                    conn.commit()
 
                 # Check for questions table
                 cursor.execute("SHOW TABLES LIKE 'questions'")
