@@ -168,9 +168,21 @@ def main():
     cursor = conn.cursor()
     
     try:
-        # First, let's clear existing responses that aren't linked to stores properly 
-        # (or just clear all for a clean slate if requested, but let's just add new ones)
-        
+        # Check if stores exist, if not create them
+        cursor.execute("SELECT COUNT(*) FROM stores")
+        if cursor.fetchone()[0] == 0:
+            print("No stores found in production. Creating demo stores...")
+            demo_stores = [
+                "Store 1 Example", "Sushi Master", "Bella's Boutique", "Tech Hub", 
+                "Green Grocer", "Urban Coffee", "Fitness First", "Book Nook",
+                "Ocean Grill", "Mountain Gear", "Pet Palace", "Game Zone",
+                "Flower Power", "Auto Ace", "Music Maker", "Toy Town",
+                "Art Attic", "Craft Corner", "Daily Deli"
+            ]
+            for name in demo_stores:
+                cursor.execute("INSERT INTO stores (store_name, status) VALUES (%s, 'active')", (name,))
+            conn.commit()
+
         cursor.execute("SELECT id, store_name FROM stores ORDER BY id")
         stores = cursor.fetchall()
         

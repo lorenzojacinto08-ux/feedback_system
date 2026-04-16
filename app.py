@@ -779,8 +779,15 @@ def create_app() -> Flask:
 
     @app.route("/admin/dashboard")
     def admin_dashboard():
-        analytics = fetch_dashboard_analytics()
-        return render_template("dashboard/dashboard.html", **analytics)
+        try:
+            logger.info("Accessing admin dashboard...")
+            analytics = fetch_dashboard_analytics()
+            return render_template("dashboard/dashboard.html", **analytics)
+        except Exception as e:
+            import traceback
+            error_details = traceback.format_exc()
+            logger.error(f"Dashboard Crash: {e}\n{error_details}")
+            return f"Dashboard Error: {e}<br><pre>{error_details}</pre>", 500
 
     @app.route("/admin/stores/performance")
     def stores_performance():
