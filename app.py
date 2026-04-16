@@ -19,12 +19,13 @@ def create_app() -> Flask:
 
     app.config["SECRET_KEY"] = os.getenv("SECRET_KEY", "change-me")
 
+    # Railway provides MySQL variables in a specific format
     app.config["DB_CONFIG"] = {
-        "host": os.getenv("DB_HOST", "localhost"),
-        "user": os.getenv("DB_USER", "root"),
-        "password": os.getenv("DB_PASSWORD", ""),
-        "database": os.getenv("DB_NAME", "feedback_system"),
-        "port": int(os.getenv("DB_PORT", "3306")),
+        "host": os.getenv("MYSQLHOST") or os.getenv("DB_HOST", "localhost"),
+        "user": os.getenv("MYSQLUSER") or os.getenv("DB_USER", "root"),
+        "password": os.getenv("MYSQLPASSWORD") or os.getenv("DB_PASSWORD", ""),
+        "database": os.getenv("MYSQLDATABASE") or os.getenv("DB_NAME", "feedback_system"),
+        "port": int(os.getenv("MYSQLPORT") or os.getenv("DB_PORT", "3306")),
     }
 
     def get_db_connection() -> MySQLConnection:
@@ -1353,5 +1354,10 @@ def create_app() -> Flask:
 
 
 if __name__ == "__main__":
-    flask_app = create_app()
-    flask_app.run(host="0.0.0.0", port=8000, debug=True)
+    app = create_app()
+    # Railway provides the port via the PORT environment variable
+    port = int(os.environ.get("PORT", 8000))
+    app.run(host="0.0.0.0", port=port, debug=False)
+else:
+    # This is used by gunicorn (web: gunicorn "app:create_app()")
+    app = create_app()
