@@ -17,6 +17,17 @@ load_dotenv()
 def create_app() -> Flask:
     app = Flask(__name__)
 
+    # --- LOGGING SETUP ---
+    import logging
+    import sys
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s [%(levelname)s] %(message)s',
+        handlers=[logging.StreamHandler(sys.stdout)]
+    )
+    logger = logging.getLogger(__name__)
+
+    # --- ENVIRONMENT CONFIG ---
     app.config["SECRET_KEY"] = os.getenv("SECRET_KEY", "change-me")
 
     # Railway provides MySQL variables in a specific format
@@ -35,10 +46,14 @@ def create_app() -> Flask:
         "port": mysql_port,
     }
 
-    print(f"DEBUG: Attempting to connect to database at {mysql_host}:{mysql_port}...")
+    logger.info(f"App starting with database at {mysql_host}:{mysql_port} (User: {mysql_user}, DB: {mysql_db})")
 
     def get_db_connection() -> MySQLConnection:
-        return mysql.connector.connect(**app.config["DB_CONFIG"])
+        try:
+            return mysql.connector.connect(**app.config["DB_CONFIG"])
+        except Exception as e:
+            logger.error(f"Failed to connect to database: {e}")
+            raise
 
     # Initialize SMTP email configuration
     email_config = EmailConfig()
@@ -46,65 +61,83 @@ def create_app() -> Flask:
 
     def init_master_schema() -> None:
         import time
-        retries = 5
+        retries = 3
         while retries > 0:
             try:
+                logger.info(f"Attempting schema initialization... ({retries} retries left)")
                 conn = get_db_connection()
                 cursor = conn.cursor()
                 
+                # Check for responses table before running schema updates
+                cursor.execute("SHOW TABLES LIKE 'responses'")
+                if not cursor.fetchone():
+                    logger.warning("Table 'responses' does not exist yet. Ensure database migrations are handled.")
+                
                 # Add user_email column to responses table if it doesn't exist
-                cursor.execute("SHOW COLUMNS FROM responses LIKE 'user_email'")
-                result = cursor.fetchone()
-                if not result:
-                    cursor.execute("ALTER TABLE responses ADD COLUMN user_email VARCHAR(255) AFTER submitted_at")
+                cursor.execute("SHOW TABLES LIKE 'responses'")
+                if cursor.fetchone():
+                    cursor.execute("SHOW COLUMNS FROM responses LIKE 'user_email'")
+                    if not cursor.fetchone():
+                        cursor.execute("ALTER TABLE responses ADD COLUMN user_email VARCHAR(255) AFTER submitted_at")
+                    
+                    cursor.execute("SHOW COLUMNS FROM responses LIKE 'status'")
+                    if not cursor.fetchone():
+                        cursor.execute("ALTER TABLE responses ADD COLUMN status ENUM('unresolved', 'resolved') DEFAULT 'unresolved' AFTER user_email")
                 
-                # Add status column to responses table if it doesn't exist
-                cursor.execute("SHOW COLUMNS FROM responses LIKE 'status'")
-                result = cursor.fetchone()
-                if not result:
-                    cursor.execute("ALTER TABLE responses ADD COLUMN status ENUM('unresolved', 'resolved') DEFAULT 'unresolved' AFTER user_email")
+                # Check for questions table
+                cursor.execute("SHOW TABLES LIKE 'questions'")
+                if cursor.fetchone():
+                    cursor.execute("SHOW COLUMNS FROM questions LIKE 'is_active'")
+                    if not cursor.fetchone():
+                        cursor.execute("ALTER TABLE questions ADD COLUMN is_active BOOLEAN DEFAULT TRUE AFTER question_order")
                 
-                # Add is_active column to questions table if it doesn't exist
-                cursor.execute("SHOW COLUMNS FROM questions LIKE 'is_active'")
-                result = cursor.fetchone()
-                if not result:
-                    cursor.execute("ALTER TABLE questions ADD COLUMN is_active BOOLEAN DEFAULT TRUE AFTER question_order")
-                
-                # Add comprehensive store information columns if they don't exist
-                store_columns = [
-                    ("address", "TEXT"),
-                    ("city", "VARCHAR(100)"),
-                    ("province", "VARCHAR(100)"),
-                    ("postal_code", "VARCHAR(20)"),
-                    ("contact_number", "VARCHAR(20)"),
-                    ("email", "VARCHAR(255)"),
-                    ("store_manager_name", "VARCHAR(255)"),
-                    ("manager_contact", "VARCHAR(20)"),
-                    ("store_type", "VARCHAR(100)"),
-                    ("operating_hours", "VARCHAR(255)"),
-                    ("status", "ENUM('active', 'inactive', 'pending') DEFAULT 'active'")
-                ]
-                
-                for column_name, column_type in store_columns:
-                    cursor.execute(f"SHOW COLUMNS FROM stores LIKE '{column_name}'")
-                    result = cursor.fetchone()
-                    if not result:
-                        cursor.execute(f"ALTER TABLE stores ADD COLUMN {column_name} {column_type}")
+                # Check for stores table
+                cursor.execute("SHOW TABLES LIKE 'stores'")
+                if cursor.fetchone():
+                    store_columns = [
+                        ("address", "TEXT"),
+                        ("city", "VARCHAR(100)"),
+                        ("province", "VARCHAR(100)"),
+                        ("postal_code", "VARCHAR(20)"),
+                        ("contact_number", "VARCHAR(20)"),
+                        ("email", "VARCHAR(255)"),
+                        ("store_manager_name", "VARCHAR(255)"),
+                        ("manager_contact", "VARCHAR(20)"),
+                        ("store_type", "VARCHAR(100)"),
+                        ("operating_hours", "VARCHAR(255)"),
+                        ("status", "ENUM('active', 'inactive', 'pending') DEFAULT 'active'")
+                    ]
+                    
+                    for column_name, column_type in store_columns:
+                        cursor.execute(f"SHOW COLUMNS FROM stores LIKE '{column_name}'")
+                        if not cursor.fetchone():
+                            cursor.execute(f"ALTER TABLE stores ADD COLUMN {column_name} {column_type}")
                 
                 conn.commit()
                 conn.close()
-                print("DEBUG: Master schema initialized successfully.")
+                logger.info("Master schema check/update completed.")
                 break
             except Exception as e:
-                print(f"DEBUG: Database initialization attempt failed: {e}")
+                logger.error(f"Database initialization error: {e}")
                 retries -= 1
                 if retries > 0:
-                    print(f"DEBUG: Retrying in 3 seconds... ({retries} attempts left)")
-                    time.sleep(3)
+                    time.sleep(5)
                 else:
-                    print("DEBUG: Max retries reached. Database might not be available yet.")
+                    logger.critical("Could not initialize database schema after multiple attempts.")
 
-    init_master_schema()
+    # Only run schema init if we're not in a testing environment
+    if not os.getenv("TESTING"):
+        init_master_schema()
+
+    # --- ERROR HANDLERS ---
+    @app.errorhandler(500)
+    def internal_error(error):
+        logger.error(f"Server Error (500): {error}")
+        return "500 Internal Server Error - Check logs for details.", 500
+
+    @app.errorhandler(404)
+    def not_found_error(error):
+        return "404 Not Found", 404
 
     def fetch_stores() -> List[Dict[str, Any]]:
         conn = get_db_connection()
