@@ -1,0 +1,1292 @@
+{% extends "layout.html" %}
+<!-- 
+================================================================================
+FILE: admin/feedback.html
+URL ROUTE: /admin/stores/<store_id>/feedback
+PURPOSE: "Feedback Management" page. Displays all customer responses/submissions
+         for a specific store in a two-pane list and detail view.
+================================================================================
+-->
+
+{% block head %}
+<style>
+  .feedback-container {
+    display: flex;
+    height: calc(100vh - 200px);
+    margin: 0 -20px;
+    position: fixed;
+    top: 180px;
+    left: 20px;
+    right: 20px;
+    bottom: 20px;
+    z-index: 100;
+  }
+
+  .feedback-list-panel {
+    flex: 0 0 380px;
+    border-right: 1px solid #e9ecef;
+    overflow-y: auto;
+    background-color: #f8f9fa;
+    height: 100%;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+  }
+  .feedback-detail-panel {
+    flex: 1;
+    overflow-y: auto;
+    background-color: #fff;
+    padding: 24px;
+    height: 100%;
+    position: relative;
+  }
+  .feedback-item {
+    width: 100%;
+    display: block;
+    text-align: left;
+    background: #ffffff;
+    border: 0;
+    appearance: none;
+    -webkit-appearance: none;
+    padding: 18px;
+    border-bottom: 1px solid #f1f3f4;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    position: relative;
+    border-left: 3px solid transparent;
+  }
+  .feedback-item:focus {
+    outline: 2px solid rgba(107, 114, 128, 0.3);
+    outline-offset: 2px;
+  }
+  .feedback-item:hover,
+  .feedback-item.active {
+    background: #f8f9fa;
+    transform: translateX(2px);
+    border-left: 3px solid #6b7280;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  }
+  .feedback-item .status-badge {
+    position: absolute;
+    top: 18px;
+    right: 18px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    padding: 5px 10px;
+    border-radius: 18px;
+  }
+  .feedback-item .status-badge.unresolved {
+    background: #dc2626;
+    color: #fff;
+    border: 1px solid #b91c1c;
+    box-shadow: 0 1px 3px rgba(220, 38, 38, 0.2);
+  }
+  .feedback-item .status-badge.resolved {
+    background: #059669;
+    color: #fff;
+    border: 1px solid #047857;
+    box-shadow: 0 1px 3px rgba(5, 150, 105, 0.2);
+  }
+  .search-section {
+    padding: 16px;
+    border-bottom: 1px solid #e9ecef;
+    background-color: #fff;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    flex-shrink: 0;
+  }
+  .customer-name {
+    font-weight: 700;
+    color: #212529;
+    margin-bottom: 7px;
+    font-size: 0.9rem;
+    letter-spacing: 0.5px;
+  }
+  .feedback-meta {
+    font-size: 0.8rem;
+    color: #6c757d;
+    font-weight: 500;
+  }
+  .rating-stars {
+    color: #d97706;
+    font-size: 0.85rem;
+    margin-bottom: 3px;
+  }
+  .rating-stars .bi-star-fill {
+    color: #d97706;
+  }
+  .rating-stars .bi-star {
+    color: #e5e7eb;
+  }
+  .detail-header {
+    border-bottom: 1px solid #e5e7eb;
+    padding-bottom: 20px;
+    margin-bottom: 20px;
+    background: #ffffff;
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 20px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    color: #212529;
+  }
+
+  .detail-header h2,
+  .detail-header h3,
+  .detail-header h4,
+  .detail-header p {
+    color: #212529;
+  }
+  .detail-inner {
+    max-width: 960px;
+    margin: 0 auto;
+  }
+  .section-card {
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 16px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    transition: all 0.2s ease;
+    color: #212529;
+  }
+
+  .section-card h4,
+  .section-card h5,
+  .section-card h6,
+  .section-card p,
+  .section-card strong,
+  .section-card label {
+    color: #212529;
+  }
+
+  .section-card:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  }
+  .customer-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 18px;
+    margin-bottom: 27px;
+  }
+  .stat-card {
+    background: #f9fafb;
+    padding: 16px;
+    border-radius: 8px;
+    text-align: center;
+    transition: all 0.2s ease;
+    border: 1px solid #e5e7eb;
+    position: relative;
+  }
+
+  .stat-card::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: #6b7280;
+  }
+
+  .stat-card:nth-child(1)::before {
+    background: #6b7280;
+  }
+
+  .stat-card:nth-child(2)::before {
+    background: #6b7280;
+  }
+
+  .stat-card:nth-child(3)::before {
+    background: #6b7280;
+  }
+
+  .stat-card:nth-child(4)::before {
+    background: #6b7280;
+  }
+
+  .stat-card:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  }
+  .stat-value {
+    font-size: 1.8rem;
+    font-weight: 700;
+    margin-bottom: 7px;
+    color: #212529;
+  }
+
+  .stat-card:nth-child(1) .stat-value {
+    color: #374151;
+  }
+
+  .stat-card:nth-child(2) .stat-value {
+    color: #374151;
+  }
+
+  .stat-card:nth-child(3) .stat-value {
+    color: #374151;
+  }
+
+  .stat-card:nth-child(4) .stat-value {
+    color: #374151;
+  }
+  .stat-label {
+    font-size: 0.8rem;
+    color: #6c757d;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+  }
+
+  .stat-card:nth-child(1) .stat-label,
+  .stat-card:nth-child(2) .stat-label,
+  .stat-card:nth-child(3) .stat-label,
+  .stat-card:nth-child(4) .stat-label {
+    color: #6c757d;
+  }
+
+  /* Enhanced card styling with subdued theme */
+  .card {
+    transition: all 0.2s ease;
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+  }
+
+  .card:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  }
+
+  /* Enhanced form controls with white background */
+  .form-control {
+    border-radius: 0.5rem;
+    border: 1px solid #d1d5db;
+    transition: all 0.2s ease;
+    font-size: 0.9rem;
+    background-color: white;
+    color: #212529;
+  }
+
+  .form-control:focus {
+    border-color: #6b7280;
+    box-shadow: 0 0 0 0.2rem rgba(107, 114, 128, 0.1);
+    transform: translateY(-1px);
+    background-color: white;
+  }
+
+  .form-control-lg {
+    border-radius: 0.5rem;
+    border: 1px solid #d1d5db;
+    font-size: 1rem;
+    background-color: white;
+    color: #212529;
+  }
+
+  .form-control-lg:focus {
+    border-color: #6b7280;
+    box-shadow: 0 0 0 0.2rem rgba(107, 114, 128, 0.15);
+    transform: translateY(-1px);
+    background-color: white;
+  }
+
+  .input-group-text {
+    border-radius: 0.5rem;
+    border: 1px solid #d1d5db;
+    background: #f9fafb;
+  }
+
+  /* Enhanced buttons with subdued theme */
+  .btn {
+    border-radius: 0.5rem;
+    font-weight: 600;
+    transition: all 0.2s ease;
+    font-size: 0.9rem;
+  }
+
+  .btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  }
+
+  .btn-primary {
+    background: #374151;
+    color: white;
+    border: 1px solid #374151;
+  }
+
+  .btn-outline-primary {
+    border: 1px solid #6b7280;
+    color: #6b7280;
+  }
+
+  .btn-outline-primary:hover {
+    background: #374151;
+    border-color: #374151;
+    color: white;
+    transform: translateY(-1px);
+  }
+
+  .btn-outline-secondary {
+    border: 2px solid var(--bs-secondary);
+    color: var(--bs-secondary);
+  }
+
+  .btn-outline-secondary:hover {
+    background: var(--bs-secondary);
+    border-color: var(--bs-secondary);
+  }
+
+  .btn-lg {
+    padding: 0.7rem 1.4rem;
+    font-size: 1rem;
+  }
+
+  /* Enhanced badges to match dashboard */
+  .badge {
+    font-weight: 600;
+    border-radius: 0.5rem;
+    font-size: 0.75rem;
+  }
+
+  /* Enhanced form switch */
+  .form-check-input {
+    border-radius: 1rem;
+    width: 3rem;
+    height: 1.5rem;
+  }
+
+  .form-check-input:checked {
+    background-color: var(--bs-success);
+    border-color: var(--bs-success);
+  }
+
+  .form-check-label {
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  /* Enhanced empty states */
+  .text-center.py-5 {
+    padding: 4rem 0 !important;
+  }
+
+  .text-center.py-5 i {
+    font-size: 4rem !important;
+    margin-bottom: 1.5rem;
+  }
+
+  .text-center.py-5 h4 {
+    font-size: 1.5rem;
+    margin-bottom: 1rem;
+  }
+
+  /* Enhanced search section */
+  .search-section {
+    background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+    border-bottom: 2px solid #e9ecef;
+  }
+
+  /* Enhanced feedback list panel */
+  .feedback-list-panel {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    border-right: 2px solid #e9ecef;
+  }
+
+  /* Enhanced feedback detail panel */
+  .feedback-detail-panel {
+    background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+    padding: 1.8rem;
+    height: 100%;
+    overflow-y: auto;
+  }
+
+  /* Enhanced container */
+  .feedback-container {
+    background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+    border: 1px solid rgba(0, 0, 0, 0.05);
+  }
+
+  /* Enhanced responsive design */
+  @media (max-width: 768px) {
+    .feedback-container {
+      flex-direction: column;
+      height: calc(100vh - 200px);
+      position: fixed;
+      top: 180px;
+      left: 10px;
+      right: 10px;
+      bottom: 10px;
+    }
+
+    .feedback-list-panel {
+      flex: none;
+      max-height: 300px;
+      border-right: none;
+      border-bottom: 2px solid #e9ecef;
+      height: 300px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .feedback-detail-panel {
+      padding: 1.3rem;
+      flex: 1;
+      height: calc(100% - 300px);
+      overflow-y: auto;
+    }
+
+    .customer-stats {
+      grid-template-columns: repeat(2, 1fr);
+      gap: 1rem;
+    }
+  }
+</style>
+{% endblock %} {% block content %}
+<div class="d-flex justify-content-between align-items-start mb-4">
+  <div style="flex: 1; min-width: 300px">
+    <h2 class="page-title">Feedback Management - {{ store.store_name }}</h2>
+  </div>
+  <div class="btn-group" role="group" style="flex-shrink: 0">
+    <button
+      type="button"
+      class="btn btn-outline-primary active"
+      onclick="filterFeedback('unresolved', this)"
+    >
+      <i class="bi bi-exclamation-circle me-1"></i>Unresolved ({{
+      responses|selectattr('status', 'equalto', 'unresolved')|list|length }})
+    </button>
+    <button
+      type="button"
+      class="btn btn-outline-secondary"
+      onclick="filterFeedback('resolved', this)"
+    >
+      <i class="bi bi-check-circle me-1"></i>Resolved ({{
+      responses|selectattr('status', 'equalto', 'resolved')|list|length }})
+    </button>
+    <button
+      type="button"
+      class="btn btn-outline-secondary"
+      onclick="filterFeedback('all', this)"
+    >
+      <i class="bi bi-list-ul me-1"></i>All ({{ responses|length }})
+    </button>
+  </div>
+</div>
+
+<div class="feedback-container shadow-lg rounded">
+  <!-- Left Panel - Feedback List -->
+  <div class="feedback-list-panel">
+    <div class="search-section p-3">
+      <div class="input-group">
+        <input
+          type="text"
+          class="form-control"
+          placeholder="Search by email..."
+        />
+        <span class="input-group-text"><i class="bi bi-search fs-5"></i></span>
+      </div>
+    </div>
+
+    <div class="feedback-list" style="flex: 1; overflow-y: auto">
+      {% for response in responses %}
+      <button
+        type="button"
+        class="feedback-item"
+        data-response-id="{{ response.id }}"
+        aria-pressed="false"
+      >
+        <div class="customer-name">
+          {{ response.user_email or 'Anonymous' }}
+        </div>
+        <div class="feedback-meta">
+          {% set answers = answers_by_response_id.get(response.id, []) %} {% set
+          avg_rating = answers|selectattr('question_type', 'equalto',
+          'rating')|map(attribute='rating_value')|list %} {% if avg_rating and avg_rating|length > 0 %}
+          {% set rating_avg = (avg_rating|sum / avg_rating|length) %}
+          <div class="rating-stars">
+            {% for i in range(1, 6) %} {% if i <= rating_avg|round(1) %}
+            <i class="bi bi-star-fill text-primary"></i>
+            {% else %}
+            <i class="bi bi-star text-primary"></i>
+            {% endif %} {% endfor %} {{ rating_avg|round(1) }}/5</div> {% endif %}
+          <div>
+            Last visit: {{ response.submitted_at.strftime('%b %d, %Y') if
+            response.submitted_at else 'N/A' }}
+          </div>
+        </div>
+        <div
+          class="status-badge {% if response.status == 'resolved' %}resolved{% else %}unresolved{% endif %}"
+        >
+          {{ response.status.title() }}
+        </div>
+      </button>
+      {% else %}
+      <div class="text-center py-5">
+        <i class="bi bi-inbox text-muted fs-2"></i>
+        <p class="text-muted mt-2">No feedback found</p>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- Right Panel - Feedback Details -->
+  <div class="feedback-detail-panel">
+    <div id="feedback-detail-content" class="detail-inner">
+      <!-- Default state when no feedback is selected -->
+      <div class="text-center py-5">
+        <div class="rounded-circle bg-primary bg-opacity-10 p-2 me-3">
+          <i class="bi bi-chat-left-text text-primary fs-5"></i>
+        </div>
+        <h4 class="text-muted mt-3">Select a feedback entry to view details</h4>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %} {% block scripts %}
+<script>
+  let feedbackData = {};
+
+  // Prepare feedback data from template
+  {% for response in responses %}
+  {% set answers = answers_by_response_id.get(response.id, []) %}
+  {% set avg_rating = answers|selectattr('question_type', 'equalto', 'rating')|map(attribute='rating_value')|list %}
+  feedbackData[{{ response.id }}] = {
+    id: {{ response.id }},
+    customerName: {{ (response.user_email or "Anonymous") | tojson }},
+    customerEmail: {{ (response.user_email or "") | tojson }},
+    submittedAt: {{ (response.submitted_at.strftime("%B %d, %Y at %I:%M %p") if response.submitted_at else "") | tojson }},
+    status: {{ response.status | tojson }},
+    avgRating: {{ ((avg_rating|sum / avg_rating|length)|round(1) if avg_rating else 0) | tojson }},
+    answers: [
+      {% for answer in answers %}
+      {
+        questionText: {{ answer.question_text | tojson }},
+        questionType: {{ answer.question_type | tojson }},
+        answerText: {{ answer.answer_text | tojson }},
+        ratingValue: {{ answer.rating_value if answer.question_type == 'rating' else 0 }}
+      }{% if not loop.last %},{% endif %}
+      {% endfor %}
+    ]
+  };
+  {% endfor %}
+
+  console.log('feedbackData populated:', feedbackData);
+
+  function selectFeedback(responseId) {
+    console.log('selectFeedback called with responseId:', responseId);
+
+    // Remove active class from all items
+    document.querySelectorAll('.feedback-item').forEach(item => {
+      item.classList.remove('active');
+      item.setAttribute('aria-pressed', 'false');
+    });
+
+    // Add active class to selected item
+    const selectedItem = document.querySelector(`.feedback-item[data-response-id="${responseId}"]`);
+    if (selectedItem) {
+      selectedItem.classList.add('active');
+      selectedItem.setAttribute('aria-pressed', 'true');
+    }
+
+    // Get feedback details
+    const feedback = feedbackData[responseId];
+    console.log('feedback for responseId:', feedback);
+    if (!feedback) return;
+
+    // Render feedback details
+    renderFeedbackDetail(feedback);
+  }
+
+  function filterFeedback(status, btnEl) {
+    // Remove active class from all buttons
+    document.querySelectorAll('.btn-group .btn').forEach(btn => {
+      btn.classList.remove('active');
+    });
+
+    // Add active class to clicked button
+    if (btnEl) {
+      btnEl.classList.add('active');
+    }
+
+    // Filter feedback items
+    const feedbackItems = document.querySelectorAll('.feedback-item');
+    feedbackItems.forEach(item => {
+      const badge = item.querySelector('.status-badge');
+      const itemStatus = badge ? badge.textContent.trim().toLowerCase() : '';
+      if (status === 'all' || itemStatus === status) {
+        item.style.display = 'block';
+      } else {
+        item.style.display = 'none';
+      }
+    });
+  }
+
+  let currentReplyResponseId = null;
+
+  function openReplyModal(responseId) {
+    currentReplyResponseId = responseId;
+    document.getElementById('replyMessage').value = '';
+    const modal = new bootstrap.Modal(document.getElementById('replyModal'));
+    modal.show();
+  }
+
+  function clearReplyForm() {
+    document.getElementById('replyMessage').value = '';
+    document.getElementById('ccEmails').value = '';
+    document.getElementById('bccEmails').value = '';
+    document.getElementById('emailTemplate').value = 'standard';
+  }
+
+  async function sendReply() {
+    const message = document.getElementById('replyMessage').value.trim();
+
+    if (!message) {
+      alert('Please enter a reply message');
+      return;
+    }
+
+    if (!currentReplyResponseId) {
+      alert('Invalid response ID');
+      return;
+    }
+
+    // Get selected template
+    const templateSelect = document.getElementById('modalEmailTemplate');
+    const templateType = templateSelect ? templateSelect.value : 'standard';
+
+    // Get CC/BCC emails
+    const ccEmails = document.getElementById('modalCcEmails') ? document.getElementById('modalCcEmails').value.split(',').map(e => e.trim()).filter(e => e) : [];
+    const bccEmails = document.getElementById('modalBccEmails') ? document.getElementById('modalBccEmails').value.split(',').map(e => e.trim()).filter(e => e) : [];
+
+    try {
+      // Show loading state
+      const sendBtn = document.querySelector('#replyModal .btn-primary');
+      const originalText = sendBtn.innerHTML;
+      sendBtn.innerHTML = '<i class="bi bi-hourglass-split me-2"></i>Sending...';
+      sendBtn.disabled = true;
+
+      const response = await fetch(`/admin/responses/${currentReplyResponseId}/reply`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          message: message,
+          template_type: templateType,
+          cc_emails: ccEmails,
+          bcc_emails: bccEmails
+        })
+      });
+
+      const result = await response.json();
+
+      // Restore button
+      sendBtn.innerHTML = originalText;
+      sendBtn.disabled = false;
+
+      if (result.success) {
+        // Close modal
+        const modal = bootstrap.Modal.getInstance(document.getElementById('replyModal'));
+        modal.hide();
+
+        // Show success message with template info
+        const templateName = templateType.charAt(0).toUpperCase() + templateType.slice(1);
+        alert(`Reply sent successfully using ${templateName} template!`);
+
+        // Refresh the feedback list
+        window.location.reload();
+      } else {
+        alert('Failed to send reply: ' + result.error);
+      }
+    } catch (error) {
+      console.error('Error sending reply:', error);
+      alert('Failed to send reply. Please try again.');
+
+      // Restore button
+      const sendBtn = document.querySelector('#replyModal .btn-primary');
+      sendBtn.innerHTML = '<i class="bi bi-send me-1"></i>Send Reply';
+      sendBtn.disabled = false;
+    }
+  }
+
+  function renderFeedbackDetail(feedback) {
+    const detailContent = document.getElementById('feedback-detail-content');
+
+    detailContent.innerHTML = `
+      <div class="detail-header">
+        <div class="d-flex justify-content-between align-items-start">
+          <div>
+            <h2 class="h3 mb-3 fw-bold">${feedback.customerName}</h2>
+            <p class="text-muted mb-0 fs-5">${feedback.customerEmail || 'No email provided'}</p>
+          </div>
+          <div class="d-flex align-items-center gap-3">
+            <div class="form-check form-switch">
+              <input class="form-check-input" type="checkbox" id="statusToggle" ${feedback.status === 'resolved' ? 'checked' : ''}
+                     onchange="toggleFeedbackStatus(${feedback.id}, this.checked)">
+              <label class="form-check-label fw-semibold" for="statusToggle">
+                ${feedback.status === 'resolved' ? 'Resolved' : 'Unresolved'}
+              </label>
+            </div>
+            <button type="button" class="btn btn-primary btn-sm" onclick="openReplyModal(${feedback.id})"
+                    ${!feedback.customerEmail ? 'disabled' : ''}>
+              <i class="bi bi-reply me-1"></i>Reply
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="customer-stats">
+        <div class="stat-card">
+          <div class="stat-value">${feedback.avgRating}/5</div>
+          <div class="stat-label">Average Rating</div>
+        </div>
+      </div>
+
+      <div class="feedback-details">
+        <div class="section-card">
+          <h4 class="mb-4 fw-bold">Feedback Details</h4>
+          <div class="row">
+            <div class="col-md-6">
+              <p class="mb-3 fs-5"><strong>Date & Time:</strong> ${feedback.submittedAt}</p>
+              <p class="mb-3 fs-5"><strong>Establishment:</strong> {{ store.store_name }}</p>
+            </div>
+            <div class="col-md-6">
+              <p class="mb-3 fs-5"><strong>Service Type:</strong> --</p>
+              <p class="mb-3 fs-5"><strong>Staff Served by:</strong> --</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="section-card">
+          <h4 class="mb-4 fw-bold">Specific Feedback</h4>
+          ${renderFeedbackAnswers(feedback.answers)}
+        </div>
+
+        <div class="section-card reply-section">
+          <h4 class="mb-4 fw-bold">Reply to Customer</h4>
+
+          <div class="row mb-3">
+            <div class="col-md-6">
+              <label for="emailTemplate" class="form-label fw-semibold">Email Template</label>
+              <select class="form-select" id="emailTemplate">
+                <option value="standard">Standard (Auto-selected based on rating)</option>
+                <option value="apology">Apology (For negative feedback)</option>
+                <option value="appreciation">Appreciation (For positive feedback)</option>
+                <option value="follow_up">Follow-up (For checking back)</option>
+              </select>
+              <div class="form-text">Template will be auto-selected based on customer rating if "Standard" is chosen.</div>
+            </div>
+          </div>
+
+          <div class="row mb-3">
+            <div class="col-md-6">
+              <label for="ccEmails" class="form-label fw-semibold">CC Emails (Optional)</label>
+              <input type="text" class="form-control" id="ccEmails" placeholder="manager@store.com, admin@company.com">
+              <div class="form-text">Separate multiple emails with commas.</div>
+            </div>
+            <div class="col-md-6">
+              <label for="bccEmails" class="form-label fw-semibold">BCC Emails (Optional)</label>
+              <input type="text" class="form-control" id="bccEmails" placeholder="admin@company.com">
+              <div class="form-text">Separate multiple emails with commas.</div>
+            </div>
+          </div>
+
+          <div class="mb-4">
+            <label for="replyMessage" class="form-label fw-semibold">Your Reply Message</label>
+            <textarea class="form-control form-control-lg" id="replyMessage" rows="6" placeholder="Type your response to the customer feedback here..."></textarea>
+          </div>
+
+          <div class="d-flex gap-2">
+            <button class="btn btn-primary btn-lg" onclick="sendReply(${feedback.id})">
+              <i class="bi bi-send me-2"></i>Send Reply
+            </button>
+            <button class="btn btn-outline-secondary btn-lg" onclick="clearReplyForm()">
+              <i class="bi bi-arrow-clockwise me-2"></i>Clear
+            </button>
+          </div>
+
+          <div class="alert alert-info mt-3">
+            <i class="bi bi-info-circle me-2"></i>
+            <strong>Auto-Template Selection:</strong> The system will automatically choose the appropriate template based on the customer's rating:
+            <ul class="mb-0 mt-2">
+              <li>Rating 1-2: Apology template</li>
+              <li>Rating 3: Standard template</li>
+              <li>Rating 4-5: Appreciation template</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  function renderFeedbackAnswers(answers) {
+    let html = '';
+    answers.forEach(answer => {
+      if (answer.questionType === 'text') {
+        html += `
+          <div class="mb-4">
+            <p class="mb-3 fs-5 fw-semibold">${answer.questionText}</p>
+            <div class="bg-light p-4 rounded-3">
+              ${answer.answerText}
+            </div>
+          </div>
+        `;
+      } else if (answer.questionType === 'rating') {
+        const value = Number(answer.ratingValue) || 0;
+        const stars = Array.from({ length: 5 }, (_, i) =>
+          i < Math.round(value) ? '<i class="bi bi-star-fill text-warning"></i>' : '<i class="bi bi-star text-muted"></i>'
+        ).join('');
+        html += `
+          <div class="mb-4">
+            <p class="mb-3 fs-5 fw-semibold">${answer.questionText}</p>
+            <div class="d-flex align-items-center gap-3">
+              <span class="rating-stars fs-5">${stars}</span>
+              <span class="fw-bold fs-5">${value}/5</span>
+            </div>
+          </div>
+        `;
+      } else {
+        html += `
+          <div class="mb-4">
+            <p class="mb-3 fs-5 fw-semibold">${answer.questionText}</p>
+            <div class="bg-light p-4 rounded-3">
+              ${answer.answerText || ''}
+            </div>
+          </div>
+        `;
+      }
+    });
+    return html;
+  }
+
+  function toggleFeedbackStatus(responseId, isResolved) {
+    const newStatus = isResolved ? 'resolved' : 'unresolved';
+
+    fetch(`/admin/responses/${responseId}/status`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ status: newStatus })
+    })
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        location.reload();
+      } else {
+        alert('Error: ' + data.error);
+      }
+    })
+    .catch(error => {
+      console.error('Error:', error);
+      alert('An error occurred while updating status.');
+    });
+  }
+
+  async function sendReply(responseId) {
+    const textarea = document.querySelector('.reply-section textarea');
+    const replyText = textarea.value.trim();
+
+    if (!replyText) {
+      alert('Please enter a reply message.');
+      return;
+    }
+
+    // Get selected template
+    const templateSelect = document.getElementById('emailTemplate');
+    const templateType = templateSelect ? templateSelect.value : 'standard';
+
+    // Get CC/BCC emails
+    const ccEmails = document.getElementById('ccEmails') ? document.getElementById('ccEmails').value.split(',').map(e => e.trim()).filter(e => e) : [];
+    const bccEmails = document.getElementById('bccEmails') ? document.getElementById('bccEmails').value.split(',').map(e => e.trim()).filter(e => e) : [];
+
+    try {
+      // Show loading state
+      const sendBtn = document.querySelector('.reply-section .btn-primary');
+      const originalText = sendBtn.innerHTML;
+      sendBtn.innerHTML = '<i class="bi bi-hourglass-split me-2"></i>Sending...';
+      sendBtn.disabled = true;
+
+      const response = await fetch(`/admin/responses/${responseId}/reply`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          message: replyText,
+          template_type: templateType,
+          cc_emails: ccEmails,
+          bcc_emails: bccEmails
+        })
+      });
+
+      const result = await response.json();
+
+      // Restore button
+      sendBtn.innerHTML = originalText;
+      sendBtn.disabled = false;
+
+      if (result.success) {
+        // Show success message with template info
+        const templateName = templateType.charAt(0).toUpperCase() + templateType.slice(1);
+        alert(`Reply sent successfully using ${templateName} template!`);
+
+        // Refresh the feedback list to show updated status
+        window.location.reload();
+      } else {
+        alert('Failed to send reply: ' + result.error);
+      }
+    } catch (error) {
+      console.error('Error sending reply:', error);
+      alert('Failed to send reply. Please try again.');
+
+      // Restore button
+      const sendBtn = document.querySelector('.reply-section .btn-primary');
+      sendBtn.innerHTML = '<i class="bi bi-send me-2"></i>Send Reply';
+      sendBtn.disabled = false;
+    }
+  }
+
+  // Search functionality
+  document.addEventListener('DOMContentLoaded', function() {
+    const searchInput = document.querySelector('.search-section input');
+    if (searchInput) {
+      searchInput.addEventListener('input', function(e) {
+        const searchTerm = e.target.value.toLowerCase();
+        const feedbackItems = document.querySelectorAll('.feedback-item');
+
+        feedbackItems.forEach(item => {
+          const customerName = item.querySelector('.customer-name').textContent.toLowerCase();
+          if (customerName.includes(searchTerm)) {
+            item.style.display = 'block';
+          } else {
+            item.style.display = 'none';
+          }
+        });
+      });
+    }
+
+    // Add click listeners to feedback items
+    const feedbackItems = document.querySelectorAll('.feedback-item');
+    feedbackItems.forEach(item => {
+      item.addEventListener('click', function() {
+        const responseId = this.getAttribute('data-response-id');
+        selectFeedback(responseId);
+      });
+    });
+
+    // Apply initial filter to match the active tab (defaults to Unresolved)
+    const activeTab = document.querySelector('.btn-group .btn.active');
+    if (activeTab) {
+      const text = activeTab.textContent.toLowerCase();
+      if (text.includes('unresolved')) {
+        filterFeedback('unresolved', activeTab);
+      } else if (text.includes('resolved')) {
+        filterFeedback('resolved', activeTab);
+      } else {
+        filterFeedback('all', activeTab);
+      }
+    }
+  });
+</script>
+
+<style>
+  /* Enhanced form controls with white background */
+  .form-control {
+    border-radius: 0.5rem;
+    border: 1px solid #dee2e6;
+    transition: all 0.3s ease;
+    font-size: 0.9rem;
+    background-color: white;
+    color: #212529;
+  }
+
+  .form-control:focus {
+    border-color: #000000;
+    box-shadow: 0 0 0 0.2rem rgba(0, 0, 0, 0.1);
+    transform: translateY(-1px);
+    background-color: white;
+  }
+
+  .form-control-lg {
+    border-radius: 0.5rem;
+    border: 2px solid rgba(0, 0, 0, 0.1);
+    font-size: 1rem;
+    background-color: white;
+    color: #212529;
+  }
+
+  .form-control-lg:focus {
+    border-color: var(--bs-primary);
+    box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
+    transform: translateY(-1px);
+    background-color: white;
+  }
+
+  .input-group-text {
+    border-radius: 0.5rem;
+    border: 2px solid rgba(0, 0, 0, 0.1);
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+  }
+
+  /* Enhanced buttons with black and white theme */
+  .btn {
+    border-radius: 0.5rem;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    font-size: 0.9rem;
+  }
+
+  .btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+  }
+
+  .btn-primary {
+    background: #000000;
+    color: white;
+    border: 1px solid #000000;
+  }
+
+  .btn-outline-primary {
+    border: 1px solid #000000;
+    color: #000000;
+  }
+
+  .btn-outline-primary:hover {
+    background: #000000;
+    border-color: #000000;
+    color: white;
+    transform: translateY(-1px);
+  }
+
+  .btn-outline-secondary {
+    border: 2px solid var(--bs-secondary);
+    color: var(--bs-secondary);
+  }
+
+  .btn-outline-secondary:hover {
+    background: var(--bs-secondary);
+    border-color: var(--bs-secondary);
+  }
+
+  .btn-lg {
+    padding: 0.7rem 1.4rem;
+    font-size: 1rem;
+  }
+
+  /* Enhanced badges to match dashboard */
+  .badge {
+    font-weight: 600;
+    border-radius: 0.5rem;
+    font-size: 0.75rem;
+  }
+
+  /* Enhanced form switch */
+  .form-check-input {
+    border-radius: 1rem;
+    width: 3rem;
+    height: 1.5rem;
+  }
+
+  .form-check-input:checked {
+    background-color: var(--bs-success);
+    border-color: var(--bs-success);
+  }
+
+  .form-check-label {
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  /* Enhanced empty states */
+  .text-center.py-5 {
+    padding: 4rem 0 !important;
+  }
+
+  .text-center.py-5 i {
+    font-size: 4rem !important;
+    margin-bottom: 1.5rem;
+  }
+
+  .text-center.py-5 h4 {
+    font-size: 1.5rem;
+    margin-bottom: 1rem;
+  }
+
+  /* Enhanced search section */
+  .search-section {
+    background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+    border-bottom: 2px solid #e9ecef;
+  }
+
+  /* Enhanced feedback list panel */
+  .feedback-list-panel {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    border-right: 2px solid #e9ecef;
+  }
+
+  /* Enhanced feedback detail panel */
+  .feedback-detail-panel {
+    background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+    padding: 1.8rem;
+    height: 100%;
+    overflow-y: auto;
+  }
+
+  /* Enhanced container */
+  .feedback-container {
+    background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+    border: 1px solid rgba(0, 0, 0, 0.05);
+  }
+
+  /* Enhanced responsive design */
+  @media (max-width: 768px) {
+    .feedback-container {
+      flex-direction: column;
+      height: calc(100vh - 200px);
+      position: fixed;
+      top: 180px;
+      left: 10px;
+      right: 10px;
+      bottom: 10px;
+    }
+
+    .feedback-list-panel {
+      flex: none;
+      max-height: 300px;
+      border-right: none;
+      border-bottom: 2px solid #e9ecef;
+      height: 300px;
+    }
+
+    .feedback-detail-panel {
+      padding: 1.3rem;
+      flex: 1;
+      height: calc(100% - 300px);
+      overflow-y: auto;
+    }
+
+    .customer-stats {
+      grid-template-columns: repeat(2, 1fr);
+      gap: 1rem;
+    }
+  }
+</style>
+
+<!-- Reply Modal -->
+<div
+  class="modal fade"
+  id="replyModal"
+  tabindex="-1"
+  aria-labelledby="replyModalLabel"
+  aria-hidden="true"
+>
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="replyModalLabel">Reply to Feedback</h5>
+        <button
+          type="button"
+          class="btn-close"
+          data-bs-dismiss="modal"
+          aria-label="Close"
+        ></button>
+      </div>
+      <div class="modal-body">
+        <form id="replyForm">
+          <div class="row mb-3">
+            <div class="col-md-6">
+              <label for="modalEmailTemplate" class="form-label fw-semibold"
+                >Email Template</label
+              >
+              <select class="form-select" id="modalEmailTemplate">
+                <option value="standard">
+                  Standard (Auto-selected based on rating)
+                </option>
+                <option value="apology">Apology (For negative feedback)</option>
+                <option value="appreciation">
+                  Appreciation (For positive feedback)
+                </option>
+                <option value="follow_up">Follow-up (For checking back)</option>
+              </select>
+              <div class="form-text">
+                Template will be auto-selected based on customer rating if
+                "Standard" is chosen.
+              </div>
+            </div>
+          </div>
+
+          <div class="row mb-3">
+            <div class="col-md-6">
+              <label for="modalCcEmails" class="form-label fw-semibold"
+                >CC Emails (Optional)</label
+              >
+              <input
+                type="text"
+                class="form-control"
+                id="modalCcEmails"
+                placeholder="manager@store.com, admin@company.com"
+              />
+              <div class="form-text">Separate multiple emails with commas.</div>
+            </div>
+            <div class="col-md-6">
+              <label for="modalBccEmails" class="form-label fw-semibold"
+                >BCC Emails (Optional)</label
+              >
+              <input
+                type="text"
+                class="form-control"
+                id="modalBccEmails"
+                placeholder="admin@company.com"
+              />
+              <div class="form-text">Separate multiple emails with commas.</div>
+            </div>
+          </div>
+
+          <div class="mb-3">
+            <label for="replyMessage" class="form-label fw-semibold"
+              >Your Reply Message</label
+            >
+            <textarea
+              class="form-control"
+              id="replyMessage"
+              rows="6"
+              placeholder="Type your response to the customer feedback here..."
+              required
+            ></textarea>
+          </div>
+
+          <div class="alert alert-info">
+            <i class="bi bi-info-circle me-2"></i>
+            <strong>Auto-Template Selection:</strong> The system will
+            automatically choose the appropriate template based on the
+            customer's rating:
+            <ul class="mb-0 mt-2">
+              <li>Rating 1-2: Apology template</li>
+              <li>Rating 3: Standard template</li>
+              <li>Rating 4-5: Appreciation template</li>
+            </ul>
+          </div>
+
+          <div class="alert alert-success">
+            <i class="bi bi-check-circle me-2"></i>
+            This reply will be sent via email to the customer. The feedback will
+            be automatically marked as resolved.
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+          Cancel
+        </button>
+        <button type="button" class="btn btn-primary" onclick="sendReply()">
+          <i class="bi bi-send me-1"></i>Send Reply
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,471 @@
+"""
+Email configuration for feedback reply system
+"""
+
+import os
+from flask_mail import Mail, Message
+
+class EmailConfig:
+    def __init__(self, app=None):
+        self.mail = None
+        if app:
+            self.init_app(app)
+    
+    def init_app(self, app):
+        # Email configuration
+        app.config['MAIL_SERVER'] = os.getenv('MAIL_SERVER', 'smtp.gmail.com')
+        app.config['MAIL_PORT'] = int(os.getenv('MAIL_PORT', '587'))
+        app.config['MAIL_USE_TLS'] = os.getenv('MAIL_USE_TLS', 'true').lower() == 'true'
+        app.config['MAIL_USE_SSL'] = os.getenv('MAIL_USE_SSL', 'false').lower() == 'true'
+        app.config['MAIL_USERNAME'] = os.getenv('MAIL_USERNAME', 'your-email@gmail.com')
+        app.config['MAIL_PASSWORD'] = os.getenv('MAIL_PASSWORD', 'your-app-password')
+        app.config['MAIL_DEFAULT_SENDER'] = os.getenv('MAIL_DEFAULT_SENDER', 'your-email@gmail.com')
+        
+        self.mail = Mail(app)
+    
+    def send_feedback_reply(self, to_email, customer_name, reply_message, store_name, feedback_summary, 
+                          template_type='standard', cc_emails=None, bcc_emails=None, attachments=None):
+        """Send reply email to customer with enhanced features"""
+        try:
+            msg = Message(
+                subject=f"Response to your feedback about {store_name}",
+                recipients=[to_email],
+                sender=self.mail.default_sender,
+                cc=cc_emails or [],
+                bcc=bcc_emails or []
+            )
+            
+            # Add attachments if provided
+            if attachments:
+                for attachment in attachments:
+                    if attachment.get('filename') and attachment.get('content'):
+                        msg.attach(
+                            attachment['filename'],
+                            attachment.get('content_type', 'application/octet-stream'),
+                            attachment['content']
+                        )
+            
+            # Get email template based on type
+            html_body = self._get_email_template(
+                template_type, customer_name, store_name, feedback_summary, reply_message
+            )
+            
+            msg.html = html_body
+            self.mail.send(msg)
+            
+            # Log the email for tracking
+            self._log_email_sent(to_email, store_name, template_type, reply_message)
+            
+            return True, "Email sent successfully"
+            
+        except Exception as e:
+            return False, f"Failed to send email: {str(e)}"
+    
+    def _get_email_template(self, template_type, customer_name, store_name, feedback_summary, reply_message):
+        """Get email template based on type"""
+        templates = {
+            'standard': self._get_standard_template(customer_name, store_name, feedback_summary, reply_message),
+            'apology': self._get_apology_template(customer_name, store_name, feedback_summary, reply_message),
+            'appreciation': self._get_appreciation_template(customer_name, store_name, feedback_summary, reply_message),
+            'follow_up': self._get_follow_up_template(customer_name, store_name, feedback_summary, reply_message)
+        }
+        return templates.get(template_type, templates['standard'])
+    
+    def _get_standard_template(self, customer_name, store_name, feedback_summary, reply_message):
+        """Standard email template"""
+        return f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Response to Your Feedback</title>
+            <style>
+                body {{
+                    font-family: Arial, sans-serif;
+                    line-height: 1.6;
+                    color: #333;
+                    max-width: 600px;
+                    margin: 0 auto;
+                    padding: 20px;
+                }}
+                .header {{
+                    background: #f8f9fa;
+                    padding: 20px;
+                    border-radius: 8px;
+                    margin-bottom: 20px;
+                    border-left: 4px solid #007bff;
+                }}
+                .content {{
+                    background: white;
+                    padding: 20px;
+                    border-radius: 8px;
+                    border: 1px solid #dee2e6;
+                }}
+                .footer {{
+                    margin-top: 20px;
+                    padding: 20px;
+                    background: #f8f9fa;
+                    border-radius: 8px;
+                    text-align: center;
+                    font-size: 14px;
+                    color: #6c757d;
+                }}
+                .signature {{
+                    margin-top: 30px;
+                    border-top: 1px solid #dee2e6;
+                    padding-top: 20px;
+                }}
+            </style>
+        </head>
+        <body>
+            <div class="header">
+                <h2>Response to Your Feedback</h2>
+                <p>Dear {customer_name},</p>
+                <p>Thank you for taking the time to share your feedback about <strong>{store_name}</strong>.</p>
+            </div>
+            
+            <div class="content">
+                <h3>Your Feedback Summary:</h3>
+                <p><em>"{feedback_summary}"</em></p>
+                
+                <h3>Our Response:</h3>
+                <p>{reply_message}</p>
+                
+                <p>We value your input and are committed to improving our services based on customer feedback like yours.</p>
+            </div>
+            
+            <div class="signature">
+                <p>Best regards,<br>
+                Customer Service Team<br>
+                {store_name}</p>
+            </div>
+            
+            <div class="footer">
+                <p>This is an automated response to your feedback. If you have any questions, please don't hesitate to contact us directly.</p>
+            </div>
+        </body>
+        </html>
+        """
+    
+    def _get_apology_template(self, customer_name, store_name, feedback_summary, reply_message):
+        """Apology email template for negative feedback"""
+        return f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Our Sincere Apologies</title>
+            <style>
+                body {{
+                    font-family: Arial, sans-serif;
+                    line-height: 1.6;
+                    color: #333;
+                    max-width: 600px;
+                    margin: 0 auto;
+                    padding: 20px;
+                }}
+                .header {{
+                    background: #fff3cd;
+                    padding: 20px;
+                    border-radius: 8px;
+                    margin-bottom: 20px;
+                    border-left: 4px solid #ffc107;
+                }}
+                .content {{
+                    background: white;
+                    padding: 20px;
+                    border-radius: 8px;
+                    border: 1px solid #dee2e6;
+                }}
+                .footer {{
+                    margin-top: 20px;
+                    padding: 20px;
+                    background: #f8f9fa;
+                    border-radius: 8px;
+                    text-align: center;
+                    font-size: 14px;
+                    color: #6c757d;
+                }}
+                .signature {{
+                    margin-top: 30px;
+                    border-top: 1px solid #dee2e6;
+                    padding-top: 20px;
+                }}
+            </style>
+        </head>
+        <body>
+            <div class="header">
+                <h2>Our Sincere Apologies</h2>
+                <p>Dear {customer_name},</p>
+                <p>We sincerely apologize for your experience at <strong>{store_name}</strong>.</p>
+            </div>
+            
+            <div class="content">
+                <h3>Your Feedback:</h3>
+                <p><em>"{feedback_summary}"</em></p>
+                
+                <h3>Our Response:</h3>
+                <p>{reply_message}</p>
+                
+                <p>We take your feedback seriously and are taking immediate steps to address the issues you've raised. Your satisfaction is our top priority.</p>
+            </div>
+            
+            <div class="signature">
+                <p>With sincere apologies,<br>
+                Customer Service Team<br>
+                {store_name}</p>
+            </div>
+            
+            <div class="footer">
+                <p>This is an automated response to your feedback. If you have any questions, please don't hesitate to contact us directly.</p>
+            </div>
+        </body>
+        </html>
+        """
+    
+    def _get_appreciation_template(self, customer_name, store_name, feedback_summary, reply_message):
+        """Appreciation email template for positive feedback"""
+        return f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Thank You for Your Feedback!</title>
+            <style>
+                body {{
+                    font-family: Arial, sans-serif;
+                    line-height: 1.6;
+                    color: #333;
+                    max-width: 600px;
+                    margin: 0 auto;
+                    padding: 20px;
+                }}
+                .header {{
+                    background: #d4edda;
+                    padding: 20px;
+                    border-radius: 8px;
+                    margin-bottom: 20px;
+                    border-left: 4px solid #28a745;
+                }}
+                .content {{
+                    background: white;
+                    padding: 20px;
+                    border-radius: 8px;
+                    border: 1px solid #dee2e6;
+                }}
+                .footer {{
+                    margin-top: 20px;
+                    padding: 20px;
+                    background: #f8f9fa;
+                    border-radius: 8px;
+                    text-align: center;
+                    font-size: 14px;
+                    color: #6c757d;
+                }}
+                .signature {{
+                    margin-top: 30px;
+                    border-top: 1px solid #dee2e6;
+                    padding-top: 20px;
+                }}
+            </style>
+        </head>
+        <body>
+            <div class="header">
+                <h2>Thank You for Your Feedback!</h2>
+                <p>Dear {customer_name},</p>
+                <p>We're delighted to hear your positive feedback about <strong>{store_name}</strong>!</p>
+            </div>
+            
+            <div class="content">
+                <h3>Your Feedback:</h3>
+                <p><em>"{feedback_summary}"</em></p>
+                
+                <h3>Our Response:</h3>
+                <p>{reply_message}</p>
+                
+                <p>Your kind words mean a lot to us and motivate our team to continue providing excellent service.</p>
+            </div>
+            
+            <div class="signature">
+                <p>With gratitude,<br>
+                Customer Service Team<br>
+                {store_name}</p>
+            </div>
+            
+            <div class="footer">
+                <p>This is an automated response to your feedback. If you have any questions, please don't hesitate to contact us directly.</p>
+            </div>
+        </body>
+        </html>
+        """
+    
+    def _get_follow_up_template(self, customer_name, store_name, feedback_summary, reply_message):
+        """Follow-up email template"""
+        return f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Follow-up to Your Feedback</title>
+            <style>
+                body {{
+                    font-family: Arial, sans-serif;
+                    line-height: 1.6;
+                    color: #333;
+                    max-width: 600px;
+                    margin: 0 auto;
+                    padding: 20px;
+                }}
+                .header {{
+                    background: #e2e3e5;
+                    padding: 20px;
+                    border-radius: 8px;
+                    margin-bottom: 20px;
+                    border-left: 4px solid #6c757d;
+                }}
+                .content {{
+                    background: white;
+                    padding: 20px;
+                    border-radius: 8px;
+                    border: 1px solid #dee2e6;
+                }}
+                .footer {{
+                    margin-top: 20px;
+                    padding: 20px;
+                    background: #f8f9fa;
+                    border-radius: 8px;
+                    text-align: center;
+                    font-size: 14px;
+                    color: #6c757d;
+                }}
+                .signature {{
+                    margin-top: 30px;
+                    border-top: 1px solid #dee2e6;
+                    padding-top: 20px;
+                }}
+            </style>
+        </head>
+        <body>
+            <div class="header">
+                <h2>Follow-up to Your Feedback</h2>
+                <p>Dear {customer_name},</p>
+                <p>We're following up on your recent feedback about <strong>{store_name}</strong>.</p>
+            </div>
+            
+            <div class="content">
+                <h3>Your Feedback:</h3>
+                <p><em>"{feedback_summary}"</em></p>
+                
+                <h3>Our Response:</h3>
+                <p>{reply_message}</p>
+                
+                <p>We wanted to ensure your concerns have been properly addressed and that you're satisfied with our response.</p>
+            </div>
+            
+            <div class="signature">
+                <p>Best regards,<br>
+                Customer Service Team<br>
+                {store_name}</p>
+            </div>
+            
+            <div class="footer">
+                <p>This is an automated response to your feedback. If you have any questions, please don't hesitate to contact us directly.</p>
+            </div>
+        </body>
+        </html>
+        """
+    
+    def _log_email_sent(self, to_email, store_name, template_type, reply_message):
+        """Log email sent for tracking purposes"""
+        import json
+        from datetime import datetime
+        
+        log_entry = {
+            'timestamp': datetime.now().isoformat(),
+            'to_email': to_email,
+            'store_name': store_name,
+            'template_type': template_type,
+            'message_length': len(reply_message)
+        }
+        
+        # Create logs directory if it doesn't exist
+        os.makedirs('email_logs', exist_ok=True)
+        
+        # Append to log file
+        log_file = 'email_logs/email_sent_log.json'
+        try:
+            with open(log_file, 'a') as f:
+                f.write(json.dumps(log_entry) + '\n')
+        except Exception as e:
+            print(f"Failed to log email: {e}")
+    
+    def send_bulk_feedback_reply(self, email_list, customer_names, reply_message, store_name, 
+                               feedback_summaries, template_type='standard'):
+        """Send bulk email replies to multiple customers"""
+        results = []
+        
+        for i, to_email in enumerate(email_list):
+            customer_name = customer_names[i] if i < len(customer_names) else "Valued Customer"
+            feedback_summary = feedback_summaries[i] if i < len(feedback_summaries) else "No summary available"
+            
+            success, message = self.send_feedback_reply(
+                to_email=to_email,
+                customer_name=customer_name,
+                reply_message=reply_message,
+                store_name=store_name,
+                feedback_summary=feedback_summary,
+                template_type=template_type
+            )
+            
+            results.append({
+                'email': to_email,
+                'success': success,
+                'message': message
+            })
+        
+        return results
+    
+    def get_email_statistics(self):
+        """Get email sending statistics"""
+        import json
+        from datetime import datetime, timedelta
+        from collections import defaultdict
+        
+        log_file = 'email_logs/email_sent_log.json'
+        if not os.path.exists(log_file):
+            return {'total_emails': 0, 'last_7_days': 0, 'by_template': {}, 'by_store': {}}
+        
+        stats = {
+            'total_emails': 0,
+            'last_7_days': 0,
+            'by_template': defaultdict(int),
+            'by_store': defaultdict(int)
+        }
+        
+        seven_days_ago = datetime.now() - timedelta(days=7)
+        
+        try:
+            with open(log_file, 'r') as f:
+                for line in f:
+                    if line.strip():
+                        log_entry = json.loads(line.strip())
+                        stats['total_emails'] += 1
+                        
+                        # Check if within last 7 days
+                        log_time = datetime.fromisoformat(log_entry['timestamp'])
+                        if log_time >= seven_days_ago:
+                            stats['last_7_days'] += 1
+                        
+                        stats['by_template'][log_entry['template_type']] += 1
+                        stats['by_store'][log_entry['store_name']] += 1
+        except Exception as e:
+            print(f"Failed to read email logs: {e}")
+        
+        return stats
+
+# Initialize email config
+email_config = EmailConfig()
