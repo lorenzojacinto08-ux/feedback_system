@@ -13,19 +13,26 @@ class EmailConfig:
     
     def init_app(self, app):
         # Email configuration
+        # Default to Gmail SSL (Port 465) as it is often more reliable in cloud environments
         app.config['MAIL_SERVER'] = os.getenv('MAIL_SERVER', 'smtp.gmail.com')
-        app.config['MAIL_PORT'] = int(os.getenv('MAIL_PORT', '587'))
-        app.config['MAIL_USE_TLS'] = os.getenv('MAIL_USE_TLS', 'true').lower() == 'true'
-        app.config['MAIL_USE_SSL'] = os.getenv('MAIL_USE_SSL', 'false').lower() == 'true'
-        app.config['MAIL_USERNAME'] = os.getenv('MAIL_USERNAME', 'your-email@gmail.com')
-        app.config['MAIL_PASSWORD'] = os.getenv('MAIL_PASSWORD', 'your-app-password')
-        app.config['MAIL_DEFAULT_SENDER'] = os.getenv('MAIL_DEFAULT_SENDER', 'your-email@gmail.com')
+        app.config['MAIL_PORT'] = int(os.getenv('MAIL_PORT', '465'))
+        app.config['MAIL_USE_TLS'] = os.getenv('MAIL_USE_TLS', 'false').lower() == 'true'
+        app.config['MAIL_USE_SSL'] = os.getenv('MAIL_USE_SSL', 'true').lower() == 'true'
+        app.config['MAIL_USERNAME'] = os.getenv('MAIL_USERNAME')
+        app.config['MAIL_PASSWORD'] = os.getenv('MAIL_PASSWORD')
+        app.config['MAIL_DEFAULT_SENDER'] = os.getenv('MAIL_DEFAULT_SENDER', app.config.get('MAIL_USERNAME'))
         
-        # Add timeout to underlying socket (Flask-Mail doesn't expose this directly easily)
-        # This helps prevent hanging connections
+        # Add timeout to underlying socket
         import socket
         socket.setdefaulttimeout(15)
         
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.info(f"Email system initialized: Server={app.config['MAIL_SERVER']}, Port={app.config['MAIL_PORT']}, SSL={app.config['MAIL_USE_SSL']}, TLS={app.config['MAIL_USE_TLS']}")
+        
+        if not app.config['MAIL_USERNAME'] or not app.config['MAIL_PASSWORD']:
+            logger.warning("MAIL_USERNAME or MAIL_PASSWORD not set. Email sending will likely fail.")
+            
         self.mail = Mail(app)
     
     def send_feedback_reply(self, to_email, customer_name, reply_message, store_name, feedback_summary, 
