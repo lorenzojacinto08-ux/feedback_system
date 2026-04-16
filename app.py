@@ -28,29 +28,44 @@ def create_app() -> Flask:
     )
     logger = logging.getLogger(__name__)
 
+    # Debug: Log all environment variable keys (NOT values) to see what's available
+    logger.info(f"AVAILABLE ENV VARS: {list(os.environ.keys())}")
+
     # --- ENVIRONMENT CONFIG ---
     app.config["SECRET_KEY"] = os.getenv("SECRET_KEY", "change-me")
 
     # Database configuration handling
-    # Check for MYSQL_URL first, then DATABASE_URL, then individual variables
     mysql_url = os.getenv("MYSQL_URL") or os.getenv("DATABASE_URL")
     
     if mysql_url:
-        logger.info(f"Database URL detected (starts with: {mysql_url[:15]}...), parsing details...")
+        logger.info(f"Database URL detected, parsing details...")
         try:
-            # Handle potential 'mysql://' vs 'mysql.connector://' or similar
-            if mysql_url.startswith('mysql://'):
-                # Standard mysql:// parsing
-                parsed = urllib.parse.urlparse(mysql_url)
+            # More robust parsing for production URLs
+            if "@" in mysql_url:
+                # Format: mysql://user:pass@host:port/db
+                auth_part, host_part = mysql_url.split("@")
+                user_pass = auth_part.split("//")[-1]
+                user, password = user_pass.split(":")
+                
+                host_port_db = host_part.split("/")
+                host_port = host_port_db[0]
+                database = host_port_db[1] if len(host_port_db) > 1 else "railway"
+                
+                if ":" in host_port:
+                    host, port = host_port.split(":")
+                else:
+                    host = host_port
+                    port = 3306
+                
                 app.config["DB_CONFIG"] = {
-                    "host": parsed.hostname,
-                    "user": parsed.username,
-                    "password": parsed.password,
-                    "database": parsed.path.lstrip('/'),
-                    "port": parsed.port or 3306,
+                    "host": host,
+                    "user": user,
+                    "password": password,
+                    "database": database,
+                    "port": int(port),
                 }
             else:
-                # If it's a raw string or differently formatted, try to parse it
+                # Fallback to standard parser
                 parsed = urllib.parse.urlparse(mysql_url)
                 app.config["DB_CONFIG"] = {
                     "host": parsed.hostname or "localhost",
@@ -60,11 +75,11 @@ def create_app() -> Flask:
                     "port": parsed.port or 3306,
                 }
         except Exception as e:
-            logger.error(f"CRITICAL: Failed to parse database URL: {e}")
-            # Fallback to defaults to prevent crash here, but connection will fail later
+            logger.error(f"CRITICAL: Manual URL parsing failed: {e}")
             app.config["DB_CONFIG"] = {"host": "localhost", "port": 3306}
     else:
         # Railway individual variables fallback
+        # Check for Railway's specific keys first
         mysql_host = os.getenv("MYSQLHOST") or os.getenv("DB_HOST", "localhost")
         mysql_user = os.getenv("MYSQLUSER") or os.getenv("DB_USER", "root")
         mysql_password = os.getenv("MYSQLPASSWORD") or os.getenv("DB_PASSWORD", "")
@@ -81,7 +96,11 @@ def create_app() -> Flask:
 
     db_host = app.config["DB_CONFIG"].get("host")
     db_port = app.config["DB_CONFIG"].get("port")
-    logger.info(f"DB CONFIG SET: host={db_host}, port={db_port}, user={app.config['DB_CONFIG'].get('user')}")
+    logger.info(f"DB CONFIG FINALIZED: host={db_host}, port={db_port}")
+
+    # FORCE FAIL if host is still localhost on Railway
+    if os.getenv("RAILWAY_ENVIRONMENT") and db_host == "localhost":
+        logger.critical("FATAL: App is running on Railway but host is still 'localhost'. Check variables!")
 
     def get_db_connection() -> MySQLConnection:
         try:
