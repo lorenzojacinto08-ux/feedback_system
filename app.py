@@ -248,6 +248,21 @@ def create_app() -> Flask:
                 if not cursor.fetchone():
                     cursor.execute("ALTER TABLE responses ADD COLUMN is_read BOOLEAN DEFAULT FALSE AFTER status")
                 
+                # Ensure system_notifications table exists
+                cursor.execute("SHOW TABLES LIKE 'system_notifications'")
+                if not cursor.fetchone():
+                    logger.info("Table 'system_notifications' missing. Creating it now...")
+                    cursor.execute("""
+                        CREATE TABLE system_notifications (
+                            id INT AUTO_INCREMENT PRIMARY KEY,
+                            message TEXT NOT NULL,
+                            type VARCHAR(50) DEFAULT 'info',
+                            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                            is_read BOOLEAN DEFAULT FALSE
+                        )
+                    """)
+                    conn.commit()
+                
                 # Check for questionnaires table columns
                 cursor.execute("SHOW COLUMNS FROM questionnaires LIKE 'is_template'")
                 if not cursor.fetchone():
@@ -1541,36 +1556,63 @@ def create_app() -> Flask:
 
     @app.route("/api/notifications/unread")
     def get_unread_notifications():
-        """Fetch feedback notifications for the bell icon, showing last 10 (read & unread)."""
+        """Fetch feedback notifications for the bell icon, combining feedback and system notifications."""
         conn = get_db_connection()
         try:
             cursor = conn.cursor(dictionary=True)
-            # Fetch last 10 responses as notifications, regardless of read status
+            
+            # Fetch latest feedback responses (last 10, regardless of read status)
             cursor.execute(
                 """
-                SELECT r.id, r.user_email, r.submitted_at, s.store_name, s.id as store_id, r.is_read
+                SELECT r.id, r.user_email, r.submitted_at as created_at, s.store_name, s.id as store_id, r.is_read, 'feedback' as notification_type, NULL as message, NULL as type
                 FROM responses r
                 JOIN stores s ON r.store_id = s.id
                 ORDER BY r.submitted_at DESC
                 LIMIT 10
                 """
             )
-            notifications = cursor.fetchall()
-            
-            # Count total unread
+            feedback_notifications = cursor.fetchall()
+
+            # Fetch latest system notifications (last 10, regardless of read status)
+            cursor.execute(
+                """
+                SELECT id, message, type, created_at, is_read, 'system' as notification_type, NULL as user_email, NULL as store_name, NULL as store_id
+                FROM system_notifications
+                ORDER BY created_at DESC
+                LIMIT 10
+                """
+            )
+            system_notifications = cursor.fetchall()
+
+            # Combine and sort all notifications by created_at
+            all_notifications = sorted(
+                feedback_notifications + system_notifications,
+                key=lambda x: x['created_at'],
+                reverse=True
+            )[:10] # Take top 10 after sorting
+
+            # Count total unread from both types
             cursor.execute("SELECT COUNT(*) as count FROM responses WHERE is_read = FALSE")
-            total_unread = cursor.fetchone()['count']
+            unread_feedback_count = cursor.fetchone()['count']
+            cursor.execute("SELECT COUNT(*) as count FROM system_notifications WHERE is_read = FALSE")
+            unread_system_count = cursor.fetchone()['count']
+            total_unread = unread_feedback_count + unread_system_count
             
-            # Format dates for JSON
-            for n in notifications:
-                if n['submitted_at']:
-                    n['submitted_at'] = n['submitted_at'].strftime('%b %d, %H:%M')
+            # Format dates for JSON and add a unique 'id' for system notifications
+            for n in all_notifications:
+                if n['created_at']:
+                    n['created_at'] = n['created_at'].strftime('%b %d, %H:%M')
                 else:
-                    n['submitted_at'] = 'N/A'
-                    
+                    n['created_at'] = 'N/A'
+                
+                # Ensure system notifications have a distinct ID for frontend handling
+                if n['notification_type'] == 'system':
+                    n['system_id'] = n['id'] # Use a different key to avoid conflict with response.id
+                    n['id'] = None # Clear original ID to prevent confusion
+
             return jsonify({
                 "success": True,
-                "notifications": notifications,
+                "notifications": all_notifications,
                 "total_unread": total_unread
             })
         except Exception as e:
@@ -1639,7 +1681,7 @@ def create_app() -> Flask:
                     except (ValueError, TypeError):
                         template_type = 'standard'
                 
-                # Send email using SMTP
+                # Send email using API or SMTP
                 try:
                     success, message = email_config.send_feedback_reply(
                         to_email=response['user_email'],
@@ -1650,12 +1692,29 @@ def create_app() -> Flask:
                         template_type=template_type
                     )
                     if success:
-                        flash('Email reply sent successfully!', 'success')
+                        # Create a system notification for successful email reply
+                        cursor.execute(
+                            "INSERT INTO system_notifications (message, type) VALUES (%s, %s)",
+                            (f"Reply sent to {response['user_email']} for feedback from {response['store_name']}.", "success")
+                        )
+                        conn.commit()
                         return {"success": True, "message": "Reply sent successfully", "template_used": template_type}
                     else:
+                        # Create a system notification for failed email reply
+                        cursor.execute(
+                            "INSERT INTO system_notifications (message, type) VALUES (%s, %s)",
+                            (f"Failed to send reply to {response['user_email']}: {message}", "error")
+                        )
+                        conn.commit()
                         return {"success": False, "error": message}, 500
                 except Exception as e:
                     print(f"Email sending failed: {str(e)}")
+                    # Create a system notification for unexpected email sending error
+                    cursor.execute(
+                        "INSERT INTO system_notifications (message, type) VALUES (%s, %s)",
+                        (f"Unexpected error sending reply to {response['user_email']}: {str(e)}", "error")
+                    )
+                    conn.commit()
                     return {"success": False, "error": str(e)}, 500
                     
             finally:
@@ -1672,6 +1731,21 @@ def create_app() -> Flask:
             return jsonify(stats)
         except Exception as e:
             return jsonify({"error": str(e)}), 500
+
+    @app.route("/api/system_notifications/<int:notification_id>/read", methods=["POST"])
+    def mark_system_notification_read(notification_id: int):
+        """Mark a single system notification as read."""
+        conn = get_db_connection()
+        try:
+            cursor = conn.cursor()
+            cursor.execute("UPDATE system_notifications SET is_read = TRUE WHERE id = %s", (notification_id,))
+            conn.commit()
+            return jsonify({"success": True})
+        except Exception as e:
+            logger.error(f"Error marking system notification as read: {e}")
+            return jsonify({"success": False, "error": str(e)}), 500
+        finally:
+            conn.close()
     
     @app.route("/admin/email/bulk-reply", methods=["POST"])
     def bulk_reply_to_feedback():
