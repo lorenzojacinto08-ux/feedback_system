@@ -774,8 +774,23 @@ PURPOSE: "Feedback Management" page. Displays all customer responses/submissions
         const templateName = templateType.charAt(0).toUpperCase() + templateType.slice(1);
         showNotification(`Reply sent successfully using ${templateName} template!`);
 
-        // Refresh the feedback list
-        window.location.reload();
+        // Update the reply button to show it was sent
+        const replyBtn = document.querySelector(`button[onclick="openReplyModal(${currentReplyResponseId})"]`);
+        if (replyBtn) {
+          replyBtn.innerHTML = '<i class="bi bi-check-circle me-1"></i>Replied';
+          replyBtn.classList.remove('btn-primary');
+          replyBtn.classList.add('btn-success');
+          replyBtn.disabled = true;
+        }
+
+        // Update the inline reply section if it exists
+        const inlineReplySection = document.querySelector('.reply-section');
+        if (inlineReplySection) {
+          const replyTextarea = inlineReplySection.querySelector('textarea');
+          const replySendBtn = inlineReplySection.querySelector('.btn-primary');
+          if (replyTextarea) replyTextarea.value = '';
+          if (replySendBtn) replySendBtn.disabled = false;
+        }
       } else {
         alert('Failed to send reply: ' + result.error);
       }
@@ -1017,8 +1032,24 @@ PURPOSE: "Feedback Management" page. Displays all customer responses/submissions
         const templateName = templateType.charAt(0).toUpperCase() + templateType.slice(1);
         showNotification(`Reply sent successfully using ${templateName} template!`);
 
-        // Refresh the feedback list to show updated status
-        window.location.reload();
+        // Update the reply button to show it was sent
+        const replyBtn = document.querySelector(`button[onclick="openReplyModal(${responseId})"]`);
+        if (replyBtn) {
+          replyBtn.innerHTML = '<i class="bi bi-check-circle me-1"></i>Replied';
+          replyBtn.classList.remove('btn-primary');
+          replyBtn.classList.add('btn-success');
+          replyBtn.disabled = true;
+        }
+
+        // Clear the inline reply form
+        const replyTextarea = document.querySelector('.reply-section textarea');
+        if (replyTextarea) replyTextarea.value = '';
+
+        // Hide the inline reply section after successful send
+        const inlineReplySection = document.querySelector('.reply-section');
+        if (inlineReplySection) {
+          inlineReplySection.style.display = 'none';
+        }
       } else {
         alert('Failed to send reply: ' + result.error);
       }
