@@ -35,68 +35,50 @@ def create_app() -> Flask:
     app.config["SECRET_KEY"] = os.getenv("SECRET_KEY", "change-me")
 
     # Database configuration handling
-    mysql_url = os.getenv("MYSQL_URL") or os.getenv("DATABASE_URL")
+    # PRIORITY: 1. Railway individual variables (Most reliable)
+    #           2. MYSQL_URL connection string
+    #           3. Local environment / Defaults
     
-    if mysql_url:
-        logger.info(f"Database URL detected, parsing details...")
+    if os.getenv("MYSQLHOST"):
+        logger.info("Railway individual variables detected, using them for DB config.")
+        app.config["DB_CONFIG"] = {
+            "host": os.getenv("MYSQLHOST"),
+            "user": os.getenv("MYSQLUSER"),
+            "password": os.getenv("MYSQLPASSWORD"),
+            "database": os.getenv("MYSQLDATABASE"),
+            "port": int(os.getenv("MYSQLPORT", 3306)),
+        }
+    elif os.getenv("MYSQL_URL"):
+        mysql_url = os.getenv("MYSQL_URL")
+        logger.info("MYSQL_URL detected, parsing connection string...")
         try:
-            # More robust parsing for production URLs
-            if "@" in mysql_url:
-                # Format: mysql://user:pass@host:port/db
-                auth_part, host_part = mysql_url.split("@")
-                user_pass = auth_part.split("//")[-1]
-                user, password = user_pass.split(":")
-                
-                host_port_db = host_part.split("/")
-                host_port = host_port_db[0]
-                database = host_port_db[1] if len(host_port_db) > 1 else "railway"
-                
-                if ":" in host_port:
-                    host, port = host_port.split(":")
-                else:
-                    host = host_port
-                    port = 3306
-                
-                app.config["DB_CONFIG"] = {
-                    "host": host,
-                    "user": user,
-                    "password": password,
-                    "database": database,
-                    "port": int(port),
-                }
-            else:
-                # Fallback to standard parser
-                parsed = urllib.parse.urlparse(mysql_url)
-                app.config["DB_CONFIG"] = {
-                    "host": parsed.hostname or "localhost",
-                    "user": parsed.username or "root",
-                    "password": parsed.password or "",
-                    "database": parsed.path.lstrip('/') or "feedback_system",
-                    "port": parsed.port or 3306,
-                }
+            # Clean up the URL
+            mysql_url = mysql_url.strip()
+            parsed = urllib.parse.urlparse(mysql_url)
+            app.config["DB_CONFIG"] = {
+                "host": parsed.hostname,
+                "user": parsed.username,
+                "password": parsed.password,
+                "database": parsed.path.lstrip('/'),
+                "port": parsed.port or 3306,
+            }
         except Exception as e:
-            logger.error(f"CRITICAL: Manual URL parsing failed: {e}")
+            logger.error(f"CRITICAL: Failed to parse MYSQL_URL: {e}")
             app.config["DB_CONFIG"] = {"host": "localhost", "port": 3306}
     else:
-        # Railway individual variables fallback
-        # Check for Railway's specific keys first
-        mysql_host = os.getenv("MYSQLHOST") or os.getenv("DB_HOST", "localhost")
-        mysql_user = os.getenv("MYSQLUSER") or os.getenv("DB_USER", "root")
-        mysql_password = os.getenv("MYSQLPASSWORD") or os.getenv("DB_PASSWORD", "")
-        mysql_db = os.getenv("MYSQLDATABASE") or os.getenv("DB_NAME", "feedback_system")
-        mysql_port = int(os.getenv("MYSQLPORT") or os.getenv("DB_PORT", "3306"))
-
+        logger.info("No production variables found, falling back to local .env or defaults.")
         app.config["DB_CONFIG"] = {
-            "host": mysql_host,
-            "user": mysql_user,
-            "password": mysql_password,
-            "database": mysql_db,
-            "port": mysql_port,
+            "host": os.getenv("DB_HOST", "localhost"),
+            "user": os.getenv("DB_USER", "root"),
+            "password": os.getenv("DB_PASSWORD", ""),
+            "database": os.getenv("DB_NAME", "feedback_system"),
+            "port": int(os.getenv("DB_PORT", "3306")),
         }
 
     db_host = app.config["DB_CONFIG"].get("host")
     db_port = app.config["DB_CONFIG"].get("port")
-    logger.info(f"DB CONFIG FINALIZED: host={db_host}, port={db_port}")
+    db_name = app.config["DB_CONFIG"].get("database")
+    logger.info(f"DB CONFIG FINALIZED: host={db_host}, port={db_port}, database={db_name}")
 
     # FORCE FAIL if host is still localhost on Railway
     if os.getenv("RAILWAY_ENVIRONMENT") and db_host == "localhost":
