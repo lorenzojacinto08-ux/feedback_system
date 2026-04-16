@@ -20,13 +20,22 @@ def create_app() -> Flask:
     app.config["SECRET_KEY"] = os.getenv("SECRET_KEY", "change-me")
 
     # Railway provides MySQL variables in a specific format
+    # We check for MYSQLHOST first (Railway default), then DB_HOST (local/env default)
+    mysql_host = os.getenv("MYSQLHOST") or os.getenv("DB_HOST", "localhost")
+    mysql_user = os.getenv("MYSQLUSER") or os.getenv("DB_USER", "root")
+    mysql_password = os.getenv("MYSQLPASSWORD") or os.getenv("DB_PASSWORD", "")
+    mysql_db = os.getenv("MYSQLDATABASE") or os.getenv("DB_NAME", "feedback_system")
+    mysql_port = int(os.getenv("MYSQLPORT") or os.getenv("DB_PORT", "3306"))
+
     app.config["DB_CONFIG"] = {
-        "host": os.getenv("MYSQLHOST") or os.getenv("DB_HOST", "localhost"),
-        "user": os.getenv("MYSQLUSER") or os.getenv("DB_USER", "root"),
-        "password": os.getenv("MYSQLPASSWORD") or os.getenv("DB_PASSWORD", ""),
-        "database": os.getenv("MYSQLDATABASE") or os.getenv("DB_NAME", "feedback_system"),
-        "port": int(os.getenv("MYSQLPORT") or os.getenv("DB_PORT", "3306")),
+        "host": mysql_host,
+        "user": mysql_user,
+        "password": mysql_password,
+        "database": mysql_db,
+        "port": mysql_port,
     }
+
+    print(f"DEBUG: Attempting to connect to database at {mysql_host}:{mysql_port}...")
 
     def get_db_connection() -> MySQLConnection:
         return mysql.connector.connect(**app.config["DB_CONFIG"])
@@ -36,52 +45,64 @@ def create_app() -> Flask:
     email_config.init_app(app)
 
     def init_master_schema() -> None:
-        conn = get_db_connection()
-        try:
-            cursor = conn.cursor()
-            
-            # Add user_email column to responses table if it doesn't exist
-            cursor.execute("SHOW COLUMNS FROM responses LIKE 'user_email'")
-            result = cursor.fetchone()
-            if not result:
-                cursor.execute("ALTER TABLE responses ADD COLUMN user_email VARCHAR(255) AFTER submitted_at")
-            
-            # Add status column to responses table if it doesn't exist
-            cursor.execute("SHOW COLUMNS FROM responses LIKE 'status'")
-            result = cursor.fetchone()
-            if not result:
-                cursor.execute("ALTER TABLE responses ADD COLUMN status ENUM('unresolved', 'resolved') DEFAULT 'unresolved' AFTER user_email")
-            
-            # Add is_active column to questions table if it doesn't exist
-            cursor.execute("SHOW COLUMNS FROM questions LIKE 'is_active'")
-            result = cursor.fetchone()
-            if not result:
-                cursor.execute("ALTER TABLE questions ADD COLUMN is_active BOOLEAN DEFAULT TRUE AFTER question_order")
-            
-            # Add comprehensive store information columns if they don't exist
-            store_columns = [
-                ("address", "TEXT"),
-                ("city", "VARCHAR(100)"),
-                ("province", "VARCHAR(100)"),
-                ("postal_code", "VARCHAR(20)"),
-                ("contact_number", "VARCHAR(20)"),
-                ("email", "VARCHAR(255)"),
-                ("store_manager_name", "VARCHAR(255)"),
-                ("manager_contact", "VARCHAR(20)"),
-                ("store_type", "VARCHAR(100)"),
-                ("operating_hours", "VARCHAR(255)"),
-                ("status", "ENUM('active', 'inactive', 'pending') DEFAULT 'active'")
-            ]
-            
-            for column_name, column_type in store_columns:
-                cursor.execute(f"SHOW COLUMNS FROM stores LIKE '{column_name}'")
+        import time
+        retries = 5
+        while retries > 0:
+            try:
+                conn = get_db_connection()
+                cursor = conn.cursor()
+                
+                # Add user_email column to responses table if it doesn't exist
+                cursor.execute("SHOW COLUMNS FROM responses LIKE 'user_email'")
                 result = cursor.fetchone()
                 if not result:
-                    cursor.execute(f"ALTER TABLE stores ADD COLUMN {column_name} {column_type}")
-            
-            conn.commit()
-        finally:
-            conn.close()
+                    cursor.execute("ALTER TABLE responses ADD COLUMN user_email VARCHAR(255) AFTER submitted_at")
+                
+                # Add status column to responses table if it doesn't exist
+                cursor.execute("SHOW COLUMNS FROM responses LIKE 'status'")
+                result = cursor.fetchone()
+                if not result:
+                    cursor.execute("ALTER TABLE responses ADD COLUMN status ENUM('unresolved', 'resolved') DEFAULT 'unresolved' AFTER user_email")
+                
+                # Add is_active column to questions table if it doesn't exist
+                cursor.execute("SHOW COLUMNS FROM questions LIKE 'is_active'")
+                result = cursor.fetchone()
+                if not result:
+                    cursor.execute("ALTER TABLE questions ADD COLUMN is_active BOOLEAN DEFAULT TRUE AFTER question_order")
+                
+                # Add comprehensive store information columns if they don't exist
+                store_columns = [
+                    ("address", "TEXT"),
+                    ("city", "VARCHAR(100)"),
+                    ("province", "VARCHAR(100)"),
+                    ("postal_code", "VARCHAR(20)"),
+                    ("contact_number", "VARCHAR(20)"),
+                    ("email", "VARCHAR(255)"),
+                    ("store_manager_name", "VARCHAR(255)"),
+                    ("manager_contact", "VARCHAR(20)"),
+                    ("store_type", "VARCHAR(100)"),
+                    ("operating_hours", "VARCHAR(255)"),
+                    ("status", "ENUM('active', 'inactive', 'pending') DEFAULT 'active'")
+                ]
+                
+                for column_name, column_type in store_columns:
+                    cursor.execute(f"SHOW COLUMNS FROM stores LIKE '{column_name}'")
+                    result = cursor.fetchone()
+                    if not result:
+                        cursor.execute(f"ALTER TABLE stores ADD COLUMN {column_name} {column_type}")
+                
+                conn.commit()
+                conn.close()
+                print("DEBUG: Master schema initialized successfully.")
+                break
+            except Exception as e:
+                print(f"DEBUG: Database initialization attempt failed: {e}")
+                retries -= 1
+                if retries > 0:
+                    print(f"DEBUG: Retrying in 3 seconds... ({retries} attempts left)")
+                    time.sleep(3)
+                else:
+                    print("DEBUG: Max retries reached. Database might not be available yet.")
 
     init_master_schema()
 
