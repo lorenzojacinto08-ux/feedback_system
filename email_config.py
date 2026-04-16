@@ -13,18 +13,18 @@ class EmailConfig:
     
     def init_app(self, app):
         # Email configuration
-        # Default to Gmail STARTTLS (Port 587) as it is generally the most compatible
+        # Switch to Gmail SSL (Port 465) as Port 587 is being blocked by Railway
         app.config['MAIL_SERVER'] = os.getenv('MAIL_SERVER', 'smtp.gmail.com')
-        app.config['MAIL_PORT'] = int(os.getenv('MAIL_PORT', '587'))
-        app.config['MAIL_USE_TLS'] = os.getenv('MAIL_USE_TLS', 'true').lower() == 'true'
-        app.config['MAIL_USE_SSL'] = os.getenv('MAIL_USE_SSL', 'false').lower() == 'true'
+        app.config['MAIL_PORT'] = int(os.getenv('MAIL_PORT', '465'))
+        app.config['MAIL_USE_TLS'] = os.getenv('MAIL_USE_TLS', 'false').lower() == 'true'
+        app.config['MAIL_USE_SSL'] = os.getenv('MAIL_USE_SSL', 'true').lower() == 'true'
         app.config['MAIL_USERNAME'] = os.getenv('MAIL_USERNAME')
         app.config['MAIL_PASSWORD'] = os.getenv('MAIL_PASSWORD')
         app.config['MAIL_DEFAULT_SENDER'] = os.getenv('MAIL_DEFAULT_SENDER', app.config.get('MAIL_USERNAME'))
         
         # Increase timeout and set it at the socket level
         import socket
-        socket.setdefaulttimeout(20)
+        socket.setdefaulttimeout(30)
         
         import logging
         logger = logging.getLogger(__name__)
