@@ -1523,6 +1523,47 @@ def create_app() -> Flask:
         except Exception as e:
             return {"success": False, "error": str(e)}, 500
 
+    @app.route("/api/notifications/unread")
+    def get_unread_notifications():
+        """Fetch unread feedback notifications for the bell icon."""
+        conn = get_db_connection()
+        try:
+            cursor = conn.cursor(dictionary=True)
+            # Fetch last 5 unresolved responses as notifications
+            cursor.execute(
+                """
+                SELECT r.id, r.user_email, r.submitted_at, s.store_name
+                FROM responses r
+                JOIN stores s ON r.store_id = s.id
+                WHERE r.status = 'unresolved'
+                ORDER BY r.submitted_at DESC
+                LIMIT 5
+                """
+            )
+            notifications = cursor.fetchall()
+            
+            # Count total unresolved
+            cursor.execute("SELECT COUNT(*) as count FROM responses WHERE status = 'unresolved'")
+            total_unread = cursor.fetchone()['count']
+            
+            # Format dates for JSON
+            for n in notifications:
+                if n['submitted_at']:
+                    n['submitted_at'] = n['submitted_at'].strftime('%b %d, %H:%M')
+                else:
+                    n['submitted_at'] = 'N/A'
+                    
+            return jsonify({
+                "success": True,
+                "notifications": notifications,
+                "total_unread": total_unread
+            })
+        except Exception as e:
+            logger.error(f"Error fetching notifications: {e}")
+            return jsonify({"success": False, "error": str(e)}), 500
+        finally:
+            conn.close()
+
     @app.route("/admin/responses/<int:response_id>/reply", methods=["POST"])
     def reply_to_feedback(response_id: int):
         try:
