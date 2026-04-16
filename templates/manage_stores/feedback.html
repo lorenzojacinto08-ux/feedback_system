@@ -426,11 +426,15 @@ PURPOSE: "Feedback Management" page. Displays all customer responses/submissions
     min-width: 300px;
     max-width: 400px;
     transform: translateX(100%);
-    transition: transform 0.3s ease-in-out;
+    opacity: 0;
+    pointer-events: none;
+    transition: transform 0.3s ease-in-out, opacity 0.3s ease-in-out;
   }
 
   .success-notification.show {
     transform: translateX(0);
+    opacity: 1;
+    pointer-events: auto;
   }
 
   .success-notification .notification-icon {
