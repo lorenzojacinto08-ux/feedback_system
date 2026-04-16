@@ -104,92 +104,164 @@ def create_app() -> Flask:
                 conn = get_db_connection()
                 cursor = conn.cursor()
                 
-                # Check for responses table
-                cursor.execute("SHOW TABLES LIKE 'responses'")
-                if cursor.fetchone():
-                    cursor.execute("SHOW COLUMNS FROM responses LIKE 'user_email'")
-                    if not cursor.fetchone():
-                        cursor.execute("ALTER TABLE responses ADD COLUMN user_email VARCHAR(255) AFTER submitted_at")
-                    
-                    cursor.execute("SHOW COLUMNS FROM responses LIKE 'status'")
-                    if not cursor.fetchone():
-                        cursor.execute("ALTER TABLE responses ADD COLUMN status ENUM('unresolved', 'resolved') DEFAULT 'unresolved' AFTER user_email")
+                # --- CREATE TABLES IF NOT EXIST ---
                 
-                # CRITICAL: Update questionnaires table schema
-                # We need to make sure these columns exist before the app tries to query them
-                cursor.execute("SHOW TABLES LIKE 'questionnaires'")
-                if cursor.fetchone():
-                    # Check for is_template
-                    cursor.execute("SHOW COLUMNS FROM questionnaires LIKE 'is_template'")
-                    if not cursor.fetchone():
-                        logger.info("Adding 'is_template' column to questionnaires table...")
-                        cursor.execute("ALTER TABLE questionnaires ADD COLUMN is_template BOOLEAN DEFAULT FALSE AFTER is_active")
-                        conn.commit() # Commit structural change
-                    
-                    # Check for template_id
-                    cursor.execute("SHOW COLUMNS FROM questionnaires LIKE 'template_id'")
-                    if not cursor.fetchone():
-                        logger.info("Adding 'template_id' column to questionnaires table...")
-                        cursor.execute("ALTER TABLE questionnaires ADD COLUMN template_id INT NULL AFTER is_template")
-                        conn.commit()
-                    
-                    # Check for version
-                    cursor.execute("SHOW COLUMNS FROM questionnaires LIKE 'version'")
-                    if not cursor.fetchone():
-                        logger.info("Adding 'version' column to questionnaires table...")
-                        cursor.execute("ALTER TABLE questionnaires ADD COLUMN version INT DEFAULT 1 AFTER template_id")
-                        conn.commit()
+                # 1. Stores Table
+                cursor.execute("""
+                    CREATE TABLE IF NOT EXISTS stores (
+                        id INT AUTO_INCREMENT PRIMARY KEY,
+                        store_name VARCHAR(255) NOT NULL,
+                        address TEXT,
+                        city VARCHAR(100),
+                        province VARCHAR(100),
+                        postal_code VARCHAR(20),
+                        contact_number VARCHAR(20),
+                        email VARCHAR(255),
+                        store_manager_name VARCHAR(255),
+                        manager_contact VARCHAR(20),
+                        store_type VARCHAR(100),
+                        operating_hours VARCHAR(255),
+                        status ENUM('active', 'inactive', 'pending') DEFAULT 'active',
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    )
+                """)
+
+                # 2. Questionnaires Table
+                cursor.execute("""
+                    CREATE TABLE IF NOT EXISTS questionnaires (
+                        id INT AUTO_INCREMENT PRIMARY KEY,
+                        store_id INT NULL,
+                        title VARCHAR(255) NOT NULL,
+                        is_active BOOLEAN DEFAULT TRUE,
+                        is_template BOOLEAN DEFAULT FALSE,
+                        template_id INT NULL,
+                        version INT DEFAULT 1,
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    )
+                """)
+
+                # 3. Questions Table
+                cursor.execute("""
+                    CREATE TABLE IF NOT EXISTS questions (
+                        id INT AUTO_INCREMENT PRIMARY KEY,
+                        questionnaire_id INT NOT NULL,
+                        question_text TEXT NOT NULL,
+                        question_type ENUM('rating', 'text', 'multiple_choice') NOT NULL,
+                        is_required BOOLEAN DEFAULT TRUE,
+                        question_order INT DEFAULT 0,
+                        is_active BOOLEAN DEFAULT TRUE,
+                        is_template BOOLEAN DEFAULT FALSE,
+                        template_id INT NULL
+                    )
+                """)
+
+                # 4. Question Options Table
+                cursor.execute("""
+                    CREATE TABLE IF NOT EXISTS question_options (
+                        id INT AUTO_INCREMENT PRIMARY KEY,
+                        question_id INT NOT NULL,
+                        option_text VARCHAR(255) NOT NULL
+                    )
+                """)
+
+                # 5. Responses Table
+                cursor.execute("""
+                    CREATE TABLE IF NOT EXISTS responses (
+                        id INT AUTO_INCREMENT PRIMARY KEY,
+                        questionnaire_id INT NOT NULL,
+                        store_id INT NOT NULL,
+                        user_email VARCHAR(255),
+                        submitted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        status ENUM('unresolved', 'resolved') DEFAULT 'unresolved'
+                    )
+                """)
+
+                # 6. Answers Table
+                cursor.execute("""
+                    CREATE TABLE IF NOT EXISTS answers (
+                        id INT AUTO_INCREMENT PRIMARY KEY,
+                        response_id INT NOT NULL,
+                        question_id INT NOT NULL,
+                        answer_text TEXT,
+                        rating_value DECIMAL(3,1)
+                    )
+                """)
+
+                conn.commit()
+
+                # --- UPDATE EXISTING TABLES (MIGRATIONS) ---
                 
-                # Check for a specific known template or create one if needed
+                # Check for responses table columns
+                cursor.execute("SHOW COLUMNS FROM responses LIKE 'user_email'")
+                if not cursor.fetchone():
+                    cursor.execute("ALTER TABLE responses ADD COLUMN user_email VARCHAR(255) AFTER submitted_at")
+                
+                cursor.execute("SHOW COLUMNS FROM responses LIKE 'status'")
+                if not cursor.fetchone():
+                    cursor.execute("ALTER TABLE responses ADD COLUMN status ENUM('unresolved', 'resolved') DEFAULT 'unresolved' AFTER user_email")
+                
+                # Check for questionnaires table columns
+                cursor.execute("SHOW COLUMNS FROM questionnaires LIKE 'is_template'")
+                if not cursor.fetchone():
+                    logger.info("Adding 'is_template' column to questionnaires table...")
+                    cursor.execute("ALTER TABLE questionnaires ADD COLUMN is_template BOOLEAN DEFAULT FALSE AFTER is_active")
+                    conn.commit()
+                
+                cursor.execute("SHOW COLUMNS FROM questionnaires LIKE 'template_id'")
+                if not cursor.fetchone():
+                    logger.info("Adding 'template_id' column to questionnaires table...")
+                    cursor.execute("ALTER TABLE questionnaires ADD COLUMN template_id INT NULL AFTER is_template")
+                    conn.commit()
+                
+                cursor.execute("SHOW COLUMNS FROM questionnaires LIKE 'version'")
+                if not cursor.fetchone():
+                    logger.info("Adding 'version' column to questionnaires table...")
+                    cursor.execute("ALTER TABLE questionnaires ADD COLUMN version INT DEFAULT 1 AFTER template_id")
+                    conn.commit()
+                
+                # Ensure Master Template exists
                 cursor.execute("SELECT id FROM questionnaires WHERE is_template = 1 LIMIT 1")
                 if not cursor.fetchone():
                     logger.info("No master template found. Creating default master template...")
                     cursor.execute("INSERT INTO questionnaires (title, is_active, is_template) VALUES ('Master Questionnaire', 1, 1)")
                     conn.commit()
 
-                # Check for questions table
-                cursor.execute("SHOW TABLES LIKE 'questions'")
-                if cursor.fetchone():
-                    # Check for is_active
-                    cursor.execute("SHOW COLUMNS FROM questions LIKE 'is_active'")
-                    if not cursor.fetchone():
-                        cursor.execute("ALTER TABLE questions ADD COLUMN is_active BOOLEAN DEFAULT TRUE AFTER question_order")
-                    
-                    # Check for is_template
-                    cursor.execute("SHOW COLUMNS FROM questions LIKE 'is_template'")
-                    if not cursor.fetchone():
-                        logger.info("Adding 'is_template' column to questions table...")
-                        cursor.execute("ALTER TABLE questions ADD COLUMN is_template BOOLEAN DEFAULT FALSE AFTER is_active")
-                        conn.commit()
-
-                    # Check for template_id
-                    cursor.execute("SHOW COLUMNS FROM questions LIKE 'template_id'")
-                    if not cursor.fetchone():
-                        logger.info("Adding 'template_id' column to questions table...")
-                        cursor.execute("ALTER TABLE questions ADD COLUMN template_id INT NULL AFTER is_template")
-                        conn.commit()
+                # Check for questions table columns
+                cursor.execute("SHOW COLUMNS FROM questions LIKE 'is_active'")
+                if not cursor.fetchone():
+                    cursor.execute("ALTER TABLE questions ADD COLUMN is_active BOOLEAN DEFAULT TRUE AFTER question_order")
                 
-                # Check for stores table
-                cursor.execute("SHOW TABLES LIKE 'stores'")
-                if cursor.fetchone():
-                    store_columns = [
-                        ("address", "TEXT"),
-                        ("city", "VARCHAR(100)"),
-                        ("province", "VARCHAR(100)"),
-                        ("postal_code", "VARCHAR(20)"),
-                        ("contact_number", "VARCHAR(20)"),
-                        ("email", "VARCHAR(255)"),
-                        ("store_manager_name", "VARCHAR(255)"),
-                        ("manager_contact", "VARCHAR(20)"),
-                        ("store_type", "VARCHAR(100)"),
-                        ("operating_hours", "VARCHAR(255)"),
-                        ("status", "ENUM('active', 'inactive', 'pending') DEFAULT 'active'")
-                    ]
-                    
-                    for column_name, column_type in store_columns:
-                        cursor.execute(f"SHOW COLUMNS FROM stores LIKE '{column_name}'")
-                        if not cursor.fetchone():
-                            cursor.execute(f"ALTER TABLE stores ADD COLUMN {column_name} {column_type}")
+                cursor.execute("SHOW COLUMNS FROM questions LIKE 'is_template'")
+                if not cursor.fetchone():
+                    logger.info("Adding 'is_template' column to questions table...")
+                    cursor.execute("ALTER TABLE questions ADD COLUMN is_template BOOLEAN DEFAULT FALSE AFTER is_active")
+                    conn.commit()
+
+                cursor.execute("SHOW COLUMNS FROM questions LIKE 'template_id'")
+                if not cursor.fetchone():
+                    logger.info("Adding 'template_id' column to questions table...")
+                    cursor.execute("ALTER TABLE questions ADD COLUMN template_id INT NULL AFTER is_template")
+                    conn.commit()
+                
+                # Check for stores table columns
+                store_columns = [
+                    ("address", "TEXT"),
+                    ("city", "VARCHAR(100)"),
+                    ("province", "VARCHAR(100)"),
+                    ("postal_code", "VARCHAR(20)"),
+                    ("contact_number", "VARCHAR(20)"),
+                    ("email", "VARCHAR(255)"),
+                    ("store_manager_name", "VARCHAR(255)"),
+                    ("manager_contact", "VARCHAR(20)"),
+                    ("store_type", "VARCHAR(100)"),
+                    ("operating_hours", "VARCHAR(255)"),
+                    ("status", "ENUM('active', 'inactive', 'pending') DEFAULT 'active'")
+                ]
+                
+                for column_name, column_type in store_columns:
+                    cursor.execute(f"SHOW COLUMNS FROM stores LIKE '{column_name}'")
+                    if not cursor.fetchone():
+                        cursor.execute(f"ALTER TABLE stores ADD COLUMN {column_name} {column_type}")
                 
                 conn.commit()
                 conn.close()
