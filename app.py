@@ -184,14 +184,37 @@ def create_app() -> Flask:
         init_master_schema()
 
     # --- ERROR HANDLERS ---
-    @app.errorhandler(500)
-    def internal_error(error):
-        logger.error(f"Server Error (500): {error}")
-        return "500 Internal Server Error - Check logs for details.", 500
+    @app.errorhandler(Exception)
+    def handle_exception(e):
+        """Global error handler to show tracebacks for ANY crash in Railway"""
+        import traceback
+        error_details = traceback.format_exc()
+        logger.error(f"Global Crash: {e}\n{error_details}")
+        
+        # In production, we'll show the error directly to fix things quickly
+        return f"""
+        <div style="font-family: sans-serif; padding: 20px; color: #721c24; background: #f8d7da; border: 1px solid #f5c6cb; border-radius: 8px;">
+            <h2 style="margin-top: 0;">Oops! Something crashed.</h2>
+            <p><b>Error:</b> {e}</p>
+            <hr>
+            <p><b>Traceback for Debugging:</b></p>
+            <pre style="background: #fff; padding: 15px; border-radius: 4px; overflow: auto; font-size: 13px;">{error_details}</pre>
+        </div>
+        """, 500
 
     @app.errorhandler(404)
     def not_found_error(error):
         return "404 Not Found", 404
+
+    @app.route("/debug/env")
+    def debug_env():
+        """Route to see available environment variable keys (NOT values)"""
+        return jsonify({
+            "available_keys": list(os.environ.keys()),
+            "db_config_host": app.config["DB_CONFIG"].get("host"),
+            "db_config_port": app.config["DB_CONFIG"].get("port"),
+            "python_version": sys.version
+        })
 
     def fetch_stores() -> List[Dict[str, Any]]:
         conn = get_db_connection()
