@@ -1307,6 +1307,75 @@ def create_app() -> Flask:
 
         return redirect(url_for("admin_dashboard", store_id=store_id))
 
+    @app.route("/admin/stores/<int:store_id>/delete", methods=["POST"])
+    def delete_store_route(store_id: int):
+        conn = get_db_connection()
+        try:
+            cursor = conn.cursor()
+            
+            # Cascading delete: delete answers first
+            cursor.execute("""
+                DELETE a FROM answers a
+                JOIN responses r ON a.response_id = r.id
+                WHERE r.store_id = %s
+            """, (store_id,))
+            
+            # Delete responses
+            cursor.execute("DELETE FROM responses WHERE store_id = %s", (store_id,))
+            
+            # Delete question options for store's questionnaires
+            cursor.execute("""
+                DELETE qo FROM question_options qo
+                JOIN questions q ON qo.question_id = q.id
+                JOIN questionnaires qn ON q.questionnaire_id = qn.id
+                WHERE qn.store_id = %s
+            """, (store_id,))
+            
+            # Delete questions
+            cursor.execute("""
+                DELETE q FROM questions q
+                JOIN questionnaires qn ON q.questionnaire_id = qn.id
+                WHERE qn.store_id = %s
+            """, (store_id,))
+            
+            # Delete questionnaires
+            cursor.execute("DELETE FROM questionnaires WHERE store_id = %s", (store_id,))
+            
+            # Delete store itself
+            cursor.execute("DELETE FROM stores WHERE id = %s", (store_id,))
+            
+            conn.commit()
+            flash("Store and all its data deleted successfully.", "success")
+        except Exception as e:
+            logger.error(f"Error deleting store: {e}")
+            flash(f"Error deleting store: {e}", "danger")
+        finally:
+            conn.close()
+            
+        return redirect(url_for("stores_management"))
+
+    @app.route("/admin/responses/<int:response_id>/delete", methods=["POST"])
+    def delete_response_route(response_id: int):
+        store_id = request.args.get("store_id")
+        conn = get_db_connection()
+        try:
+            cursor = conn.cursor()
+            # Delete answers first
+            cursor.execute("DELETE FROM answers WHERE response_id = %s", (response_id,))
+            # Delete response
+            cursor.execute("DELETE FROM responses WHERE id = %s", (response_id,))
+            conn.commit()
+            flash("Feedback response deleted.", "success")
+        except Exception as e:
+            logger.error(f"Error deleting response: {e}")
+            flash(f"Error deleting response: {e}", "danger")
+        finally:
+            conn.close()
+            
+        if store_id:
+            return redirect(url_for("feedback_viewer", store_id=store_id))
+        return redirect(url_for("admin_dashboard"))
+
     # -------------------------
     # QUESTION ORDER MANAGEMENT
     # -------------------------
