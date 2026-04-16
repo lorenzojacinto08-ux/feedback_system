@@ -97,16 +97,7 @@ PURPOSE: The main "Analytics Dashboard" showing store counts, total responses,
                 <small class="text-muted fw-medium">Response volume &amp; ratings</small>
               </div>
             </div>
-            <div class="dropdown">
-              <button class="btn btn-xs btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
-                <i class="bi bi-three-dots"></i>
-              </button>
-              <ul class="dropdown-menu dropdown-menu-end">
-                <li><a class="dropdown-item small" href="#">Export Data</a></li>
-                <li><a class="dropdown-item small" href="#">Refresh</a></li>
-              </ul>
-            </div>
-          </div>
+                      </div>
           <div class="position-relative" style="flex:1 1 0; min-height:0;">
             <canvas id="storePerformanceChart" style="position:absolute;inset:0;"
                     data-labels='{{ stores_data|map(attribute="store_name")|list|tojson|safe }}'
