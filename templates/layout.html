@@ -353,10 +353,9 @@ PURPOSE: This is the main "shell" for all Admin pages. It contains the
               if (data.notifications && data.notifications.length > 0) {
                 list.innerHTML = data.notifications.map(n => `
                   <li>
-                    <a href="/admin/stores/${n.store_id}/feedback" 
+                    <a href="/admin/stores/${n.store_id}/feedback?mark_read=${n.id}" 
                        class="dropdown-item px-3 py-3 border-bottom ${n.is_read ? 'opacity-60 grayscale' : 'bg-primary-light'}" 
-                       style="transition: all 0.2s ease; ${n.is_read ? '' : 'border-left: 3px solid var(--primary-500);'}"
-                       onclick="markAsRead(${n.id});">
+                       style="transition: all 0.2s ease; ${n.is_read ? '' : 'border-left: 3px solid var(--primary-500);'}">
                       <div class="d-flex align-items-center">
                         <div class="rounded-circle ${n.is_read ? 'bg-light' : 'bg-primary bg-opacity-10'} p-2 me-3 flex-shrink-0">
                           <i class="bi ${n.is_read ? 'bi-chat-square-text' : 'bi-chat-square-text-fill'} ${n.is_read ? 'text-muted' : 'text-primary'} small"></i>
@@ -397,17 +396,6 @@ PURPOSE: This is the main "shell" for all Admin pages. It contains the
 
         // Poll every 30 seconds
         setInterval(updateNotifications, 30000);
-
-        // Expose markAsRead to global scope for onclick handler
-        window.markAsRead = async function(responseId) {
-          try {
-            await fetch(`/api/notifications/${responseId}/read`, { method: 'POST' });
-            // Optionally update UI immediately before navigation
-            updateNotifications();
-          } catch (error) {
-            console.error('Failed to mark notification as read:', error);
-          }
-        };
       })();
     </script>
   </body>

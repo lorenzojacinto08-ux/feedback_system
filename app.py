@@ -1419,10 +1419,6 @@ def create_app() -> Flask:
         try:
             cursor = conn.cursor(dictionary=True)
             
-            # Mark all responses for this store as read when viewing
-            cursor.execute("UPDATE responses SET is_read = TRUE WHERE store_id = %s", (store_id,))
-            conn.commit()
-            
             if status == "unresolved":
                 cursor.execute(
                     """
@@ -1490,6 +1486,18 @@ def create_app() -> Flask:
 
     @app.route("/admin/stores/<int:store_id>/feedback", methods=["GET"])
     def store_feedback(store_id: int):
+        # Handle marking a specific notification as read if requested
+        mark_read_id = request.args.get('mark_read')
+        if mark_read_id:
+            try:
+                conn = get_db_connection()
+                cursor = conn.cursor()
+                cursor.execute("UPDATE responses SET is_read = TRUE WHERE id = %s", (int(mark_read_id),))
+                conn.commit()
+                conn.close()
+            except Exception as e:
+                logger.error(f"Error marking specific notification as read: {e}")
+
         store = fetch_store_by_id(store_id=store_id)
         if not store:
             flash("Store not found.", "danger")
@@ -1567,21 +1575,6 @@ def create_app() -> Flask:
             })
         except Exception as e:
             logger.error(f"Error fetching notifications: {e}")
-            return jsonify({"success": False, "error": str(e)}), 500
-        finally:
-            conn.close()
-
-    @app.route("/api/notifications/<int:response_id>/read", methods=["POST"])
-    def mark_notification_read(response_id: int):
-        """Mark a single feedback notification as read."""
-        conn = get_db_connection()
-        try:
-            cursor = conn.cursor()
-            cursor.execute("UPDATE responses SET is_read = TRUE WHERE id = %s", (response_id,))
-            conn.commit()
-            return jsonify({"success": True})
-        except Exception as e:
-            logger.error(f"Error marking notification as read: {e}")
             return jsonify({"success": False, "error": str(e)}), 500
         finally:
             conn.close()
