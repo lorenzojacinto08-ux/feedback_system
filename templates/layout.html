@@ -341,7 +341,10 @@ PURPOSE: This is the main "shell" for all Admin pages. It contains the
                 if (data.notifications && data.notifications.length > 0) {
                   list.innerHTML = data.notifications.map(n => `
                     <li>
-                      <a href="/admin/stores/${n.store_id}/feedback" class="dropdown-item px-3 py-3 border-bottom" style="transition: all 0.2s ease;">
+                      <a href="/admin/stores/${n.store_id}/feedback" 
+                         class="dropdown-item px-3 py-3 border-bottom" 
+                         style="transition: all 0.2s ease;"
+                         onclick="markAsRead(${n.id});">
                         <div class="d-flex align-items-center">
                           <div class="rounded-circle bg-primary bg-opacity-10 p-2 me-3 flex-shrink-0">
                             <i class="bi bi-chat-square-text text-primary small"></i>
@@ -383,6 +386,17 @@ PURPOSE: This is the main "shell" for all Admin pages. It contains the
 
         // Poll every 30 seconds
         setInterval(updateNotifications, 30000);
+
+        // Expose markAsRead to global scope for onclick handler
+        window.markAsRead = async function(responseId) {
+          try {
+            await fetch(`/api/notifications/${responseId}/read`, { method: 'POST' });
+            // Optionally update UI immediately before navigation
+            updateNotifications();
+          } catch (error) {
+            console.error('Failed to mark notification as read:', error);
+          }
+        };
       })();
     </script>
   </body>

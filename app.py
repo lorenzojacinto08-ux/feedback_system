@@ -244,6 +244,10 @@ def create_app() -> Flask:
                 if not cursor.fetchone():
                     cursor.execute("ALTER TABLE responses ADD COLUMN status ENUM('unresolved', 'resolved') DEFAULT 'unresolved' AFTER user_email")
                 
+                cursor.execute("SHOW COLUMNS FROM responses LIKE 'is_read'")
+                if not cursor.fetchone():
+                    cursor.execute("ALTER TABLE responses ADD COLUMN is_read BOOLEAN DEFAULT FALSE AFTER status")
+                
                 # Check for questionnaires table columns
                 cursor.execute("SHOW COLUMNS FROM questionnaires LIKE 'is_template'")
                 if not cursor.fetchone():
@@ -1415,6 +1419,10 @@ def create_app() -> Flask:
         try:
             cursor = conn.cursor(dictionary=True)
             
+            # Mark all responses for this store as read when viewing
+            cursor.execute("UPDATE responses SET is_read = TRUE WHERE store_id = %s", (store_id,))
+            conn.commit()
+            
             if status == "unresolved":
                 cursor.execute(
                     """
@@ -1529,21 +1537,21 @@ def create_app() -> Flask:
         conn = get_db_connection()
         try:
             cursor = conn.cursor(dictionary=True)
-            # Fetch last 5 unresolved responses as notifications
+            # Fetch last 5 unread responses as notifications
             cursor.execute(
                 """
                 SELECT r.id, r.user_email, r.submitted_at, s.store_name, s.id as store_id
                 FROM responses r
                 JOIN stores s ON r.store_id = s.id
-                WHERE r.status = 'unresolved'
+                WHERE r.is_read = FALSE
                 ORDER BY r.submitted_at DESC
                 LIMIT 5
                 """
             )
             notifications = cursor.fetchall()
             
-            # Count total unresolved
-            cursor.execute("SELECT COUNT(*) as count FROM responses WHERE status = 'unresolved'")
+            # Count total unread
+            cursor.execute("SELECT COUNT(*) as count FROM responses WHERE is_read = FALSE")
             total_unread = cursor.fetchone()['count']
             
             # Format dates for JSON
@@ -1560,6 +1568,21 @@ def create_app() -> Flask:
             })
         except Exception as e:
             logger.error(f"Error fetching notifications: {e}")
+            return jsonify({"success": False, "error": str(e)}), 500
+        finally:
+            conn.close()
+
+    @app.route("/api/notifications/<int:response_id>/read", methods=["POST"])
+    def mark_notification_read(response_id: int):
+        """Mark a single feedback notification as read."""
+        conn = get_db_connection()
+        try:
+            cursor = conn.cursor()
+            cursor.execute("UPDATE responses SET is_read = TRUE WHERE id = %s", (response_id,))
+            conn.commit()
+            return jsonify({"success": True})
+        except Exception as e:
+            logger.error(f"Error marking notification as read: {e}")
             return jsonify({"success": False, "error": str(e)}), 500
         finally:
             conn.close()
