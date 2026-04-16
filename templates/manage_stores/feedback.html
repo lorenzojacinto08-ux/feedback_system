@@ -408,6 +408,70 @@ PURPOSE: "Feedback Management" page. Displays all customer responses/submissions
     border: 1px solid rgba(0, 0, 0, 0.05);
   }
 
+  
+  /* Success notification card styles */
+  .success-notification {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background: #059669;
+    color: white;
+    padding: 16px 20px;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-width: 300px;
+    max-width: 400px;
+    transform: translateX(100%);
+    opacity: 0;
+    pointer-events: none;
+    transition: transform 0.3s ease-in-out, opacity 0.3s ease-in-out;
+  }
+
+  .success-notification.show {
+    transform: translateX(0);
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .success-notification .notification-icon {
+    font-size: 1.2rem;
+    flex-shrink: 0;
+  }
+
+  .success-notification .notification-content {
+    flex: 1;
+  }
+
+  .success-notification .notification-title {
+    font-weight: 600;
+    margin-bottom: 2px;
+    font-size: 0.9rem;
+  }
+
+  .success-notification .notification-message {
+    font-size: 0.8rem;
+    opacity: 0.9;
+  }
+
+  .success-notification .notification-close {
+    background: none;
+    border: none;
+    color: white;
+    font-size: 1.2rem;
+    cursor: pointer;
+    opacity: 0.7;
+    transition: opacity 0.2s;
+    flex-shrink: 0;
+  }
+
+  .success-notification .notification-close:hover {
+    opacity: 1;
+  }
+
   /* Enhanced responsive design */
   @media (max-width: 768px) {
     .feedback-container {
@@ -444,6 +508,20 @@ PURPOSE: "Feedback Management" page. Displays all customer responses/submissions
   }
 </style>
 {% endblock %} {% block content %}
+
+<!-- Success Notification Card -->
+<div id="successNotification" class="success-notification">
+  <div class="notification-icon">
+    <i class="bi bi-check-circle-fill"></i>
+  </div>
+  <div class="notification-content">
+    <div class="notification-title">Success!</div>
+    <div class="notification-message" id="notificationMessage">Email reply sent successfully!</div>
+  </div>
+  <button class="notification-close" onclick="hideNotification()">
+    <i class="bi bi-x"></i>
+  </button>
+</div>
 
 <div class="d-flex justify-content-between align-items-start mb-4">
   <div style="flex: 1; min-width: 300px">
@@ -996,6 +1074,30 @@ PURPOSE: "Feedback Management" page. Displays all customer responses/submissions
       }
     }
   });
+
+  // Notification functions
+  function showNotification(message, autoHide = true) {
+    const notification = document.getElementById("successNotification");
+    const messageElement = document.getElementById("notificationMessage");
+
+    if (notification && messageElement) {
+      messageElement.textContent = message;
+      notification.classList.add("show");
+
+      if (autoHide) {
+        setTimeout(() => {
+          hideNotification();
+        }, 3000); // Hide after 3 seconds
+      }
+    }
+  }
+
+  function hideNotification() {
+    const notification = document.getElementById("successNotification");
+    if (notification) {
+      notification.classList.remove("show");
+    }
+  }
 
 </script>
 
