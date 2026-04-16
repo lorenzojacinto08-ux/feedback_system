@@ -13,18 +13,18 @@ class EmailConfig:
     
     def init_app(self, app):
         # Email configuration
-        # Default to Gmail SSL (Port 465) as it is often more reliable in cloud environments
+        # Default to Gmail STARTTLS (Port 587) as it is generally the most compatible
         app.config['MAIL_SERVER'] = os.getenv('MAIL_SERVER', 'smtp.gmail.com')
-        app.config['MAIL_PORT'] = int(os.getenv('MAIL_PORT', '465'))
-        app.config['MAIL_USE_TLS'] = os.getenv('MAIL_USE_TLS', 'false').lower() == 'true'
-        app.config['MAIL_USE_SSL'] = os.getenv('MAIL_USE_SSL', 'true').lower() == 'true'
+        app.config['MAIL_PORT'] = int(os.getenv('MAIL_PORT', '587'))
+        app.config['MAIL_USE_TLS'] = os.getenv('MAIL_USE_TLS', 'true').lower() == 'true'
+        app.config['MAIL_USE_SSL'] = os.getenv('MAIL_USE_SSL', 'false').lower() == 'true'
         app.config['MAIL_USERNAME'] = os.getenv('MAIL_USERNAME')
         app.config['MAIL_PASSWORD'] = os.getenv('MAIL_PASSWORD')
         app.config['MAIL_DEFAULT_SENDER'] = os.getenv('MAIL_DEFAULT_SENDER', app.config.get('MAIL_USERNAME'))
         
-        # Add timeout to underlying socket
+        # Increase timeout and set it at the socket level
         import socket
-        socket.setdefaulttimeout(15)
+        socket.setdefaulttimeout(20)
         
         import logging
         logger = logging.getLogger(__name__)
@@ -76,8 +76,18 @@ class EmailConfig:
         except Exception as e:
             import logging
             logger = logging.getLogger(__name__)
-            logger.error(f"Unexpected error sending email to {to_email}: {str(e)}")
-            return False, f"An unexpected error occurred: {str(e)}"
+            
+            error_msg = str(e)
+            if "Network is unreachable" in error_msg or "[Errno 101]" in error_msg:
+                user_friendly_error = (
+                    "Network unreachable. This often happens if the cloud provider (Railway) is blocking the email port. "
+                    "Try using a different port or check if your SMTP server (smtp.gmail.com) is reachable from this environment."
+                )
+                logger.error(f"NETWORK ERROR sending email to {to_email}: {error_msg}")
+                return False, user_friendly_error
+            
+            logger.error(f"Unexpected error sending email to {to_email}: {error_msg}")
+            return False, f"An unexpected error occurred: {error_msg}"
     
     def _get_email_template(self, template_type, customer_name, store_name, feedback_summary, reply_message):
         """Get email template based on type"""
