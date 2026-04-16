@@ -1692,29 +1692,11 @@ def create_app() -> Flask:
                         template_type=template_type
                     )
                     if success:
-                        # Create a system notification for successful email reply
-                        cursor.execute(
-                            "INSERT INTO system_notifications (message, type) VALUES (%s, %s)",
-                            (f"Reply sent to {response['user_email']} for feedback from {response['store_name']}.", "success")
-                        )
-                        conn.commit()
                         return {"success": True, "message": "Reply sent successfully", "template_used": template_type}
                     else:
-                        # Create a system notification for failed email reply
-                        cursor.execute(
-                            "INSERT INTO system_notifications (message, type) VALUES (%s, %s)",
-                            (f"Failed to send reply to {response['user_email']}: {message}", "error")
-                        )
-                        conn.commit()
                         return {"success": False, "error": message}, 500
                 except Exception as e:
                     print(f"Email sending failed: {str(e)}")
-                    # Create a system notification for unexpected email sending error
-                    cursor.execute(
-                        "INSERT INTO system_notifications (message, type) VALUES (%s, %s)",
-                        (f"Unexpected error sending reply to {response['user_email']}: {str(e)}", "error")
-                    )
-                    conn.commit()
                     return {"success": False, "error": str(e)}, 500
                     
             finally:
