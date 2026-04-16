@@ -116,6 +116,19 @@ PURPOSE: This is the main "shell" for all Admin pages. It contains the
         color: var(--primary-600) !important;
       }
 
+      /* Notification item styles */
+      .bg-primary-light {
+        background-color: rgba(249, 115, 22, 0.03);
+      }
+
+      .grayscale {
+        filter: grayscale(1);
+      }
+
+      .opacity-60 {
+        opacity: 0.6;
+      }
+
       /* Custom dropdown styling */
       .dropdown-menu {
         animation: dropdownFadeIn 0.2s ease-out;
@@ -336,42 +349,40 @@ PURPOSE: This is the main "shell" for all Admin pages. It contains the
                 countText.textContent = '0 New';
               }
 
-              // Only update list if count changed or first load
-              if (count !== lastCount) {
-                if (data.notifications && data.notifications.length > 0) {
-                  list.innerHTML = data.notifications.map(n => `
-                    <li>
-                      <a href="/admin/stores/${n.store_id}/feedback" 
-                         class="dropdown-item px-3 py-3 border-bottom" 
-                         style="transition: all 0.2s ease;"
-                         onclick="markAsRead(${n.id});">
-                        <div class="d-flex align-items-center">
-                          <div class="rounded-circle bg-primary bg-opacity-10 p-2 me-3 flex-shrink-0">
-                            <i class="bi bi-chat-square-text text-primary small"></i>
-                          </div>
-                          <div class="flex-grow-1 min-width-0">
-                            <div class="d-flex justify-content-between align-items-center mb-1">
-                              <span class="fw-bold text-dark text-truncate" style="font-size: 0.85rem; max-width: 140px;">${n.user_email || 'Anonymous'}</span>
-                              <small class="text-muted flex-shrink-0" style="font-size: 0.7rem;">${n.submitted_at}</small>
-                            </div>
-                            <p class="mb-0 text-muted small text-truncate" style="font-size: 0.8rem;">
-                              New feedback for <span class="fw-bold text-dark">${n.store_name}</span>
-                            </p>
-                          </div>
+              // Update list
+              if (data.notifications && data.notifications.length > 0) {
+                list.innerHTML = data.notifications.map(n => `
+                  <li>
+                    <a href="/admin/stores/${n.store_id}/feedback" 
+                       class="dropdown-item px-3 py-3 border-bottom ${n.is_read ? 'opacity-60 grayscale' : 'bg-primary-light'}" 
+                       style="transition: all 0.2s ease; ${n.is_read ? '' : 'border-left: 3px solid var(--primary-500);'}"
+                       onclick="markAsRead(${n.id});">
+                      <div class="d-flex align-items-center">
+                        <div class="rounded-circle ${n.is_read ? 'bg-light' : 'bg-primary bg-opacity-10'} p-2 me-3 flex-shrink-0">
+                          <i class="bi ${n.is_read ? 'bi-chat-square-text' : 'bi-chat-square-text-fill'} ${n.is_read ? 'text-muted' : 'text-primary'} small"></i>
                         </div>
-                      </a>
-                    </li>
-                  `).join('');
-                } else {
-                  list.innerHTML = `
-                    <li class="px-3 py-5 text-center text-muted">
-                      <div class="rounded-circle bg-light d-inline-flex p-3 mb-3">
-                        <i class="bi bi-bell-slash fs-4 opacity-50"></i>
+                        <div class="flex-grow-1 min-width-0">
+                          <div class="d-flex justify-content-between align-items-center mb-1">
+                            <span class="${n.is_read ? 'text-muted' : 'fw-bold text-dark'} text-truncate" style="font-size: 0.85rem; max-width: 140px;">${n.user_email || 'Anonymous'}</span>
+                            <small class="text-muted flex-shrink-0" style="font-size: 0.7rem;">${n.submitted_at}</small>
+                          </div>
+                          <p class="mb-0 text-muted small text-truncate" style="font-size: 0.8rem;">
+                            Feedback for <span class="${n.is_read ? 'text-muted' : 'fw-bold text-dark'}">${n.store_name}</span>
+                          </p>
+                        </div>
                       </div>
-                      <p class="small mb-0 fw-medium">No new feedback</p>
-                    </li>
-                  `;
-                }
+                    </a>
+                  </li>
+                `).join('');
+              } else {
+                list.innerHTML = `
+                  <li class="px-3 py-5 text-center text-muted">
+                    <div class="rounded-circle bg-light d-inline-flex p-3 mb-3">
+                      <i class="bi bi-bell-slash fs-4 opacity-50"></i>
+                    </div>
+                    <p class="small mb-0 fw-medium">No new feedback</p>
+                  </li>
+                `;
               }
 
               lastCount = count;

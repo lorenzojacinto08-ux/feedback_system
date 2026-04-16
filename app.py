@@ -1533,19 +1533,18 @@ def create_app() -> Flask:
 
     @app.route("/api/notifications/unread")
     def get_unread_notifications():
-        """Fetch unread feedback notifications for the bell icon."""
+        """Fetch feedback notifications for the bell icon, showing last 10 (read & unread)."""
         conn = get_db_connection()
         try:
             cursor = conn.cursor(dictionary=True)
-            # Fetch last 5 unread responses as notifications
+            # Fetch last 10 responses as notifications, regardless of read status
             cursor.execute(
                 """
-                SELECT r.id, r.user_email, r.submitted_at, s.store_name, s.id as store_id
+                SELECT r.id, r.user_email, r.submitted_at, s.store_name, s.id as store_id, r.is_read
                 FROM responses r
                 JOIN stores s ON r.store_id = s.id
-                WHERE r.is_read = FALSE
                 ORDER BY r.submitted_at DESC
-                LIMIT 5
+                LIMIT 10
                 """
             )
             notifications = cursor.fetchall()
