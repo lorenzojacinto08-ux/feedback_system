@@ -65,6 +65,9 @@ class EmailConfig:
                 html_content=html_content
             )
             
+            # Explicitly set Reply-To to encourage engagement and avoid spam filters
+            message.reply_to = os.getenv('MAIL_DEFAULT_SENDER')
+            
             sg = SendGridAPIClient(api_key)
             response = sg.send(message)
             
