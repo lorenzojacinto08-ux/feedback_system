@@ -37,7 +37,53 @@ class EmailConfig:
     
     def send_feedback_reply(self, to_email, customer_name, reply_message, store_name, feedback_summary, 
                           template_type='standard', cc_emails=None, bcc_emails=None, attachments=None):
-        """Send reply email to customer with enhanced features and improved error handling"""
+        """Send reply email to customer using either Resend API or SMTP."""
+        resend_api_key = os.getenv('RESEND_API_KEY')
+        
+        if resend_api_key:
+            return self._send_via_resend(resend_api_key, to_email, customer_name, reply_message, store_name, feedback_summary, template_type)
+        
+        return self._send_via_smtp(to_email, customer_name, reply_message, store_name, feedback_summary, template_type, cc_emails, bcc_emails, attachments)
+
+    def _send_via_resend(self, api_key, to_email, customer_name, reply_message, store_name, feedback_summary, template_type):
+        """Send email via Resend API (HTTPS - bypasses Railway port blocks)"""
+        import requests
+        import logging
+        logger = logging.getLogger(__name__)
+        
+        try:
+            html_content = self._get_email_template(template_type, customer_name, store_name, feedback_summary, reply_message)
+            
+            response = requests.post(
+                "https://api.resend.com/emails",
+                headers={
+                    "Authorization": f"Bearer {api_key}",
+                    "Content-Type": "application/json",
+                },
+                json={
+                    "from": os.getenv('MAIL_DEFAULT_SENDER', 'Feedback System <onboarding@resend.dev>'),
+                    "to": to_email,
+                    "subject": f"Response to your feedback for {store_name}",
+                    "html": html_content
+                },
+                timeout=10
+            )
+            
+            if response.status_code in [200, 201]:
+                logger.info(f"Email sent via Resend API to {to_email}")
+                return True, "Email sent successfully via API."
+            else:
+                error_data = response.json()
+                logger.error(f"Resend API error: {error_data}")
+                return False, f"API Error: {error_data.get('message', 'Unknown error')}"
+                
+        except Exception as e:
+            logger.error(f"Resend API unexpected error: {str(e)}")
+            return False, f"API connection failed: {str(e)}"
+
+    def _send_via_smtp(self, to_email, customer_name, reply_message, store_name, feedback_summary, 
+                          template_type='standard', cc_emails=None, bcc_emails=None, attachments=None):
+        """Original SMTP sending logic"""
         try:
             # Create message
             msg = Message(
