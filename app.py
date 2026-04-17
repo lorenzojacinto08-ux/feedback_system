@@ -1611,7 +1611,11 @@ def create_app() -> Flask:
             """, (store_id,))
             staff = cursor.fetchall()
             
-            return render_template("manage_staff/staff.html", store=store, staff=staff)
+            # Generate QR code for the store
+            public_url = get_store_public_url(store_id=store_id)
+            qr_data_uri = generate_qr_data_uri(public_url)
+            
+            return render_template("manage_staff/staff.html", store=store, staff=staff, public_url=public_url, qr_data_uri=qr_data_uri)
         except Exception as e:
             logger.error(f"Error loading staff management: {e}")
             flash(f"Error loading staff: {e}", "danger")
@@ -1931,6 +1935,10 @@ def create_app() -> Flask:
         feedback_trend_labels = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun']
         feedback_trend_data = [12, 19, 15, 25, 22, 30]
         
+        # Generate QR code for the store
+        public_url = get_store_public_url(store_id=store.id)
+        qr_data_uri = generate_qr_data_uri(public_url)
+        
         return render_template(
             "manage_stores/store_details.html",
             store=store,
@@ -1947,6 +1955,8 @@ def create_app() -> Flask:
             repeat_rate=repeat_rate,
             feedback_trend_labels=feedback_trend_labels,
             feedback_trend_data=feedback_trend_data,
+            public_url=public_url,
+            qr_data_uri=qr_data_uri,
         )
 
     @app.route("/admin/stores/<int:store_id>/feedback", methods=["GET"])

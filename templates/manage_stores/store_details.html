@@ -74,6 +74,10 @@ PURPOSE: Comprehensive store details page showing feedback, analytics, and staff
             <i class="bi bi-chat-left-text me-2"></i>
             View Feedback
           </a>
+          <button type="button" class="btn btn-outline-info" data-bs-toggle="modal" data-bs-target="#qrCodeModal">
+            <i class="bi bi-qr-code me-2"></i>
+            QR Code
+          </button>
         </div>
       </div>
     </div>
@@ -346,6 +350,49 @@ PURPOSE: Comprehensive store details page showing feedback, analytics, and staff
     </div>
   </div>
 
+  <!-- QR Code Modal -->
+  <div class="modal fade" id="qrCodeModal" tabindex="-1" aria-labelledby="qrCodeModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="qrCodeModalLabel">
+            <i class="bi bi-qr-code me-2"></i>
+            {{ store.store_name }} - Survey QR Code
+          </h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body text-center">
+          <div class="mb-4">
+            <div class="bg-white p-4 rounded-3 shadow-sm d-inline-block">
+              <img src="data:image/png;base64,{{ qr_data_uri }}" alt="QR Code" style="width: 200px; height: 200px;" />
+            </div>
+          </div>
+          
+          <div class="mb-4">
+            <h6 class="fw-semibold mb-2">Survey Link</h6>
+            <div class="input-group">
+              <input type="text" id="surveyLink" class="form-control" value="{{ public_url }}" readonly />
+              <button class="btn btn-outline-primary" type="button" onclick="copySurveyLink()">
+                <i class="bi bi-clipboard"></i>
+                Copy
+              </button>
+            </div>
+            <p class="text-muted small mt-2">
+              Share this link or QR code with customers to collect feedback
+            </p>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+          <button type="button" class="btn btn-primary" onclick="downloadQRCode()">
+            <i class="bi bi-download me-2"></i>
+            Download QR Code
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Edit Store Modal (reuse from stores.html) -->
   <div class="modal fade" id="editStoreModal" tabindex="-1" aria-labelledby="editStoreModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg">
@@ -426,6 +473,39 @@ PURPOSE: Comprehensive store details page showing feedback, analytics, and staff
 document.addEventListener('DOMContentLoaded', function() {
     // Set edit form action
     document.getElementById('editStoreForm').action = `/admin/stores/{{ store.id }}/edit`;
+    
+    // QR Code functions
+    window.copySurveyLink = function() {
+        const surveyLink = document.getElementById('surveyLink');
+        surveyLink.select();
+        document.execCommand('copy');
+        
+        // Show feedback
+        const button = event.target;
+        const originalText = button.innerHTML;
+        button.innerHTML = '<i class="bi bi-check me-2"></i>Copied!';
+        button.classList.remove('btn-outline-primary');
+        button.classList.add('btn-success');
+        
+        setTimeout(() => {
+            button.innerHTML = originalText;
+            button.classList.remove('btn-success');
+            button.classList.add('btn-outline-primary');
+        }, 2000);
+    };
+    
+    window.downloadQRCode = function() {
+        const qrImage = document.querySelector('#qrCodeModal img');
+        if (!qrImage) return;
+        
+        // Create download link
+        const link = document.createElement('a');
+        link.href = qrImage.src;
+        link.download = 'QR_{{ store.store_name.replace(/[^a-z0-9]/gi, '_') }}_Survey.png';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
     
     // Analytics Charts
     const ctx1 = document.getElementById('ratingChart');
