@@ -831,7 +831,7 @@ def create_app() -> Flask:
                 flash("Template questionnaire title is required.", "danger")
                 return redirect(url_for("master_questionnaire"))
             update_template_questionnaire(title=title, is_active=is_active)
-            flash("Template questionnaire saved.", "success")
+            flash("Questionnaire Saved Successfully", "success")
             return redirect(url_for("master_questionnaire"))
 
         template = ensure_template_questionnaire()
@@ -874,13 +874,13 @@ def create_app() -> Flask:
             is_required=is_required,
             question_order=question_order,
         )
-        flash("Question added.", "success")
+        flash("Question Added Successfully", "success")
         return redirect(url_for("master_questionnaire"))
 
     @app.route("/admin/questionnaire/questions/<int:master_question_id>/delete", methods=["POST"])
     def master_delete_question(master_question_id: int):
         delete_template_question(template_question_id=master_question_id)
-        flash("Question deleted.", "success")
+        flash("Question Deleted", "success")
         return redirect(url_for("master_questionnaire"))
 
     @app.route("/admin/questionnaire/questions/<int:master_question_id>/edit", methods=["POST"])
@@ -894,7 +894,7 @@ def create_app() -> Flask:
             return redirect(url_for("master_questionnaire"))
 
         update_template_question(master_question_id, question_text, question_type, is_required)
-        flash("Question updated.", "success")
+        flash("Question Updated Successfully", "success")
         return redirect(url_for("master_questionnaire"))
 
     @app.route("/admin/questionnaire/questions/<int:master_question_id>/options/add", methods=["POST"])
@@ -923,7 +923,7 @@ def create_app() -> Flask:
             return redirect(url_for("master_questionnaire"))
 
         count = publish_template_to_all_stores()
-        flash(f"Published template questionnaire to {count} store(s).", "success")
+        flash(f"Published to {count} store(s) Successfully", "success")
         return redirect(url_for("master_questionnaire"))
 
     # -------------------------
@@ -1267,7 +1267,7 @@ def create_app() -> Flask:
             status=status
         )
         
-        flash(f"Store '{store_name}' added successfully.", "success")
+        flash(f"Store \"{store_name}\" added Successfully", "success")
         return redirect(url_for("stores_management", store_id=new_store_id))
 
     def update_store(
@@ -1350,7 +1350,7 @@ def create_app() -> Flask:
         )
 
         if success:
-            flash(f"Store '{store_name}' updated successfully.", "success")
+            flash(f"Store \"{store_name}\" Edited", "success")
         else:
             flash("Store not found or update failed.", "danger")
 
@@ -1360,8 +1360,11 @@ def create_app() -> Flask:
     def delete_store_route(store_id: int):
         conn = get_db_connection()
         try:
-            cursor = conn.cursor()
-            
+            # Fetch store name before deletion for the notification
+            cursor.execute("SELECT store_name FROM stores WHERE id = %s", (store_id,))
+            store_row = cursor.fetchone()
+            store_name = store_row[0] if store_row else "Unknown"
+
             # Cascading delete: delete answers first
             cursor.execute("""
                 DELETE a FROM answers a
@@ -1394,7 +1397,7 @@ def create_app() -> Flask:
             cursor.execute("DELETE FROM stores WHERE id = %s", (store_id,))
             
             conn.commit()
-            flash("Store and all its data deleted successfully.", "success")
+            flash(f"Store \"{store_name}\" Deleted", "success")
         except Exception as e:
             logger.error(f"Error deleting store: {e}")
             flash(f"Error deleting store: {e}", "danger")
@@ -1414,7 +1417,7 @@ def create_app() -> Flask:
             # Delete response
             cursor.execute("DELETE FROM responses WHERE id = %s", (response_id,))
             conn.commit()
-            flash("Feedback response deleted.", "success")
+            flash("Feedback Deleted", "success")
         except Exception as e:
             logger.error(f"Error deleting response: {e}")
             flash(f"Error deleting response: {e}", "danger")
@@ -1577,6 +1580,7 @@ def create_app() -> Flask:
                     (new_status, response_id)
                 )
                 conn.commit()
+                flash(f"Feedback marked as {new_status}", "success")
                 return {"success": True}
             finally:
                 conn.close()

@@ -291,48 +291,59 @@ PURPOSE: This is the main "shell" for all Admin pages. It contains the
       /* Bottom Right Flash Message Styling */
       .flash-container {
         position: fixed;
-        bottom: 20px;
-        right: 20px;
-        z-index: 9999;
+        bottom: 24px;
+        right: 24px;
+        z-index: 10000;
         display: flex;
         flex-direction: column;
-        gap: 10px;
+        gap: 12px;
         pointer-events: none;
       }
 
       .flash-message {
         pointer-events: auto;
-        min-width: 280px;
-        max-width: 400px;
-        padding: 14px 48px 14px 16px; /* Extra right padding for the close button */
+        min-width: 300px;
+        max-width: 450px;
+        padding: 12px 16px;
+        padding-right: 48px;
+        background: white;
         border-radius: 12px;
-        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+        box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
         display: flex;
         align-items: center;
-        animation: slideInRight 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-        border: 1px solid rgba(0, 0, 0, 0.08);
-        background-color: white;
+        animation: toastIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        border: 1px solid var(--neutral-200);
         margin-bottom: 0;
+        position: relative;
+        overflow: hidden;
       }
 
-      @keyframes slideInRight {
-        from {
-          transform: translateX(100%);
-          opacity: 0;
-        }
-        to {
-          transform: translateX(0);
-          opacity: 1;
-        }
+      .flash-message::before {
+        content: '';
+        position: absolute;
+        left: 0;
+        top: 0;
+        bottom: 0;
+        width: 4px;
+      }
+
+      .flash-message.alert-success::before { background: var(--primary-500); }
+      .flash-message.alert-danger::before { background: #ef4444; }
+      .flash-message.alert-warning::before { background: #f59e0b; }
+      .flash-message.alert-info::before { background: #3b82f6; }
+
+      @keyframes toastIn {
+        from { transform: translateX(100%); opacity: 0; }
+        to { transform: translateX(0); opacity: 1; }
       }
 
       .flash-message .btn-close {
+        font-size: 0.65rem;
+        padding: 1.25rem;
         position: absolute;
         top: 50%;
-        right: 12px;
+        right: 8px;
         transform: translateY(-50%);
-        padding: 0.5rem;
-        margin: 0;
         opacity: 0.5;
         transition: opacity 0.2s;
       }
@@ -351,7 +362,17 @@ PURPOSE: This is the main "shell" for all Admin pages. It contains the
 
     <!-- Flash Messages Container -->
     <div class="flash-container" id="global-notification-container">
-
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          {% for category, message in messages %}
+            <div class="flash-message alert alert-{{ category if category != 'error' else 'danger' }} alert-dismissible fade show" role="alert">
+              <i class="bi bi-{% if category == 'success' %}check-circle{% elif category == 'danger' or category == 'error' %}exclamation-triangle{% else %}info-circle{% endif %} me-2 text-{{ category if category != 'error' else 'danger' }}"></i>
+              <span class="small fw-medium">{{ message }}</span>
+              <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+          {% endfor %}
+        {% endif %}
+      {% endwith %}
     </div>
 
     <!-- Main Content Area -->
@@ -478,6 +499,7 @@ PURPOSE: This is the main "shell" for all Admin pages. It contains the
         const iconMap = {
           'success': 'check-circle',
           'danger': 'exclamation-triangle',
+          'error': 'exclamation-triangle',
           'warning': 'exclamation-circle',
           'info': 'info-circle'
         };
@@ -487,18 +509,18 @@ PURPOSE: This is the main "shell" for all Admin pages. It contains the
         flashDiv.className = `flash-message alert alert-${category} alert-dismissible fade show`;
         flashDiv.setAttribute('role', 'alert');
         flashDiv.innerHTML = `
-          <i class="bi bi-${icon} me-2"></i>
-          <span>${message}</span>
+          <i class="bi bi-${icon} me-2 text-${category}"></i>
+          <span class="small fw-medium">${message}</span>
           <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
         `;
 
         container.appendChild(flashDiv);
 
-        // Auto-hide
+        // Auto-hide using Bootstrap Alert API
         setTimeout(() => {
           if (flashDiv.parentNode) {
-            const bsAlert = new bootstrap.Alert(flashDiv);
-            bsAlert.close();
+            const bsAlert = bootstrap.Alert.getOrCreateInstance(flashDiv);
+            if (bsAlert) bsAlert.close();
           }
         }, duration);
       };
