@@ -356,8 +356,9 @@ PURPOSE: "Store Management" page. Allows adding/editing stores, viewing
     <div class="row g-3 mb-3">
       {% for store in stores %}
         <div class="col-md-6 col-lg-4">
-          <div class="card store-card h-100">
-            <div class="card-body p-3">
+          <a href="{{ url_for('store_details', store_id=store.id) }}" class="text-decoration-none">
+            <div class="card store-card h-100">
+              <div class="card-body p-3">
               <div class="d-flex align-items-start justify-content-between mb-3">
                 <div class="rounded-circle bg-light p-2">
                   <i class="bi bi-shop text-muted fs-4"></i>
@@ -419,7 +420,8 @@ PURPOSE: "Store Management" page. Allows adding/editing stores, viewing
                 </div>
               </div>
             </div>
-          </div>
+            </div>
+          </a>
         </div>
       {% endfor %}
     </div>

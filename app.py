@@ -1844,6 +1844,111 @@ def create_app() -> Flask:
             by_response.setdefault(rid, []).append(r)
         return by_response
 
+    @app.route("/admin/stores/<int:store_id>/details", methods=["GET"])
+    def store_details(store_id: int):
+        store = fetch_store_by_id(store_id=store_id)
+        if not store:
+            flash("Store not found.", "danger")
+            return redirect(url_for("admin_dashboard"))
+
+        # Fetch recent feedback
+        recent_feedback = fetch_responses_for_store(store_id=store_id, limit=5)
+        
+        # Calculate analytics data
+        all_feedback = fetch_responses_for_store(store_id=store_id, limit=1000)
+        total_feedback = len(all_feedback)
+        
+        # Calculate average rating
+        avg_rating = 0
+        if all_feedback:
+            all_response_ids = [int(r["id"]) for r in all_feedback]
+            answers_by_response_id = fetch_answers_for_responses(all_response_ids)
+            all_ratings = []
+            for response_id, answers in answers_by_response_id.items():
+                for answer in answers:
+                    if answer.get("rating_value"):
+                        all_ratings.append(float(answer["rating_value"]))
+            if all_ratings:
+                avg_rating = sum(all_ratings) / len(all_ratings)
+        
+        # Rating distribution
+        rating_distribution = [0, 0, 0, 0, 0]  # 1-5 stars
+        for response_id, answers in answers_by_response_id.items():
+            for answer in answers:
+                if answer.get("rating_value"):
+                    rating = int(float(answer["rating_value"]))
+                    if 1 <= rating <= 5:
+                        rating_distribution[rating - 1] += 1
+        
+        # Fetch staff members
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute("""
+            SELECT id, first_name, last_name, email, phone, position, role, status
+            FROM staff 
+            WHERE store_id = %s
+            ORDER BY role DESC, last_name, first_name
+        """, (store_id,))
+        staff_members = cursor.fetchall()
+        cursor.close()
+        conn.close()
+        
+        total_staff = len(staff_members)
+        
+        # Fetch commendations
+        commendations_by_response_id = {}
+        if all_feedback:
+            conn = get_db_connection()
+            cursor = conn.cursor(dictionary=True)
+            response_ids = [int(r["id"]) for r in all_feedback]
+            placeholders = ','.join(['%s'] * len(response_ids))
+            cursor.execute(f"""
+                SELECT sc.*, s.first_name, s.last_name, s.position, s.role
+                FROM staff_commendations sc
+                JOIN staff s ON sc.staff_id = s.id
+                WHERE sc.response_id IN ({placeholders})
+                ORDER BY sc.created_at DESC
+            """, response_ids)
+            commendations = cursor.fetchall()
+            cursor.close()
+            conn.close()
+            
+            for commendation in commendations:
+                response_id = commendation['response_id']
+                if response_id not in commendations_by_response_id:
+                    commendations_by_response_id[response_id] = []
+                commendations_by_response_id[response_id].append(commendation)
+        
+        total_commendations = sum(len(comms) for comms in commendations_by_response_id.values())
+        
+        # Calculate metrics (mock data for now)
+        resolution_rate = 85 if total_feedback > 0 else 0
+        response_time = 2.5
+        commendation_rate = round((total_commendations / total_feedback * 100) if total_feedback > 0 else 0)
+        repeat_rate = 42
+        
+        # Feedback trend data (mock data for now)
+        feedback_trend_labels = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun']
+        feedback_trend_data = [12, 19, 15, 25, 22, 30]
+        
+        return render_template(
+            "manage_stores/store_details.html",
+            store=store,
+            recent_feedback=recent_feedback,
+            total_feedback=total_feedback,
+            avg_rating=avg_rating,
+            rating_distribution=rating_distribution,
+            staff_members=staff_members,
+            total_staff=total_staff,
+            total_commendations=total_commendations,
+            resolution_rate=resolution_rate,
+            response_time=response_time,
+            commendation_rate=commendation_rate,
+            repeat_rate=repeat_rate,
+            feedback_trend_labels=feedback_trend_labels,
+            feedback_trend_data=feedback_trend_data,
+        )
+
     @app.route("/admin/stores/<int:store_id>/feedback", methods=["GET"])
     def store_feedback(store_id: int):
         # Handle marking a specific notification as read if requested
