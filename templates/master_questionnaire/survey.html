@@ -104,6 +104,78 @@ PURPOSE: The actual "Feedback Form". This is the page the customer sees when
               </div>
             </div>
           </div>
+
+          <!-- Staff Commendation Section -->
+          {% if staff_members and staff_members|length > 0 %}
+          <div class="mb-4 p-4 bg-light rounded-3">
+            <div class="d-flex align-items-center mb-3">
+              <div class="rounded-circle bg-white shadow-sm p-2 me-3">
+                <i class="bi bi-award text-primary"></i>
+              </div>
+              <div>
+                <h6 class="mb-1 fw-semibold">Staff Commendation (Optional)</h6>
+                <p class="text-muted small mb-0">
+                  Would you like to commend any staff member who provided excellent service?
+                </p>
+              </div>
+            </div>
+            
+            <div class="form-group mb-3">
+              <label for="staff_commendation" class="form-label fw-medium">
+                Select Staff Member
+              </label>
+              <select
+                id="staff_commendation"
+                name="staff_commendation"
+                class="form-select bg-white"
+              >
+                <option value="">No staff commendation</option>
+                {% for staff in staff_members %}
+                <option value="{{ staff.id }}">
+                  {{ staff.first_name }} {{ staff.last_name }} - {{ staff.position or staff.role|title }}
+                </option>
+                {% endfor %}
+              </select>
+              <div class="form-text">
+                <i class="bi bi-info-circle me-1"></i>
+                Choose a staff member to recognize their excellent service.
+              </div>
+            </div>
+
+            <div class="form-group" id="commendation_details" style="display: none;">
+              <label for="commendation_type" class="form-label fw-medium">
+                Type of Commendation
+              </label>
+              <select
+                id="commendation_type"
+                name="commendation_type"
+                class="form-select bg-white mb-3"
+              >
+                <option value="excellent_service">Excellent Service</option>
+                <option value="friendly_attitude">Friendly Attitude</option>
+                <option value="professional">Professional</option>
+                <option value="helpful">Helpful</option>
+                <option value="knowledgeable">Knowledgeable</option>
+              </select>
+
+              <label for="commendation_comment" class="form-label fw-medium">
+                Additional Comments (Optional)
+              </label>
+              <textarea
+                id="commendation_comment"
+                name="commendation_comment"
+                class="form-control bg-white"
+                rows="3"
+                placeholder="Tell us more about your experience with this staff member..."
+              ></textarea>
+              <div class="form-text">
+                <i class="bi bi-info-circle me-1"></i>
+                Share specific details about what made their service exceptional.
+              </div>
+            </div>
+          </div>
+          {% endif %}
+
           {% for q in questions %}
           <div class="mb-4 p-4 bg-light rounded-3">
             <div
@@ -356,6 +428,24 @@ PURPOSE: The actual "Feedback Form". This is the page the customer sees when
           button.classList.remove("active");
           icon.classList.remove("bi-star-fill");
           icon.classList.add("bi-star");
+        }
+      });
+    }
+  });
+
+    // Staff commendation functionality
+    const staffCommendationSelect = document.getElementById('staff_commendation');
+    const commendationDetails = document.getElementById('commendation_details');
+    
+    if (staffCommendationSelect && commendationDetails) {
+      staffCommendationSelect.addEventListener('change', function() {
+        if (this.value && this.value !== '') {
+          commendationDetails.style.display = 'block';
+        } else {
+          commendationDetails.style.display = 'none';
+          // Reset fields
+          document.getElementById('commendation_type').value = 'excellent_service';
+          document.getElementById('commendation_comment').value = '';
         }
       });
     }

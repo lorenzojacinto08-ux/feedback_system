@@ -144,7 +144,21 @@ def create_app() -> Flask:
                     )
                 """)
 
-                # 3. Questionnaires Table
+                # 3. Staff Commendations Table
+                cursor.execute("""
+                    CREATE TABLE IF NOT EXISTS staff_commendations (
+                        id INT AUTO_INCREMENT PRIMARY KEY,
+                        response_id INT NOT NULL,
+                        staff_id INT NOT NULL,
+                        commendation_type ENUM('excellent_service', 'friendly_attitude', 'professional', 'helpful', 'knowledgeable') DEFAULT 'excellent_service',
+                        comment TEXT,
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        FOREIGN KEY (response_id) REFERENCES responses(id) ON DELETE CASCADE,
+                        FOREIGN KEY (staff_id) REFERENCES staff(id) ON DELETE CASCADE
+                    )
+                """)
+
+                # 4. Questionnaires Table
                 cursor.execute("""
                     CREATE TABLE IF NOT EXISTS questionnaires (
                         id INT AUTO_INCREMENT PRIMARY KEY,
@@ -1216,12 +1230,26 @@ def create_app() -> Flask:
         question_ids = [int(q["id"]) for q in questions]
         options_by_question_id = fetch_options_for_questions(question_ids=question_ids)
 
+        # Fetch active staff for this store
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute("""
+            SELECT id, first_name, last_name, position, role 
+            FROM staff 
+            WHERE store_id = %s AND status = 'active'
+            ORDER BY role DESC, last_name, first_name
+        """, (store_id,))
+        staff_members = cursor.fetchall()
+        cursor.close()
+        conn.close()
+
         return render_template(
             "master_questionnaire/survey.html",
             store=store,
             questionnaire=questionnaire,
             questions=questions,
             options_by_question_id=options_by_question_id,
+            staff_members=staff_members,
         )
 
     @app.route("/s/<int:store_id>/submit", methods=["POST"])
@@ -1352,6 +1380,21 @@ def create_app() -> Flask:
                     """,
                     (response_id, a["question_id"], a["answer_text"], a["rating_value"]),
                 )
+
+            # Handle staff commendation if provided
+            staff_commendation = request.form.get("staff_commendation", "").strip()
+            if staff_commendation and staff_commendation.isdigit():
+                staff_id = int(staff_commendation)
+                commendation_type = request.form.get("commendation_type", "excellent_service")
+                commendation_comment = request.form.get("commendation_comment", "").strip()
+                
+                # Verify staff exists and belongs to this store
+                cursor.execute("SELECT id FROM staff WHERE id = %s AND store_id = %s", (staff_id, store_id))
+                if cursor.fetchone():
+                    cursor.execute("""
+                        INSERT INTO staff_commendations (response_id, staff_id, commendation_type, comment)
+                        VALUES (%s, %s, %s, %s)
+                    """, (response_id, staff_id, commendation_type, commendation_comment if commendation_comment else None))
 
             conn.commit()
         finally:
@@ -1823,12 +1866,37 @@ def create_app() -> Flask:
         status = request.args.get('status', 'all')
         responses = fetch_responses_for_store(store_id=store_id, limit=50, status=status)
         answers_by_response_id = fetch_answers_for_responses([int(r["id"]) for r in responses])
+        
+        # Fetch staff commendations for these responses
+        commendations_by_response_id = {}
+        if responses:
+            conn = get_db_connection()
+            cursor = conn.cursor(dictionary=True)
+            response_ids = [int(r["id"]) for r in responses]
+            placeholders = ','.join(['%s'] * len(response_ids))
+            cursor.execute(f"""
+                SELECT sc.*, s.first_name, s.last_name, s.position, s.role
+                FROM staff_commendations sc
+                JOIN staff s ON sc.staff_id = s.id
+                WHERE sc.response_id IN ({placeholders})
+                ORDER BY sc.created_at DESC
+            """, response_ids)
+            commendations = cursor.fetchall()
+            cursor.close()
+            conn.close()
+            
+            for commendation in commendations:
+                response_id = commendation['response_id']
+                if response_id not in commendations_by_response_id:
+                    commendations_by_response_id[response_id] = []
+                commendations_by_response_id[response_id].append(commendation)
 
         return render_template(
             "manage_stores/feedback.html",
             store=store,
             responses=responses,
             answers_by_response_id=answers_by_response_id,
+            commendations_by_response_id=commendations_by_response_id,
             current_status=status,
         )
 

@@ -634,6 +634,18 @@ PURPOSE: "Feedback Management" page. Displays all customer responses/submissions
     submittedAt: {{ (response.submitted_at.strftime("%B %d, %Y at %I:%M %p") if response.submitted_at else "") | tojson }},
     status: {{ response.status | tojson }},
     avgRating: {{ ((avg_rating|sum / avg_rating|length)|round(1) if avg_rating else 0) | tojson }},
+    commendations: [
+      {% set commendations = commendations_by_response_id.get(response.id, []) %}
+      {% for commendation in commendations %}
+      {
+        staffName: "{{ commendation.first_name }} {{ commendation.last_name }}",
+        staffPosition: {{ (commendation.position or commendation.role|title) | tojson }},
+        commendationType: {{ commendation.commendation_type | tojson }},
+        comment: {{ (commendation.comment or "") | tojson }},
+        createdAt: {{ (commendation.created_at.strftime("%B %d, %Y") if commendation.created_at else "") | tojson }}
+      }{% if not loop.last %},{% endif %}
+      {% endfor %}
+    ],
     answers: [
       {% for answer in answers %}
       {
@@ -858,6 +870,46 @@ PURPOSE: "Feedback Management" page. Displays all customer responses/submissions
           <h4 class="mb-4 fw-bold">Specific Feedback</h4>
           ${renderFeedbackAnswers(feedback.answers)}
         </div>
+
+        ${feedback.commendations && feedback.commendations.length > 0 ? `
+        <div class="section-card">
+          <h4 class="mb-4 fw-bold">
+            <i class="bi bi-award text-warning me-2"></i>
+            Staff Commendations
+          </h4>
+          ${feedback.commendations.map(commendation => `
+            <div class="commendation-card mb-3 p-3 bg-light rounded-3 border-start border-4 border-warning">
+              <div class="d-flex align-items-start justify-content-between">
+                <div>
+                  <h6 class="mb-1 fw-bold text-primary">
+                    <i class="bi bi-person-circle me-2"></i>
+                    ${commendation.staffName}
+                  </h6>
+                  <p class="mb-2 text-muted">
+                    <small>
+                      <i class="bi bi-briefcase me-1"></i>
+                      ${commendation.staffPosition}
+                      <span class="ms-3">
+                        <i class="bi bi-calendar me-1"></i>
+                        ${commendation.createdAt}
+                      </span>
+                    </small>
+                  </p>
+                  ${commendation.comment ? `
+                    <p class="mb-0 fst-italic">
+                      <i class="bi bi-quote text-secondary me-2"></i>
+                      ${commendation.comment}
+                    </p>
+                  ` : ''}
+                </div>
+                <span class="badge bg-warning text-dark">
+                  ${commendation.commendationType.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                </span>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+        ` : ''}
 
         <div class="section-card reply-section">
           <h4 class="mb-4 fw-bold">Reply to Customer</h4>
