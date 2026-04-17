@@ -1875,14 +1875,37 @@ def create_app() -> Flask:
             if all_ratings:
                 avg_rating = sum(all_ratings) / len(all_ratings)
         
-        # Rating distribution
+        # Enhanced 5-star rating analytics
         rating_distribution = [0, 0, 0, 0, 0]  # 1-5 stars
+        total_ratings = 0
         for response_id, answers in answers_by_response_id.items():
             for answer in answers:
                 if answer.get("rating_value"):
                     rating = int(float(answer["rating_value"]))
                     if 1 <= rating <= 5:
                         rating_distribution[rating - 1] += 1
+                        total_ratings += 1
+        
+        # Calculate 5-star specific metrics
+        five_star_count = rating_distribution[4]  # 5 stars
+        four_star_count = rating_distribution[3]  # 4 stars
+        three_star_count = rating_distribution[2]  # 3 stars
+        two_star_count = rating_distribution[1]   # 2 stars
+        one_star_count = rating_distribution[0]    # 1 star
+        
+        # Calculate percentages
+        five_star_percentage = (five_star_count / total_ratings * 100) if total_ratings > 0 else 0
+        four_plus_star_percentage = ((four_star_count + five_star_count) / total_ratings * 100) if total_ratings > 0 else 0
+        three_plus_star_percentage = ((three_star_count + four_star_count + five_star_count) / total_ratings * 100) if total_ratings > 0 else 0
+        
+        # Rating quality score (weighted average)
+        rating_quality_score = (
+            (one_star_count * 1) +
+            (two_star_count * 2) +
+            (three_star_count * 3) +
+            (four_star_count * 4) +
+            (five_star_count * 5)
+        ) / total_ratings if total_ratings > 0 else 0
         
         # Fetch staff members
         conn = get_db_connection()
@@ -2017,6 +2040,13 @@ def create_app() -> Flask:
             top_staff=top_staff,
             staff_performance=staff_performance,
             staff_commendations=staff_commendations,
+            # Enhanced 5-star rating analytics
+            total_ratings=total_ratings,
+            five_star_count=five_star_count,
+            five_star_percentage=five_star_percentage,
+            four_plus_star_percentage=four_plus_star_percentage,
+            three_plus_star_percentage=three_plus_star_percentage,
+            rating_quality_score=rating_quality_score,
         )
 
     @app.route("/admin/stores/<int:store_id>/feedback", methods=["GET"])
