@@ -356,17 +356,7 @@ PURPOSE: This is the main "shell" for all Admin pages. It contains the
 
     <!-- Flash Messages Container -->
     <div class="flash-container" id="global-notification-container">
-      {% with messages = get_flashed_messages(with_categories=true) %}
-        {% if messages %}
-          {% for category, message in messages %}
-            <div class="flash-message alert alert-{{ category }} alert-dismissible fade show" role="alert">
-              <i class="bi bi-{% if category == 'success' %}check-circle{% elif category == 'danger' %}exclamation-triangle{% else %}info-circle{% endif %} me-2"></i>
-              <span>{{ message }}</span>
-              <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-            </div>
-          {% endfor %}
-        {% endif %}
-      {% endwith %}
+
     </div>
 
     <!-- Main Content Area -->

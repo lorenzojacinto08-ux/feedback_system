@@ -27,19 +27,7 @@ PURPOSE: "Store Management" page. Allows adding/editing stores, viewing
     </div>
   </div>
 
-  {% with messages = get_flashed_messages(with_categories=true) %}
-    {% if messages %}
-      <div class="mb-4">
-        {% for category, message in messages %}
-          <div class="alert alert-{{ category }} alert-dismissible fade show d-flex align-items-center" role="alert">
-            <i class="bi bi-{% if category == 'success' %}check-circle{% elif category == 'danger' %}exclamation-triangle{% else %}info-circle{% endif %} me-2"></i>
-            {{ message }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-          </div>
-        {% endfor %}
-      </div>
-    {% endif %}
-  {% endwith %}
+
 
   <div class="card mb-3 border-0 shadow-lg">
     <div class="card-body p-3">

@@ -14,19 +14,7 @@ PURPOSE: The main "Analytics Dashboard" showing store counts, total responses,
 {% block content %}
 <div class="dashboard-wrapper">
 
-  {% with messages = get_flashed_messages(with_categories=true) %}
-    {% if messages %}
-      <div class="mb-2">
-        {% for category, message in messages %}
-          <div class="alert alert-{{ category }} alert-dismissible fade show d-flex align-items-center py-2" role="alert">
-            <i class="bi bi-{% if category == 'success' %}check-circle{% elif category == 'danger' %}exclamation-triangle{% else %}info-circle{% endif %} me-2"></i>
-            {{ message }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-          </div>
-        {% endfor %}
-      </div>
-    {% endif %}
-  {% endwith %}
+
 
   <!-- ── Key Metrics Row ── -->
   <div class="row g-2 mb-2">
