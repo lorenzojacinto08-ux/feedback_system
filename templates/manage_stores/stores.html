@@ -24,6 +24,10 @@ PURPOSE: "Store Management" page. Allows adding/editing stores, viewing
         <i class="bi bi-bar-chart me-2"></i>
         Dashboard
       </a>
+      <button type="button" class="btn btn-outline-secondary d-flex align-items-center" data-bs-toggle="modal" data-bs-target="#bulkActionsModal">
+        <i class="bi bi-check2-square me-2"></i>
+        Bulk Actions
+      </button>
     </div>
   </div>
 
@@ -386,40 +390,6 @@ PURPOSE: "Store Management" page. Allows adding/editing stores, viewing
               {% if store.address %}
                 <p class="card-subtitle text-muted mb-2">
                   <i class="bi bi-geo-alt me-2"></i>
-                  {{ store.address }}
-                  {% if store.city %}, {{ store.city }}{% endif %}
-                  {% if store.province %}, {{ store.province }}{% endif %}
-                </p>
-              {% endif %}
-              {% if store.contact_number %}
-                <p class="card-subtitle text-muted mb-2">
-                  <i class="bi bi-telephone me-2"></i>
-                  {{ store.contact_number }}
-                </p>
-              {% endif %}
-              {% if store.store_manager_name %}
-                <p class="card-subtitle text-muted mb-3">
-                  <i class="bi bi-person me-2"></i>
-                  Manager: {{ store.store_manager_name }}
-                </p>
-              {% endif %}
-              <div class="d-flex align-items-center justify-content-between">
-                <span class="badge bg-{{ 'success' if store.status == 'active' else 'secondary' if store.status == 'inactive' else 'warning' }} text-dark">
-                  {{ store.status|title }}
-                </span>
-                <div>
-                  <small class="text-muted me-2">ID: {{ store.id }}</small>
-                  <a href="{{ url_for('staff_management', store_id=store.id) }}" class="btn btn-sm btn-outline-primary me-1" onclick="event.stopPropagation();" title="Manage Staff">
-                    <i class="bi bi-people me-1"></i>
-                    Staff
-                  </a>
-                  <a href="{{ url_for('store_feedback', store_id=store.id) }}" class="btn btn-sm btn-outline-success" onclick="event.stopPropagation();" title="View Feedback">
-                    <i class="bi bi-chat-left-text me-1"></i>
-                    Feedback
-                  </a>
-                </div>
-              </div>
-            </div>
             </div>
           </a>
         </div>

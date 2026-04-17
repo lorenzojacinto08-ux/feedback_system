@@ -19,12 +19,12 @@
             <i class="bi bi-speedometer2 me-2"></i>Dashboard
           </a>
           <div class="border-start border-2 mx-2 flex-shrink-0" style="border-color: var(--neutral-300); height: 20px; align-self: center;"></div>
-          <a href="{{ url_for('master_questionnaire') }}" class="text-decoration-none topnav-link px-3 py-2 rounded-2 text-nowrap {% if request.endpoint == 'master_questionnaire' %}active{% endif %}">
-            <i class="bi bi-question-square me-2"></i>Master Questionnaire
+          <a href="{{ url_for('stores_management') }}" class="text-decoration-none topnav-link px-3 py-2 rounded-2 text-nowrap {% if request.endpoint == 'stores_management' or 'store' in request.endpoint %}active{% endif %}">
+            <i class="bi bi-shop me-2"></i>Stores
           </a>
           <div class="border-start border-2 mx-2 flex-shrink-0" style="border-color: var(--neutral-300); height: 20px; align-self: center;"></div>
-          <a href="{{ url_for('stores_management') }}" class="text-decoration-none topnav-link px-3 py-2 rounded-2 text-nowrap {% if request.endpoint == 'stores_management' %}active{% endif %}">
-            <i class="bi bi-shop me-2"></i>Manage Stores
+          <a href="{{ url_for('master_questionnaire') }}" class="text-decoration-none topnav-link px-3 py-2 rounded-2 text-nowrap {% if request.endpoint == 'master_questionnaire' %}active{% endif %}">
+            <i class="bi bi-question-square me-2"></i>Survey
           </a>
         </nav>
       </div>
