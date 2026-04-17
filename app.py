@@ -126,7 +126,25 @@ def create_app() -> Flask:
                     )
                 """)
 
-                # 2. Questionnaires Table
+                # 2. Staff Table
+                cursor.execute("""
+                    CREATE TABLE IF NOT EXISTS staff (
+                        id INT AUTO_INCREMENT PRIMARY KEY,
+                        store_id INT NOT NULL,
+                        first_name VARCHAR(100) NOT NULL,
+                        last_name VARCHAR(100) NOT NULL,
+                        email VARCHAR(255),
+                        phone VARCHAR(20),
+                        position VARCHAR(100),
+                        role ENUM('staff', 'manager', 'supervisor') DEFAULT 'staff',
+                        hire_date DATE,
+                        status ENUM('active', 'inactive') DEFAULT 'active',
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        FOREIGN KEY (store_id) REFERENCES stores(id) ON DELETE CASCADE
+                    )
+                """)
+
+                # 3. Questionnaires Table
                 cursor.execute("""
                     CREATE TABLE IF NOT EXISTS questionnaires (
                         id INT AUTO_INCREMENT PRIMARY KEY,
@@ -1503,6 +1521,139 @@ def create_app() -> Flask:
             conn.close()
             
         return redirect(url_for("stores_management"))
+
+    # -------------------------
+    # STAFF MANAGEMENT
+    # -------------------------
+
+    @app.route("/admin/stores/<int:store_id>/staff")
+    def staff_management(store_id: int):
+        conn = get_db_connection()
+        try:
+            cursor = conn.cursor(dictionary=True)
+            
+            # Get store information
+            cursor.execute("SELECT * FROM stores WHERE id = %s", (store_id,))
+            store = cursor.fetchone()
+            
+            if not store:
+                flash("Store not found", "danger")
+                return redirect(url_for("stores_management"))
+            
+            # Get staff for this store
+            cursor.execute("""
+                SELECT * FROM staff 
+                WHERE store_id = %s 
+                ORDER BY role DESC, last_name, first_name
+            """, (store_id,))
+            staff = cursor.fetchall()
+            
+            return render_template("manage_staff/staff.html", store=store, staff=staff)
+        except Exception as e:
+            logger.error(f"Error loading staff management: {e}")
+            flash(f"Error loading staff: {e}", "danger")
+            return redirect(url_for("stores_management"))
+        finally:
+            conn.close()
+
+    @app.route("/admin/stores/<int:store_id>/staff/add", methods=["POST"])
+    def add_staff(store_id: int):
+        first_name = request.form.get("first_name", "").strip()
+        last_name = request.form.get("last_name", "").strip()
+        email = request.form.get("email", "").strip() or None
+        phone = request.form.get("phone", "").strip() or None
+        position = request.form.get("position", "").strip() or None
+        role = request.form.get("role", "staff")
+        hire_date = request.form.get("hire_date", "").strip() or None
+        
+        conn = get_db_connection()
+        try:
+            cursor = conn.cursor()
+            
+            # Verify store exists
+            cursor.execute("SELECT id FROM stores WHERE id = %s", (store_id,))
+            if not cursor.fetchone():
+                flash("Store not found", "danger")
+                return redirect(url_for("stores_management"))
+            
+            # Insert new staff member
+            cursor.execute("""
+                INSERT INTO staff (store_id, first_name, last_name, email, phone, position, role, hire_date)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+            """, (store_id, first_name, last_name, email, phone, position, role, hire_date))
+            
+            conn.commit()
+            flash(f"Staff member \"{first_name} {last_name}\" added successfully", "success")
+        except Exception as e:
+            logger.error(f"Error adding staff: {e}")
+            flash(f"Error adding staff: {e}", "danger")
+        finally:
+            conn.close()
+            
+        return redirect(url_for("staff_management", store_id=store_id))
+
+    @app.route("/admin/stores/<int:store_id>/staff/<int:staff_id>/edit", methods=["POST"])
+    def edit_staff(store_id: int, staff_id: int):
+        first_name = request.form.get("first_name", "").strip()
+        last_name = request.form.get("last_name", "").strip()
+        email = request.form.get("email", "").strip() or None
+        phone = request.form.get("phone", "").strip() or None
+        position = request.form.get("position", "").strip() or None
+        role = request.form.get("role", "staff")
+        status = request.form.get("status", "active")
+        hire_date = request.form.get("hire_date", "").strip() or None
+        
+        conn = get_db_connection()
+        try:
+            cursor = conn.cursor()
+            
+            # Update staff member
+            cursor.execute("""
+                UPDATE staff 
+                SET first_name = %s, last_name = %s, email = %s, phone = %s, 
+                    position = %s, role = %s, status = %s, hire_date = %s
+                WHERE id = %s AND store_id = %s
+            """, (first_name, last_name, email, phone, position, role, status, hire_date, staff_id, store_id))
+            
+            if cursor.rowcount == 0:
+                flash("Staff member not found", "danger")
+            else:
+                conn.commit()
+                flash(f"Staff member \"{first_name} {last_name}\" updated successfully", "success")
+        except Exception as e:
+            logger.error(f"Error updating staff: {e}")
+            flash(f"Error updating staff: {e}", "danger")
+        finally:
+            conn.close()
+            
+        return redirect(url_for("staff_management", store_id=store_id))
+
+    @app.route("/admin/stores/<int:store_id>/staff/<int:staff_id>/delete", methods=["POST"])
+    def delete_staff(store_id: int, staff_id: int):
+        conn = get_db_connection()
+        try:
+            cursor = conn.cursor()
+            
+            # Get staff member name for flash message
+            cursor.execute("SELECT first_name, last_name FROM staff WHERE id = %s AND store_id = %s", (staff_id, store_id))
+            staff = cursor.fetchone()
+            
+            if not staff:
+                flash("Staff member not found", "danger")
+                return redirect(url_for("staff_management", store_id=store_id))
+            
+            # Delete staff member
+            cursor.execute("DELETE FROM staff WHERE id = %s AND store_id = %s", (staff_id, store_id))
+            conn.commit()
+            
+            flash(f"Staff member \"{staff[0]} {staff[1]}\" deleted successfully", "success")
+        except Exception as e:
+            logger.error(f"Error deleting staff: {e}")
+            flash(f"Error deleting staff: {e}", "danger")
+        finally:
+            conn.close()
+            
+        return redirect(url_for("staff_management", store_id=store_id))
 
     @app.route("/admin/responses/<int:response_id>/delete", methods=["POST"])
     def delete_response_route(response_id: int):

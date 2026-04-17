@@ -408,6 +408,10 @@ PURPOSE: "Store Management" page. Allows adding/editing stores, viewing
                 </span>
                 <div>
                   <small class="text-muted me-2">ID: {{ store.id }}</small>
+                  <a href="{{ url_for('staff_management', store_id=store.id) }}" class="btn btn-sm btn-outline-primary me-1" onclick="event.stopPropagation();" title="Manage Staff">
+                    <i class="bi bi-people me-1"></i>
+                    Staff
+                  </a>
                   <a href="{{ url_for('store_feedback', store_id=store.id) }}" class="btn btn-sm btn-outline-success" onclick="event.stopPropagation();" title="View Feedback">
                     <i class="bi bi-chat-left-text me-1"></i>
                     Feedback
