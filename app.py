@@ -1936,7 +1936,7 @@ def create_app() -> Flask:
         feedback_trend_data = [12, 19, 15, 25, 22, 30]
         
         # Generate QR code for the store
-        public_url = get_store_public_url(store_id=store.id)
+        public_url = get_store_public_url(store_id=store['id'])
         qr_data_uri = generate_qr_data_uri(public_url)
         
         return render_template(
