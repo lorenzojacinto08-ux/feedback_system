@@ -147,6 +147,9 @@ def create_app() -> Flask:
                         questionnaire_id INT NOT NULL,
                         question_text TEXT NOT NULL,
                         question_type ENUM('rating', 'text', 'multiple_choice') NOT NULL,
+                        min_label VARCHAR(255) DEFAULT 'Poor',
+                        max_label VARCHAR(255) DEFAULT 'Excellent',
+                        allow_comment BOOLEAN DEFAULT FALSE,
                         is_required BOOLEAN DEFAULT TRUE,
                         question_order INT DEFAULT 0,
                         is_active BOOLEAN DEFAULT TRUE,
@@ -304,6 +307,24 @@ def create_app() -> Flask:
                 if not cursor.fetchone():
                     logger.info("Adding 'template_id' column to questions table...")
                     cursor.execute("ALTER TABLE questions ADD COLUMN template_id INT NULL AFTER is_template")
+                    conn.commit()
+                
+                cursor.execute("SHOW COLUMNS FROM questions LIKE 'min_label'")
+                if not cursor.fetchone():
+                    logger.info("Adding 'min_label' column to questions table...")
+                    cursor.execute("ALTER TABLE questions ADD COLUMN min_label VARCHAR(255) DEFAULT 'Poor' AFTER question_type")
+                    conn.commit()
+
+                cursor.execute("SHOW COLUMNS FROM questions LIKE 'max_label'")
+                if not cursor.fetchone():
+                    logger.info("Adding 'max_label' column to questions table...")
+                    cursor.execute("ALTER TABLE questions ADD COLUMN max_label VARCHAR(255) DEFAULT 'Excellent' AFTER min_label")
+                    conn.commit()
+
+                cursor.execute("SHOW COLUMNS FROM questions LIKE 'allow_comment'")
+                if not cursor.fetchone():
+                    logger.info("Adding 'allow_comment' column to questions table...")
+                    cursor.execute("ALTER TABLE questions ADD COLUMN allow_comment BOOLEAN DEFAULT FALSE AFTER max_label")
                     conn.commit()
                 
                 # Check for stores table columns
@@ -479,7 +500,7 @@ def create_app() -> Flask:
             cursor = conn.cursor(dictionary=True)
             cursor.execute(
                 """
-                SELECT id, question_text, question_type, is_required, question_order
+                SELECT id, question_text, question_type, min_label, max_label, allow_comment, is_required, question_order
                 FROM questions
                 WHERE questionnaire_id = %s AND is_active = TRUE
                 ORDER BY question_order ASC, id ASC
@@ -612,7 +633,7 @@ def create_app() -> Flask:
             cursor = conn.cursor(dictionary=True)
             cursor.execute(
                 """
-                SELECT id, question_text, question_type, is_required, question_order
+                SELECT id, question_text, question_type, min_label, max_label, allow_comment, is_required, question_order
                 FROM questions
                 WHERE questionnaire_id = %s
                 ORDER BY question_order ASC, id ASC
@@ -655,6 +676,9 @@ def create_app() -> Flask:
         question_type: str,
         is_required: bool,
         question_order: int,
+        min_label: str = "Poor",
+        max_label: str = "Excellent",
+        allow_comment: bool = False,
     ) -> int:
         conn = get_db_connection()
         try:
@@ -662,10 +686,10 @@ def create_app() -> Flask:
             cursor.execute(
                 """
                 INSERT INTO questions
-                (questionnaire_id, question_text, question_type, is_required, question_order, is_template)
-                VALUES (%s, %s, %s, %s, %s, %s)
+                (questionnaire_id, question_text, question_type, min_label, max_label, allow_comment, is_required, question_order, is_template)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
                 """,
-                (template_questionnaire_id, question_text, question_type, is_required, question_order, True),
+                (template_questionnaire_id, question_text, question_type, min_label, max_label, allow_comment, is_required, question_order, True),
             )
             conn.commit()
             return int(cursor.lastrowid)
@@ -681,17 +705,17 @@ def create_app() -> Flask:
         finally:
             conn.close()
 
-    def update_template_question(question_id: int, question_text: str, question_type: str, is_required: bool) -> None:
+    def update_template_question(question_id: int, question_text: str, question_type: str, is_required: bool, min_label: str = "Poor", max_label: str = "Excellent", allow_comment: bool = False) -> None:
         conn = get_db_connection()
         try:
             cursor = conn.cursor()
             cursor.execute(
                 """
                 UPDATE questions
-                SET question_text = %s, question_type = %s, is_required = %s
+                SET question_text = %s, question_type = %s, is_required = %s, min_label = %s, max_label = %s, allow_comment = %s
                 WHERE id = %s AND is_template = TRUE
                 """,
-                (question_text, question_type, is_required, question_id),
+                (question_text, question_type, is_required, min_label, max_label, allow_comment, question_id),
             )
             conn.commit()
         finally:
@@ -779,13 +803,16 @@ def create_app() -> Flask:
                     cursor.execute(
                         """
                         INSERT INTO questions
-                        (questionnaire_id, question_text, question_type, is_required, question_order, is_template, template_id)
-                        VALUES (%s, %s, %s, %s, %s, %s, %s)
+                        (questionnaire_id, question_text, question_type, min_label, max_label, allow_comment, is_required, question_order, is_template, template_id)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                         """,
                         (
                             questionnaire_id,
                             tq["question_text"],
                             tq["question_type"],
+                            tq.get("min_label", "Poor"),
+                            tq.get("max_label", "Excellent"),
+                            bool(tq.get("allow_comment", False)),
                             bool(tq["is_required"]),
                             int(tq["question_order"]),
                             False,  # Store questions are not templates
@@ -821,23 +848,84 @@ def create_app() -> Flask:
 
     @app.route("/admin/questionnaire", methods=["GET", "POST"])
     def master_questionnaire():
-        template = ensure_template_questionnaire()
-        template_id = int(template["id"])
-
         if request.method == "POST":
             title = request.form.get("title", "").strip()
             is_active = request.form.get("is_active") == "on"
             if not title:
                 flash("Template questionnaire title is required.", "danger")
                 return redirect(url_for("master_questionnaire"))
+            
+            template = ensure_template_questionnaire()
             update_template_questionnaire(title=title, is_active=is_active)
             flash("Questionnaire Saved Successfully", "success")
             return redirect(url_for("master_questionnaire"))
 
-        template = ensure_template_questionnaire()
-        template_id = int(template["id"])
-        questions = fetch_template_questions(template_questionnaire_id=template_id)
-        options_by_question_id = fetch_template_options_by_question([int(q["id"]) for q in questions])
+        # Single database connection for better performance
+        conn = get_db_connection()
+        try:
+            cursor = conn.cursor(dictionary=True)
+            
+            # Get template
+            cursor.execute(
+                """
+                SELECT id, title, is_active, version, created_at
+                FROM questionnaires
+                WHERE is_template = TRUE
+                ORDER BY id ASC
+                LIMIT 1
+                """
+            )
+            template = cursor.fetchone()
+            
+            if template:
+                template_id = int(template["id"])
+                
+                # Get questions with single query
+                cursor.execute(
+                    """
+                    SELECT q.id, q.question_text, q.question_type, q.min_label, q.max_label, 
+                           q.allow_comment, q.is_required, q.question_order,
+                           qo.id as option_id, qo.option_text
+                    FROM questions q
+                    LEFT JOIN question_options qo ON q.id = qo.question_id
+                    WHERE q.questionnaire_id = %s
+                    ORDER BY q.question_order ASC, q.id ASC, qo.id ASC
+                    """,
+                    (template_id,),
+                )
+                rows = cursor.fetchall()
+                
+                # Organize questions and options
+                questions = []
+                options_by_question_id = {}
+                current_question = None
+                
+                for row in rows:
+                    qid = int(row["id"])
+                    
+                    # Create question if not exists
+                    if qid not in [q.get("id") for q in questions]:
+                        questions.append({
+                            "id": qid,
+                            "question_text": row["question_text"],
+                            "question_type": row["question_type"],
+                            "min_label": row["min_label"],
+                            "max_label": row["max_label"],
+                            "allow_comment": bool(row["allow_comment"]),
+                            "is_required": bool(row["is_required"]),
+                            "question_order": int(row["question_order"])
+                        })
+                        options_by_question_id[qid] = []
+                    
+                    # Add option if exists
+                    if row["option_id"]:
+                        options_by_question_id[qid].append({
+                            "id": row["option_id"],
+                            "option_text": row["option_text"]
+                        })
+                        
+        finally:
+            conn.close()
 
         return render_template(
             "master_questionnaire/master_questionnaire.html",
@@ -854,6 +942,9 @@ def create_app() -> Flask:
         question_text = request.form.get("question_text", "").strip()
         question_type = request.form.get("question_type", "").strip()
         is_required = request.form.get("is_required") == "on"
+        min_label = request.form.get("min_label", "Poor").strip() or "Poor"
+        max_label = request.form.get("max_label", "Excellent").strip() or "Excellent"
+        allow_comment = request.form.get("allow_comment") == "on"
         try:
             question_order = int(request.form.get("question_order", "0"))
         except ValueError:
@@ -873,6 +964,9 @@ def create_app() -> Flask:
             question_type=question_type,
             is_required=is_required,
             question_order=question_order,
+            min_label=min_label,
+            max_label=max_label,
+            allow_comment=allow_comment,
         )
         flash("Question Added Successfully", "success")
         return redirect(url_for("master_questionnaire"))
@@ -888,12 +982,15 @@ def create_app() -> Flask:
         question_text = request.form.get("question_text", "").strip()
         question_type = request.form.get("question_type", "").strip()
         is_required = request.form.get("is_required") == "on"
+        min_label = request.form.get("min_label", "Poor").strip() or "Poor"
+        max_label = request.form.get("max_label", "Excellent").strip() or "Excellent"
+        allow_comment = request.form.get("allow_comment") == "on"
 
         if not question_text:
             flash("Question text is required.", "danger")
             return redirect(url_for("master_questionnaire"))
 
-        update_template_question(master_question_id, question_text, question_type, is_required)
+        update_template_question(master_question_id, question_text, question_type, is_required, min_label, max_label, allow_comment)
         flash("Question Updated Successfully", "success")
         return redirect(url_for("master_questionnaire"))
 
@@ -1148,8 +1245,9 @@ def create_app() -> Flask:
                 if rating_value < 1 or rating_value > 5:
                     errors.append(f"Rating must be 1-5: {q['question_text']}")
                     continue
+                comment = request.form.get(f"{key}_comment", "").strip()
                 answers_to_save.append(
-                    {"question_id": qid, "answer_text": None, "rating_value": rating_value}
+                    {"question_id": qid, "answer_text": comment if comment else None, "rating_value": rating_value}
                 )
 
             elif q_type == "text":

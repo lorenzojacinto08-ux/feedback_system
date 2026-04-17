@@ -116,17 +116,36 @@ PURPOSE: "Master Questionnaire" editor. Allows admins to build the global templa
             </div>
             <div>
               <label class="form-label fw-medium" for="question_type">Question Type</label>
-              <select class="form-select" id="question_type" name="question_type" required>
+              <select class="form-select" id="question_type" name="question_type" required onchange="toggleRatingLabels(this, 'rating-labels-add'); toggleCommentVisibility(this, 'allow_comment_container')">
                 <option value="rating">⭐ Rating (1–5)</option>
                 <option value="text">📝 Text</option>
                 <option value="multiple_choice">🔘 Multiple Choice</option>
               </select>
+            </div>
+            <div id="rating-labels-add">
+              <div class="row g-2">
+                <div class="col-6">
+                  <label class="form-label small fw-medium" for="min_label">Min Label</label>
+                  <input class="form-control form-control-sm" id="min_label" name="min_label" placeholder="e.g. Poor" value="Poor" />
+                </div>
+                <div class="col-6">
+                  <label class="form-label small fw-medium" for="max_label">Max Label</label>
+                  <input class="form-control form-control-sm" id="max_label" name="max_label" placeholder="e.g. Excellent" value="Excellent" />
+                </div>
+              </div>
             </div>
             <div class="form-check">
               <input class="form-check-input" type="checkbox" value="on" id="is_required" name="is_required" />
               <label class="form-check-label" for="is_required">
                 <span class="fw-medium">Required</span>
                 <small class="text-muted d-block">Users must answer this question</small>
+              </label>
+            </div>
+            <div class="form-check" id="allow_comment_container" style="display: none;">
+              <input class="form-check-input" type="checkbox" value="on" id="allow_comment" name="allow_comment" />
+              <label class="form-check-label" for="allow_comment">
+                <span class="fw-medium">Allow Comment</span>
+                <small class="text-muted d-block">Users can add optional text comments with their rating</small>
               </label>
             </div>
             <input type="hidden" id="question_order" name="question_order" value="{{ questions|length }}" />
@@ -211,6 +230,9 @@ PURPOSE: "Master Questionnaire" editor. Allows admins to build the global templa
                               data-text="{{ q.question_text }}"
                               data-type="{{ q.question_type }}"
                               data-req="{{ 'true' if q.is_required else 'false' }}"
+                              data-allow-comment="{{ 'true' if q.allow_comment else 'false' }}"
+                              data-min-label="{{ q.min_label or 'Poor' }}"
+                              data-max-label="{{ q.max_label or 'Excellent' }}"
                               onclick="editQuestion(this); event.stopPropagation();">
                         <i class="bi bi-pencil"></i>
                       </button>
@@ -292,16 +314,35 @@ PURPOSE: "Master Questionnaire" editor. Allows admins to build the global templa
             </div>
             <div>
               <label class="form-label fw-medium" for="edit_question_type">Question Type</label>
-              <select class="form-select" id="edit_question_type" name="question_type" required>
+              <select class="form-select" id="edit_question_type" name="question_type" required onchange="toggleRatingLabels(this, 'rating-labels-edit'); toggleCommentVisibility(this, 'edit_allow_comment_container')">
                 <option value="rating">⭐ Rating (1–5)</option>
                 <option value="text">📝 Text</option>
                 <option value="multiple_choice">🔘 Multiple Choice</option>
               </select>
             </div>
+            <div id="rating-labels-edit">
+              <div class="row g-2">
+                <div class="col-6">
+                  <label class="form-label small fw-medium" for="edit_min_label">Min Label</label>
+                  <input class="form-control form-control-sm" id="edit_min_label" name="min_label" placeholder="e.g. Poor" />
+                </div>
+                <div class="col-6">
+                  <label class="form-label small fw-medium" for="edit_max_label">Max Label</label>
+                  <input class="form-control form-control-sm" id="edit_max_label" name="max_label" placeholder="e.g. Excellent" />
+                </div>
+              </div>
+            </div>
             <div class="form-check">
               <input class="form-check-input" type="checkbox" id="edit_is_required" name="is_required" />
               <label class="form-check-label" for="edit_is_required">
                 <span class="fw-medium">Required</span>
+              </label>
+            </div>
+            <div class="form-check" id="edit_allow_comment_container" style="display: none;">
+              <input class="form-check-input" type="checkbox" id="edit_allow_comment" name="allow_comment" />
+              <label class="form-check-label" for="edit_allow_comment">
+                <span class="fw-medium">Allow Comment</span>
+                <small class="text-muted d-block">Users can add optional text comments with their rating</small>
               </label>
             </div>
           </div>
@@ -396,6 +437,7 @@ function editQuestion(btn) {
     const questionText = btn.getAttribute('data-text');
     const questionType = btn.getAttribute('data-type');
     const isRequired = btn.getAttribute('data-req') === 'true';
+    const allowComment = btn.getAttribute('data-allow-comment') === 'true';
 
     console.log('Edit question:', questionId);
     
@@ -407,20 +449,43 @@ function editQuestion(btn) {
     document.getElementById('edit_question_text').value = questionText;
     document.getElementById('edit_question_type').value = questionType;
     document.getElementById('edit_is_required').checked = isRequired;
+    document.getElementById('edit_allow_comment').checked = allowComment;
+    
+    // Show/hide rating-specific fields
+    toggleRatingLabels(document.getElementById('edit_question_type'), 'rating-labels-edit');
+    toggleCommentVisibility(document.getElementById('edit_question_type'), 'edit_allow_comment_container');
     
     // Show modal
     const modal = new bootstrap.Modal(document.getElementById('editQuestionModal'));
     modal.show();
 }
 
+// Toggle comment visibility based on question type
+function toggleCommentVisibility(selectElement, containerId) {
+    const container = document.getElementById(containerId);
+    const questionType = selectElement.value;
+    
+    if (questionType === 'rating') {
+        container.style.display = 'block';
+    } else {
+        container.style.display = 'none';
+    }
+}
+
 // Add question form - update order field dynamically
 document.addEventListener('DOMContentLoaded', function() {
     const questionOrderField = document.getElementById('question_order');
     const questionsContainer = document.getElementById('questions-container');
+    const questionTypeSelect = document.getElementById('question_type');
     
     if (questionOrderField && questionsContainer) {
         const currentQuestionCount = questionsContainer.querySelectorAll('.question-item').length;
         questionOrderField.value = currentQuestionCount;
+    }
+    
+    // Initialize comment visibility for add form
+    if (questionTypeSelect) {
+        toggleCommentVisibility(questionTypeSelect, 'allow_comment_container');
     }
 });
 </script>
