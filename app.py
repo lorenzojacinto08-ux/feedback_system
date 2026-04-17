@@ -894,7 +894,7 @@ def create_app() -> Flask:
 
         count = publish_template_to_all_stores()
         flash(f"Published template questionnaire to {count} store(s).", "success")
-        return redirect(url_for("admin_dashboard"))
+        return redirect(url_for("master_questionnaire"))
 
     # -------------------------
     # DASHBOARD ANALYTICS
