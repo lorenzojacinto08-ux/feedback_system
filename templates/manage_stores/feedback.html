@@ -566,6 +566,14 @@ PURPOSE: "Feedback Management" page. Displays all customer responses/submissions
         <div class="customer-name">
           {{ response.user_email or 'Anonymous' }}
         </div>
+        {% if response.receipt_number %}
+        <div class="receipt-number">
+          <small class="text-muted">
+            <i class="bi bi-receipt me-1"></i>
+            Receipt: {{ response.receipt_number }}
+          </small>
+        </div>
+        {% endif %}
         <div class="feedback-meta">
           {% set answers = answers_by_response_id.get(response.id, []) %} {% set
           avg_rating = answers|selectattr('question_type', 'equalto',
@@ -622,6 +630,7 @@ PURPOSE: "Feedback Management" page. Displays all customer responses/submissions
     id: {{ response.id }},
     customerName: {{ (response.user_email or "Anonymous") | tojson }},
     customerEmail: {{ (response.user_email or "") | tojson }},
+    receiptNumber: {{ (response.receipt_number or "") | tojson }},
     submittedAt: {{ (response.submitted_at.strftime("%B %d, %Y at %I:%M %p") if response.submitted_at else "") | tojson }},
     status: {{ response.status | tojson }},
     avgRating: {{ ((avg_rating|sum / avg_rating|length)|round(1) if avg_rating else 0) | tojson }},

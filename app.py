@@ -192,6 +192,7 @@ def create_app() -> Flask:
                         questionnaire_id INT NOT NULL,
                         store_id INT NOT NULL,
                         user_email VARCHAR(255),
+                        receipt_number VARCHAR(100),
                         submitted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                         status ENUM('unresolved', 'resolved') DEFAULT 'unresolved'
                     )
@@ -364,6 +365,13 @@ def create_app() -> Flask:
                     cursor.execute(f"SHOW COLUMNS FROM stores LIKE '{column_name}'")
                     if not cursor.fetchone():
                         cursor.execute(f"ALTER TABLE stores ADD COLUMN {column_name} {column_type}")
+                
+                # Check for responses table receipt_number column
+                cursor.execute("SHOW COLUMNS FROM responses LIKE 'receipt_number'")
+                if not cursor.fetchone():
+                    logger.info("Adding 'receipt_number' column to responses table...")
+                    cursor.execute("ALTER TABLE responses ADD COLUMN receipt_number VARCHAR(100) AFTER user_email")
+                    conn.commit()
                 
                 conn.commit()
                 conn.close()
@@ -1229,6 +1237,18 @@ def create_app() -> Flask:
         questions = fetch_questions_for_questionnaire(questionnaire_id=int(questionnaire["id"]))
         options_by_question_id = fetch_options_for_questions([int(q["id"]) for q in questions])
 
+        # Get and validate receipt number
+        receipt_number = request.form.get("receipt_number", "").strip()
+        if not receipt_number:
+            flash("Receipt/Transaction number is required.", "danger")
+            return redirect(url_for("public_survey", store_id=store_id))
+        
+        # Basic receipt number validation (5-50 characters, letters, numbers, hyphens only)
+        import re
+        if not re.match(r'^[A-Za-z0-9\-]{5,50}$', receipt_number):
+            flash("Receipt number should be 5-50 characters (letters, numbers, and hyphens only).", "danger")
+            return redirect(url_for("public_survey", store_id=store_id))
+
         # Get and validate email
         user_email = request.form.get("user_email", "").strip()
         if not user_email:
@@ -1317,10 +1337,10 @@ def create_app() -> Flask:
             cursor = conn.cursor()
             cursor.execute(
                 """
-                INSERT INTO responses (questionnaire_id, store_id, user_email)
-                VALUES (%s, %s, %s)
+                INSERT INTO responses (questionnaire_id, store_id, user_email, receipt_number)
+                VALUES (%s, %s, %s, %s)
                 """,
-                (int(questionnaire["id"]), store_id, user_email),
+                (int(questionnaire["id"]), store_id, user_email, receipt_number),
             )
             response_id = int(cursor.lastrowid)
 
