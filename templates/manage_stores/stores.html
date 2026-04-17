@@ -390,6 +390,10 @@ PURPOSE: "Store Management" page. Allows adding/editing stores, viewing
               {% if store.address %}
                 <p class="card-subtitle text-muted mb-2">
                   <i class="bi bi-geo-alt me-2"></i>
+                  {{ store.address }}
+                  {% if store.city %}, {{ store.city }}{% endif %}
+                </p>
+              {% endif %}
             </div>
           </a>
         </div>
