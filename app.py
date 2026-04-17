@@ -681,6 +681,22 @@ def create_app() -> Flask:
         finally:
             conn.close()
 
+    def update_template_question(question_id: int, question_text: str, question_type: str, is_required: bool) -> None:
+        conn = get_db_connection()
+        try:
+            cursor = conn.cursor()
+            cursor.execute(
+                """
+                UPDATE questions
+                SET question_text = %s, question_type = %s, is_required = %s
+                WHERE id = %s AND is_template = TRUE
+                """,
+                (question_text, question_type, is_required, question_id),
+            )
+            conn.commit()
+        finally:
+            conn.close()
+
     def add_template_option(template_question_id: int, option_text: str) -> int:
         conn = get_db_connection()
         try:
@@ -865,6 +881,20 @@ def create_app() -> Flask:
     def master_delete_question(master_question_id: int):
         delete_template_question(template_question_id=master_question_id)
         flash("Question deleted.", "success")
+        return redirect(url_for("master_questionnaire"))
+
+    @app.route("/admin/questionnaire/questions/<int:master_question_id>/edit", methods=["POST"])
+    def master_edit_question(master_question_id: int):
+        question_text = request.form.get("question_text", "").strip()
+        question_type = request.form.get("question_type", "").strip()
+        is_required = request.form.get("is_required") == "on"
+
+        if not question_text:
+            flash("Question text is required.", "danger")
+            return redirect(url_for("master_questionnaire"))
+
+        update_template_question(master_question_id, question_text, question_type, is_required)
+        flash("Question updated.", "success")
         return redirect(url_for("master_questionnaire"))
 
     @app.route("/admin/questionnaire/questions/<int:master_question_id>/options/add", methods=["POST"])

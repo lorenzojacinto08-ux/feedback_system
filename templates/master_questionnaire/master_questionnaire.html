@@ -206,7 +206,12 @@ PURPOSE: "Master Questionnaire" editor. Allows admins to build the global templa
                       </div>
                     </div>
                     <div class="d-flex gap-1">
-                      <button type="button" class="btn btn-sm btn-outline-primary" onclick="editQuestion({{ q.id }}); event.stopPropagation();">
+                      <button type="button" class="btn btn-sm btn-outline-primary" 
+                              data-id="{{ q.id }}"
+                              data-text="{{ q.question_text }}"
+                              data-type="{{ q.question_type }}"
+                              data-req="{{ 'true' if q.is_required else 'false' }}"
+                              onclick="editQuestion(this); event.stopPropagation();">
                         <i class="bi bi-pencil"></i>
                       </button>
                       <form method="POST" action="{{ url_for('master_delete_question', master_question_id=q.id) }}" 
@@ -267,6 +272,46 @@ PURPOSE: "Master Questionnaire" editor. Allows admins to build the global templa
             </div>
           {% endif %}
         </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Edit Question Modal -->
+  <div class="modal fade" id="editQuestionModal" tabindex="-1" aria-labelledby="editQuestionModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <form id="editQuestionForm" method="POST" action="">
+          <div class="modal-header">
+            <h5 class="modal-title" id="editQuestionModalLabel">Edit Question</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body vstack gap-3">
+            <div>
+              <label class="form-label fw-medium" for="edit_question_text">Question Text</label>
+              <textarea class="form-control" id="edit_question_text" name="question_text" rows="3" required></textarea>
+            </div>
+            <div>
+              <label class="form-label fw-medium" for="edit_question_type">Question Type</label>
+              <select class="form-select" id="edit_question_type" name="question_type" required>
+                <option value="rating">⭐ Rating (1–5)</option>
+                <option value="text">📝 Text</option>
+                <option value="multiple_choice">🔘 Multiple Choice</option>
+              </select>
+            </div>
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" id="edit_is_required" name="is_required" />
+              <label class="form-check-label" for="edit_is_required">
+                <span class="fw-medium">Required</span>
+              </label>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+            <button type="submit" class="btn btn-primary d-flex align-items-center">
+              <i class="bi bi-check-lg me-2"></i> Save Changes
+            </button>
+          </div>
+        </form>
       </div>
     </div>
   </div>
@@ -345,11 +390,27 @@ function reorderQuestions() {
     });
 }
 
-// Edit question (placeholder function)
-function editQuestion(questionId, currentOrder) {
-    console.log('Edit question:', questionId, 'Current order:', currentOrder);
-    // This could open a modal or inline editing
-    alert('Edit functionality coming soon! Question ID: ' + questionId);
+// Edit question
+function editQuestion(btn) {
+    const questionId = btn.getAttribute('data-id');
+    const questionText = btn.getAttribute('data-text');
+    const questionType = btn.getAttribute('data-type');
+    const isRequired = btn.getAttribute('data-req') === 'true';
+
+    console.log('Edit question:', questionId);
+    
+    // Set form target action
+    const form = document.getElementById('editQuestionForm');
+    form.action = '/admin/questionnaire/questions/' + questionId + '/edit';
+    
+    // Populate fields
+    document.getElementById('edit_question_text').value = questionText;
+    document.getElementById('edit_question_type').value = questionType;
+    document.getElementById('edit_is_required').checked = isRequired;
+    
+    // Show modal
+    const modal = new bootstrap.Modal(document.getElementById('editQuestionModal'));
+    modal.show();
 }
 
 // Add question form - update order field dynamically
