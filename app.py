@@ -1925,6 +1925,63 @@ def create_app() -> Flask:
         
         total_commendations = sum(len(comms) for comms in commendations_by_response_id.values())
         
+        # Staff analytics - commendations per staff
+        staff_commendations = {}
+        if commendations:
+            for commendation in commendations:
+                staff_id = commendation['staff_id']
+                if staff_id not in staff_commendations:
+                    staff_commendations[staff_id] = {
+                        'staff_name': f"{commendation['first_name']} {commendation['last_name']}",
+                        'staff_position': commendation['position'] or commendation['role'].title(),
+                        'total_commendations': 0,
+                        'commendation_types': {},
+                        'comments': []
+                    }
+                
+                staff_commendations[staff_id]['total_commendations'] += 1
+                
+                # Count by type
+                c_type = commendation['commendation_type']
+                if c_type not in staff_commendations[staff_id]['commendation_types']:
+                    staff_commendations[staff_id]['commendation_types'][c_type] = 0
+                staff_commendations[staff_id]['commendation_types'][c_type] += 1
+                
+                # Collect comments
+                if commendation['comment']:
+                    staff_commendations[staff_id]['comments'].append(commendation['comment'])
+        
+        # Sort staff by total commendations
+        top_staff = sorted(staff_commendations.values(), key=lambda x: x['total_commendations'], reverse=True)
+        
+        # Identify staff with potential issues (low or no commendations)
+        staff_performance = []
+        for staff_member in staff_members:
+            staff_id = staff_member['id']
+            staff_name = f"{staff_member['first_name']} {staff_member['last_name']}"
+            staff_position = staff_member['position'] or staff_member['role'].title()
+            
+            commendation_count = staff_commendations.get(staff_id, {}).get('total_commendations', 0)
+            
+            # Calculate performance score based on commendations
+            performance_score = 'excellent'
+            if commendation_count == 0:
+                performance_score = 'needs_attention'
+            elif commendation_count < 3:
+                performance_score = 'average'
+            
+            staff_performance.append({
+                'staff_id': staff_id,
+                'staff_name': staff_name,
+                'staff_position': staff_position,
+                'commendation_count': commendation_count,
+                'performance_score': performance_score,
+                'role': staff_member['role']
+            })
+        
+        # Sort by performance (those needing attention first)
+        staff_performance.sort(key=lambda x: (x['performance_score'] != 'needs_attention', x['commendation_count']))
+        
         # Calculate metrics (mock data for now)
         resolution_rate = 85 if total_feedback > 0 else 0
         response_time = 2.5
@@ -1957,6 +2014,9 @@ def create_app() -> Flask:
             feedback_trend_data=feedback_trend_data,
             public_url=public_url,
             qr_data_uri=qr_data_uri,
+            top_staff=top_staff,
+            staff_performance=staff_performance,
+            staff_commendations=staff_commendations,
         )
 
     @app.route("/admin/stores/<int:store_id>/feedback", methods=["GET"])

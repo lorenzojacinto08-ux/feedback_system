@@ -259,24 +259,24 @@ PURPOSE: Comprehensive store details page showing feedback, analytics, and staff
             </div>
             
             <div class="row g-4 mt-2">
-              <div class="col-md-12">
+              <div class="col-md-6">
                 <div class="card border-0 shadow-sm">
                   <div class="card-body">
                     <h5 class="card-title">Performance Metrics</h5>
                     <div class="row text-center">
-                      <div class="col-md-3">
+                      <div class="col-md-6">
                         <h3 class="text-primary">{{ resolution_rate }}%</h3>
                         <p class="text-muted">Resolution Rate</p>
                       </div>
-                      <div class="col-md-3">
+                      <div class="col-md-6">
                         <h3 class="text-success">{{ response_time }}h</h3>
                         <p class="text-muted">Avg Response Time</p>
                       </div>
-                      <div class="col-md-3">
+                      <div class="col-md-6">
                         <h3 class="text-info">{{ commendation_rate }}%</h3>
                         <p class="text-muted">Commendation Rate</p>
                       </div>
-                      <div class="col-md-3">
+                      <div class="col-md-6">
                         <h3 class="text-warning">{{ repeat_rate }}%</h3>
                         <p class="text-muted">Repeat Customers</p>
                       </div>
@@ -284,7 +284,101 @@ PURPOSE: Comprehensive store details page showing feedback, analytics, and staff
                   </div>
                 </div>
               </div>
+              
+              <div class="col-md-6">
+                <div class="card border-0 shadow-sm">
+                  <div class="card-body">
+                    <h5 class="card-title">Staff Performance</h5>
+                    <div class="row text-center">
+                      <div class="col-md-4">
+                        <h3 class="text-success">{{ staff_performance|selectattr('performance_score', 'equalto', 'excellent')|list|length }}</h3>
+                        <p class="text-muted">Excellent</p>
+                      </div>
+                      <div class="col-md-4">
+                        <h3 class="text-warning">{{ staff_performance|selectattr('performance_score', 'equalto', 'average')|list|length }}</h3>
+                        <p class="text-muted">Average</p>
+                      </div>
+                      <div class="col-md-4">
+                        <h3 class="text-danger">{{ staff_performance|selectattr('performance_score', 'equalto', 'needs_attention')|list|length }}</h3>
+                        <p class="text-muted">Needs Attention</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
+            
+            <!-- Staff Analytics Section -->
+            <div class="row g-4 mt-2">
+              <div class="col-md-6">
+                <div class="card border-0 shadow-sm">
+                  <div class="card-body">
+                    <h5 class="card-title">
+                      <i class="bi bi-trophy text-warning me-2"></i>
+                      Top Performers
+                    </h5>
+                    {% if top_staff %}
+                      {% for staff in top_staff[:3] %}
+                      <div class="d-flex align-items-center justify-content-between mb-3 p-2 bg-light rounded">
+                        <div>
+                          <h6 class="mb-1 fw-semibold">{{ staff.staff_name }}</h6>
+                          <small class="text-muted">{{ staff.staff_position }}</small>
+                        </div>
+                        <div class="text-end">
+                          <span class="badge bg-success">{{ staff.total_commendations }}</span>
+                          <small class="text-muted d-block">commendations</small>
+                        </div>
+                      </div>
+                      {% endfor %}
+                    {% else %}
+                      <p class="text-muted text-center py-3">No staff commendations yet</p>
+                    {% endif %}
+                  </div>
+                </div>
+              </div>
+              
+              <div class="col-md-6">
+                <div class="card border-0 shadow-sm">
+                  <div class="card-body">
+                    <h5 class="card-title">
+                      <i class="bi bi-exclamation-triangle text-danger me-2"></i>
+                      Staff Needing Attention
+                    </h5>
+                    {% set needs_attention = staff_performance|selectattr('performance_score', 'equalto', 'needs_attention')|list %}
+                    {% if needs_attention %}
+                      {% for staff in needs_attention %}
+                      <div class="d-flex align-items-center justify-content-between mb-3 p-2 bg-light rounded">
+                        <div>
+                          <h6 class="mb-1 fw-semibold">{{ staff.staff_name }}</h6>
+                          <small class="text-muted">{{ staff.staff_position }}</small>
+                        </div>
+                        <div class="text-end">
+                          <span class="badge bg-secondary">{{ staff.commendation_count }}</span>
+                          <small class="text-muted d-block">commendations</small>
+                        </div>
+                      </div>
+                      {% endfor %}
+                    {% else %}
+                      <p class="text-muted text-center py-3">All staff performing well!</p>
+                    {% endif %}
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Staff Commendations Chart -->
+            {% if top_staff %}
+            <div class="row g-4 mt-2">
+              <div class="col-md-12">
+                <div class="card border-0 shadow-sm">
+                  <div class="card-body">
+                    <h5 class="card-title">Staff Commendations Breakdown</h5>
+                    <canvas id="staffCommendationsChart" width="400" height="200"></canvas>
+                  </div>
+                </div>
+              </div>
+            </div>
+            {% endif %}
           </div>
         </div>
 
@@ -564,6 +658,59 @@ document.addEventListener('DOMContentLoaded', function() {
                         ticks: {
                             stepSize: 1
                         }
+                    }
+                }
+            }
+        });
+    }
+    
+    // Staff Commendations Chart
+    const ctx3 = document.getElementById('staffCommendationsChart');
+    if (ctx3) {
+        const staffData = {{ top_staff|tojson }};
+        const staffNames = staffData.map(s => s.staff_name);
+        const commendationCounts = staffData.map(s => s.total_commendations);
+        
+        new Chart(ctx3, {
+            type: 'bar',
+            data: {
+                labels: staffNames,
+                datasets: [{
+                    label: 'Total Commendations',
+                    data: commendationCounts,
+                    backgroundColor: [
+                        '#198754',
+                        '#ffc107',
+                        '#fd7e14',
+                        '#0d6efd',
+                        '#6f42c1',
+                        '#dc3545'
+                    ],
+                    borderColor: [
+                        '#198754',
+                        '#ffc107',
+                        '#fd7e14',
+                        '#0d6efd',
+                        '#6f42c1',
+                        '#dc3545'
+                    ],
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            stepSize: 1
+                        }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        display: false
                     }
                 }
             }
