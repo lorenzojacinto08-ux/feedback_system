@@ -1216,12 +1216,12 @@ def create_app() -> Flask:
 
         if not store_name:
             flash("Store name is required.", "danger")
-            return redirect(url_for("admin_dashboard"))
+            return redirect(url_for("stores_management"))
 
         # Basic email validation if provided
         if email and ("@" not in email or "." not in email.split("@")[1]):
             flash("Please enter a valid email address.", "danger")
-            return redirect(url_for("admin_dashboard"))
+            return redirect(url_for("stores_management"))
 
         new_store_id = create_store(
             store_name=store_name,
@@ -1238,7 +1238,7 @@ def create_app() -> Flask:
         )
         
         flash(f"Store '{store_name}' added successfully.", "success")
-        return redirect(url_for("admin_dashboard", store_id=new_store_id))
+        return redirect(url_for("stores_management", store_id=new_store_id))
 
     def update_store(
         store_id: int,
@@ -1302,7 +1302,7 @@ def create_app() -> Flask:
 
         if not store_name:
             flash("Store name is required.", "danger")
-            return redirect(url_for("admin_dashboard"))
+            return redirect(url_for("stores_management"))
 
         success = update_store(
             store_id=store_id,
@@ -1324,7 +1324,7 @@ def create_app() -> Flask:
         else:
             flash("Store not found or update failed.", "danger")
 
-        return redirect(url_for("admin_dashboard", store_id=store_id))
+        return redirect(url_for("stores_management", store_id=store_id))
 
     @app.route("/admin/stores/<int:store_id>/delete", methods=["POST"])
     def delete_store_route(store_id: int):
