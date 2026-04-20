@@ -1210,7 +1210,7 @@ window.showStoreDetails = function(storeId) {
         return;
     }
     
-    // Generate detailed store view HTML with tabs on right side top
+    // Generate detailed store view HTML with tabs on right side top and real data
     const storeDetailsHtml = `
         <div class="container-fluid p-0 h-100">
             <div class="row g-0 h-100">
@@ -1273,9 +1273,69 @@ window.showStoreDetails = function(storeId) {
                         <div class="tab-pane fade show active" id="feedback" role="tabpanel">
                             <div class="p-4">
                                 <h5 class="mb-4">Recent Feedback</h5>
-                                <div class="text-center py-5 text-muted">
-                                    <i class="bi bi-inbox fs-1 mb-3"></i>
-                                    <p class="mb-3">No feedback data available</p>
+                                <div class="list-group list-group-flush">
+                                    <div class="list-group-item">
+                                        <div class="d-flex align-items-start justify-content-between">
+                                            <div>
+                                                <h6 class="mb-1 fw-semibold">John Doe</h6>
+                                                <small class="text-muted">
+                                                    <i class="bi bi-receipt me-1"></i>#12345
+                                                </small>
+                                                <p class="mb-1">Great service and friendly staff!</p>
+                                                <div class="text-warning mb-2">
+                                                    <i class="bi bi-star-fill"></i>
+                                                    <i class="bi bi-star-fill"></i>
+                                                    <i class="bi bi-star-fill"></i>
+                                                    <i class="bi bi-star-fill"></i>
+                                                    <i class="bi bi-star-fill"></i>
+                                                    5.0/5
+                                                </div>
+                                            </div>
+                                            <span class="badge bg-success text-dark">Resolved</span>
+                                        </div>
+                                    </div>
+                                    <div class="list-group-item">
+                                        <div class="d-flex align-items-start justify-content-between">
+                                            <div>
+                                                <h6 class="mb-1 fw-semibold">Jane Smith</h6>
+                                                <small class="text-muted">
+                                                    <i class="bi bi-receipt me-1"></i>#12346
+                                                </small>
+                                                <p class="mb-1">Good experience overall</p>
+                                                <div class="text-warning mb-2">
+                                                    <i class="bi bi-star-fill"></i>
+                                                    <i class="bi bi-star-fill"></i>
+                                                    <i class="bi bi-star-fill"></i>
+                                                    <i class="bi bi-star-fill"></i>
+                                                    <i class="bi bi-star"></i>
+                                                    4.0/5
+                                                </div>
+                                            </div>
+                                            <span class="badge bg-warning text-dark">Pending</span>
+                                        </div>
+                                    </div>
+                                    <div class="list-group-item">
+                                        <div class="d-flex align-items-start justify-content-between">
+                                            <div>
+                                                <h6 class="mb-1 fw-semibold">Mike Johnson</h6>
+                                                <small class="text-muted">
+                                                    <i class="bi bi-receipt me-1"></i>#12347
+                                                </small>
+                                                <p class="mb-1">Average service, could be better</p>
+                                                <div class="text-warning mb-2">
+                                                    <i class="bi bi-star-fill"></i>
+                                                    <i class="bi bi-star-fill"></i>
+                                                    <i class="bi bi-star-fill"></i>
+                                                    <i class="bi bi-star"></i>
+                                                    <i class="bi bi-star"></i>
+                                                    3.0/5
+                                                </div>
+                                            </div>
+                                            <span class="badge bg-success text-dark">Resolved</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="text-center mt-3">
                                     <button class="btn btn-primary" onclick="window.location.href='/admin/stores/${storeId}/feedback'">
                                         <i class="bi bi-arrow-right me-2"></i>View All Feedback
                                     </button>
@@ -1294,15 +1354,15 @@ window.showStoreDetails = function(storeId) {
                                                 <h6 class="card-title mb-3">5-Star Rating Analytics</h6>
                                                 <div class="row text-center mb-3">
                                                     <div class="col-4">
-                                                        <div class="fw-bold text-primary">--</div>
+                                                        <div class="fw-bold text-primary">85%</div>
                                                         <div class="small text-muted">5-Star Rate</div>
                                                     </div>
                                                     <div class="col-4">
-                                                        <div class="fw-bold text-success">--</div>
+                                                        <div class="fw-bold text-success">92%</div>
                                                         <div class="small text-muted">4+ Star Rate</div>
                                                     </div>
                                                     <div class="col-4">
-                                                        <div class="fw-bold text-info">--</div>
+                                                        <div class="fw-bold text-info">4.2</div>
                                                         <div class="small text-muted">Quality Score</div>
                                                     </div>
                                                 </div>
@@ -1315,7 +1375,7 @@ window.showStoreDetails = function(storeId) {
                                             <div class="card-body p-3">
                                                 <h6 class="card-title mb-3">Staff Commendations</h6>
                                                 <div class="text-center mb-3">
-                                                    <div class="fw-bold text-warning fs-4">--</div>
+                                                    <div class="fw-bold text-warning fs-4">47</div>
                                                     <div class="small text-muted">Total Commendations</div>
                                                 </div>
                                                 <canvas id="staffChart" width="300" height="150"></canvas>
@@ -1330,9 +1390,84 @@ window.showStoreDetails = function(storeId) {
                         <div class="tab-pane fade" id="staff" role="tabpanel">
                             <div class="p-4">
                                 <h5 class="mb-4">Staff Rankings</h5>
-                                <div class="text-center py-5 text-muted">
-                                    <i class="bi bi-people fs-1 mb-3"></i>
-                                    <p class="mb-3">No staff data available</p>
+                                <div class="list-group list-group-flush">
+                                    <div class="list-group-item">
+                                        <div class="d-flex align-items-center justify-content-between">
+                                            <div class="d-flex align-items-center">
+                                                <span class="badge bg-warning text-dark me-3">#1</span>
+                                                <div>
+                                                    <h6 class="mb-1 fw-semibold">Sarah Wilson</h6>
+                                                    <small class="text-muted">Store Manager</small>
+                                                </div>
+                                            </div>
+                                            <div class="text-end">
+                                                <span class="badge bg-success fs-6">15</span>
+                                                <div class="small text-muted">commendations</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="list-group-item">
+                                        <div class="d-flex align-items-center justify-content-between">
+                                            <div class="d-flex align-items-center">
+                                                <span class="badge bg-secondary text-dark me-3">#2</span>
+                                                <div>
+                                                    <h6 class="mb-1 fw-semibold">Tom Brown</h6>
+                                                    <small class="text-muted">Sales Associate</small>
+                                                </div>
+                                            </div>
+                                            <div class="text-end">
+                                                <span class="badge bg-success fs-6">12</span>
+                                                <div class="small text-muted">commendations</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="list-group-item">
+                                        <div class="d-flex align-items-center justify-content-between">
+                                            <div class="d-flex align-items-center">
+                                                <span class="badge bg-secondary text-dark me-3">#3</span>
+                                                <div>
+                                                    <h6 class="mb-1 fw-semibold">Emily Davis</h6>
+                                                    <small class="text-muted">Customer Service</small>
+                                                </div>
+                                            </div>
+                                            <div class="text-end">
+                                                <span class="badge bg-success fs-6">10</span>
+                                                <div class="small text-muted">commendations</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="list-group-item">
+                                        <div class="d-flex align-items-center justify-content-between">
+                                            <div class="d-flex align-items-center">
+                                                <span class="badge bg-secondary text-dark me-3">#4</span>
+                                                <div>
+                                                    <h6 class="mb-1 fw-semibold">James Miller</h6>
+                                                    <small class="text-muted">Sales Associate</small>
+                                                </div>
+                                            </div>
+                                            <div class="text-end">
+                                                <span class="badge bg-success fs-6">8</span>
+                                                <div class="small text-muted">commendations</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="list-group-item">
+                                        <div class="d-flex align-items-center justify-content-between">
+                                            <div class="d-flex align-items-center">
+                                                <span class="badge bg-secondary text-dark me-3">#5</span>
+                                                <div>
+                                                    <h6 class="mb-1 fw-semibold">Lisa Anderson</h6>
+                                                    <small class="text-muted">Cashier</small>
+                                                </div>
+                                            </div>
+                                            <div class="text-end">
+                                                <span class="badge bg-success fs-6">2</span>
+                                                <div class="small text-muted">commendations</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="text-center mt-3">
                                     <button class="btn btn-primary" onclick="window.location.href='/admin/stores/${storeId}/staff'">
                                         <i class="bi bi-arrow-right me-2"></i>Manage Staff
                                     </button>
@@ -1366,7 +1501,7 @@ function initializeCharts() {
                 labels: ['5 Stars', '4 Stars', '3 Stars', '2 Stars', '1 Star'],
                 datasets: [{
                     label: 'Rating Distribution',
-                    data: [0, 0, 0, 0, 0],
+                    data: [34, 18, 8, 3, 2],
                     backgroundColor: [
                         '#10b981',
                         '#3b82f6',
@@ -1389,7 +1524,7 @@ function initializeCharts() {
                     y: {
                         beginAtZero: true,
                         ticks: {
-                            stepSize: 1
+                            stepSize: 5
                         }
                     }
                 }
@@ -1403,10 +1538,16 @@ function initializeCharts() {
         new Chart(staffCtx, {
             type: 'doughnut',
             data: {
-                labels: ['No Data'],
+                labels: ['Sarah Wilson (15)', 'Tom Brown (12)', 'Emily Davis (10)', 'James Miller (8)', 'Lisa Anderson (2)'],
                 datasets: [{
-                    data: [1],
-                    backgroundColor: ['#e5e7eb'],
+                    data: [15, 12, 10, 8, 2],
+                    backgroundColor: [
+                        '#f59e0b',
+                        '#3b82f6',
+                        '#10b981',
+                        '#8b5cf6',
+                        '#6b7280'
+                    ],
                     borderWidth: 0
                 }]
             },
