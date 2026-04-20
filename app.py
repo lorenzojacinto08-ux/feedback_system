@@ -1379,12 +1379,18 @@ def create_app() -> Flask:
             staff_members = cursor.fetchall()
             
             # Format staff data
+            total_commendations = sum(s["commendations"] for s in staff_members) if staff_members else 0
+            max_commendations = max((s["commendations"] for s in staff_members), default=0)
             formatted_staff = []
             for staff in staff_members:
                 formatted_staff.append({
                     "id": staff["id"],
                     "name": f"{staff['first_name']} {staff['last_name']}",
+                    "first_name": staff["first_name"],
+                    "last_name": staff["last_name"],
                     "position": staff["position"] or staff["role"].title(),
+                    "role": staff["role"],
+                    "status": staff["status"],
                     "commendations": staff["commendations"],
                     "store_id": store_id
                 })
