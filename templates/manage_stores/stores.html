@@ -1210,51 +1210,64 @@ window.showStoreDetails = function(storeId) {
         return;
     }
     
-    // Generate detailed store view HTML with vertical two-part layout
+    // Generate detailed store view HTML with tabs on right side top
     const storeDetailsHtml = `
         <div class="container-fluid p-0 h-100">
             <div class="row g-0 h-100">
-                <!-- Left Side: Store Header and Vertical Tabs -->
+                <!-- Left Side: Store Information Only -->
                 <div class="col-md-4 border-end">
-                    <!-- Store Header -->
-                    <div class="p-4 bg-light border-bottom">
-                        <h3 class="mb-2 fw-bold">${store.store_name}</h3>
-                        <div class="d-flex gap-2 mb-2">
-                            <span class="badge bg-${store.status === 'active' ? 'success' : store.status === 'inactive' ? 'secondary' : 'warning'} text-dark">
-                                ${store.status.charAt(0).toUpperCase() + store.status.slice(1)}
-                            </span>
-                            ${store.store_type ? '<span class="badge bg-light text-dark">' + store.store_type.charAt(0).toUpperCase() + store.store_type.slice(1) + '</span>' : ''}
+                    <div class="p-4 h-100 d-flex flex-column">
+                        <!-- Store Header -->
+                        <div class="mb-4">
+                            <h3 class="mb-2 fw-bold">${store.store_name}</h3>
+                            <div class="d-flex gap-2 mb-2">
+                                <span class="badge bg-${store.status === 'active' ? 'success' : store.status === 'inactive' ? 'secondary' : 'warning'} text-dark">
+                                    ${store.status.charAt(0).toUpperCase() + store.status.slice(1)}
+                                </span>
+                                ${store.store_type ? '<span class="badge bg-light text-dark">' + store.store_type.charAt(0).toUpperCase() + store.store_type.slice(1) + '</span>' : ''}
+                            </div>
+                            <p class="text-muted mb-3 small">
+                                <i class="bi bi-geo-alt me-1"></i>${store.address || 'No address provided'}
+                                ${store.city ? ', ' + store.city : ''}
+                            </p>
                         </div>
-                        <p class="text-muted mb-3 small">
-                            <i class="bi bi-geo-alt me-1"></i>${store.address || 'No address provided'}
-                            ${store.city ? ', ' + store.city : ''}
-                        </p>
-                        <div class="d-flex gap-2">
-                            <button class="btn btn-outline-secondary btn-sm flex-fill" onclick="generateQRCode(${storeId})">
-                                <i class="bi bi-qr-code me-1"></i>QR Code
-                            </button>
-                            <button class="btn btn-outline-secondary btn-sm flex-fill" onclick="editStore(${storeId})">
-                                <i class="bi bi-pencil me-1"></i>Edit Store
-                            </button>
-                        </div>
-                    </div>
 
-                    <!-- Vertical Tab Navigation -->
-                    <div class="nav flex-column nav-pills p-3" id="storeTabs" role="tablist">
-                        <button class="nav-link active" id="feedback-tab" data-bs-toggle="tab" data-bs-target="#feedback" type="button" role="tab">
-                            <i class="bi bi-chat-left-text me-2"></i>Feedback
-                        </button>
-                        <button class="nav-link" id="analytics-tab" data-bs-toggle="tab" data-bs-target="#analytics" type="button" role="tab">
-                            <i class="bi bi-speedometer2 me-2"></i>Analytics
-                        </button>
-                        <button class="nav-link" id="staff-tab" data-bs-toggle="tab" data-bs-target="#staff" type="button" role="tab">
-                            <i class="bi bi-people me-2"></i>Staff
-                        </button>
+                        <!-- Action Buttons -->
+                        <div class="mt-auto">
+                            <div class="d-flex flex-column gap-2">
+                                <button class="btn btn-outline-secondary btn-sm w-100" onclick="generateQRCode(${storeId})">
+                                    <i class="bi bi-qr-code me-2"></i>QR Code
+                                </button>
+                                <button class="btn btn-outline-secondary btn-sm w-100" onclick="editStore(${storeId})">
+                                    <i class="bi bi-pencil me-2"></i>Edit Store
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
-                <!-- Right Side: Tab Content -->
+                <!-- Right Side: Tabs on Top and Content Below -->
                 <div class="col-md-8">
+                    <!-- Tab Navigation -->
+                    <ul class="nav nav-tabs border-bottom" id="storeTabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" id="feedback-tab" data-bs-toggle="tab" data-bs-target="#feedback" type="button" role="tab">
+                                <i class="bi bi-chat-left-text me-2"></i>Feedback
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="analytics-tab" data-bs-toggle="tab" data-bs-target="#analytics" type="button" role="tab">
+                                <i class="bi bi-speedometer2 me-2"></i>Analytics
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="staff-tab" data-bs-toggle="tab" data-bs-target="#staff" type="button" role="tab">
+                                <i class="bi bi-people me-2"></i>Staff
+                            </button>
+                        </li>
+                    </ul>
+
+                    <!-- Tab Content -->
                     <div class="tab-content" id="storeTabContent">
                         <!-- Feedback Tab -->
                         <div class="tab-pane fade show active" id="feedback" role="tabpanel">
