@@ -426,7 +426,7 @@ PURPOSE: "Store Management" page. Allows adding/editing stores, viewing
     <div class="row g-3 mb-3">
       {% for store in stores %}
         <div class="col-md-6 col-lg-4">
-          <div class="card store-card h-100" onclick="showStoreDetails({{ store.id }})" style="cursor: pointer;">
+          <div class="card store-card h-100">
             <div class="card-body p-3">
               <!-- Store Header -->
               <div class="d-flex align-items-start justify-content-between mb-3">
@@ -441,7 +441,7 @@ PURPOSE: "Store Management" page. Allows adding/editing stores, viewing
                     {% endif %}
                   </p>
                 </div>
-                <div class="form-check" onclick="event.stopPropagation()">
+                <div class="form-check">
                   <input class="form-check-input" type="checkbox" value="{{ store.id }}" id="storeSelect{{ store.id }}">
                   <label class="form-check-label" for="storeSelect{{ store.id }}"></label>
                 </div>
@@ -494,9 +494,9 @@ PURPOSE: "Store Management" page. Allows adding/editing stores, viewing
 
               <!-- Action Buttons -->
               <div class="d-flex gap-2">
-                <a href="{{ url_for('store_details', store_id=store.id) }}" class="btn btn-sm btn-primary flex-fill">
+                <button type="button" class="btn btn-sm btn-primary flex-fill" onclick="showStoreDetails({{ store.id }})">
                   <i class="bi bi-speedometer2 me-1"></i>Analytics
-                </a>
+                </button>
                 <div class="btn-group" role="group">
                   <button type="button" class="btn btn-sm btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
                     <i class="bi bi-gear"></i>
@@ -1210,106 +1210,129 @@ window.showStoreDetails = function(storeId) {
         return;
     }
     
-    // Generate detailed store view HTML
+    // Generate detailed store view HTML with two partitions and tabs
     const storeDetailsHtml = `
-        <div class="container-fluid p-4">
-            <!-- Store Header -->
-            <div class="row mb-4">
-                <div class="col-12">
-                    <div class="d-flex align-items-center justify-content-between">
-                        <div>
-                            <h3 class="mb-1 fw-bold">${store.store_name}</h3>
-                            <p class="text-muted mb-0">
-                                <i class="bi bi-geo-alt me-1"></i>${store.address || 'No address provided'}
-                                ${store.city ? ', ' + store.city : ''}
-                            </p>
+        <div class="container-fluid p-0">
+            <!-- First Partition: Store Header and Actions -->
+            <div class="border-bottom p-4 bg-light">
+                <div class="row">
+                    <div class="col-md-8">
+                        <div class="d-flex align-items-center">
+                            <h3 class="mb-0 fw-bold me-3">${store.store_name}</h3>
+                            <div class="d-flex gap-2">
+                                <span class="badge bg-${store.status === 'active' ? 'success' : store.status === 'inactive' ? 'secondary' : 'warning'} text-dark">
+                                    ${store.status.charAt(0).toUpperCase() + store.status.slice(1)}
+                                </span>
+                                ${store.store_type ? '<span class="badge bg-light text-dark">' + store.store_type.charAt(0).toUpperCase() + store.store_type.slice(1) + '</span>' : ''}
+                            </div>
                         </div>
-                        <div class="d-flex gap-2">
-                            <span class="badge bg-${store.status === 'active' ? 'success' : store.status === 'inactive' ? 'secondary' : 'warning'} text-dark fs-6">
-                                ${store.status.charAt(0).toUpperCase() + store.status.slice(1)}
-                            </span>
-                            ${store.store_type ? '<span class="badge bg-light text-dark fs-6">' + store.store_type.charAt(0).toUpperCase() + store.store_type.slice(1) + '</span>' : ''}
+                        <p class="text-muted mb-0 mt-2">
+                            <i class="bi bi-geo-alt me-1"></i>${store.address || 'No address provided'}
+                            ${store.city ? ', ' + store.city : ''}
+                        </p>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="d-flex gap-2 justify-content-end">
+                            <button class="btn btn-outline-secondary btn-sm" onclick="generateQRCode(${storeId})">
+                                <i class="bi bi-qr-code me-1"></i>QR Code
+                            </button>
+                            <button class="btn btn-outline-secondary btn-sm" onclick="editStore(${storeId})">
+                                <i class="bi bi-pencil me-1"></i>Edit Store
+                            </button>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- Quick Actions -->
-            <div class="row mb-4">
-                <div class="col-12">
-                    <div class="card border-0 shadow-sm">
-                        <div class="card-body p-3">
-                            <div class="d-flex gap-2 flex-wrap">
-                                <button class="btn btn-primary btn-sm" onclick="window.location.href='/admin/stores/${storeId}/details'">
-                                    <i class="bi bi-speedometer2 me-1"></i>Full Analytics
-                                </button>
-                                <button class="btn btn-outline-primary btn-sm" onclick="window.location.href='/admin/stores/${storeId}/feedback'">
-                                    <i class="bi bi-chat-left-text me-1"></i>View Feedback
-                                </button>
-                                <button class="btn btn-outline-primary btn-sm" onclick="window.location.href='/admin/stores/${storeId}/staff'">
-                                    <i class="bi bi-people me-1"></i>Manage Staff
-                                </button>
-                                <button class="btn btn-outline-secondary btn-sm" onclick="generateQRCode(${storeId})">
-                                    <i class="bi bi-qr-code me-1"></i>QR Code
-                                </button>
-                                <button class="btn btn-outline-secondary btn-sm" onclick="editStore(${storeId})">
-                                    <i class="bi bi-pencil me-1"></i>Edit Store
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
+            <!-- Second Partition: Tabs Content -->
+            <div class="p-0">
+                <!-- Tab Navigation -->
+                <ul class="nav nav-tabs border-bottom-0" id="storeTabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="feedback-tab" data-bs-toggle="tab" data-bs-target="#feedback" type="button" role="tab">
+                            <i class="bi bi-chat-left-text me-2"></i>Feedback
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="analytics-tab" data-bs-toggle="tab" data-bs-target="#analytics" type="button" role="tab">
+                            <i class="bi bi-speedometer2 me-2"></i>Analytics
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="staff-tab" data-bs-toggle="tab" data-bs-target="#staff" type="button" role="tab">
+                            <i class="bi bi-people me-2"></i>Staff
+                        </button>
+                    </li>
+                </ul>
 
-            <!-- Analytics Overview -->
-            <div class="row g-4 mb-4">
-                <div class="col-md-6">
-                    <div class="card border-0 shadow-sm">
-                        <div class="card-body p-3">
-                            <h6 class="card-title mb-3">5-Star Rating Analytics</h6>
-                            <div class="row text-center mb-3">
-                                <div class="col-4">
-                                    <div class="fw-bold text-primary">--</div>
-                                    <div class="small text-muted">5-Star Rate</div>
-                                </div>
-                                <div class="col-4">
-                                    <div class="fw-bold text-success">--</div>
-                                    <div class="small text-muted">4+ Star Rate</div>
-                                </div>
-                                <div class="col-4">
-                                    <div class="fw-bold text-info">--</div>
-                                    <div class="small text-muted">Quality Score</div>
-                                </div>
+                <!-- Tab Content -->
+                <div class="tab-content" id="storeTabContent">
+                    <!-- Feedback Tab -->
+                    <div class="tab-pane fade show active" id="feedback" role="tabpanel">
+                        <div class="p-4">
+                            <h5 class="mb-4">Recent Feedback</h5>
+                            <div class="text-center py-5 text-muted">
+                                <i class="bi bi-inbox fs-1 mb-3"></i>
+                                <p class="mb-3">No feedback data available</p>
+                                <button class="btn btn-primary" onclick="window.location.href='/admin/stores/${storeId}/feedback'">
+                                    <i class="bi bi-arrow-right me-2"></i>View All Feedback
+                                </button>
                             </div>
-                            <canvas id="ratingChart" width="300" height="150"></canvas>
                         </div>
                     </div>
-                </div>
-                <div class="col-md-6">
-                    <div class="card border-0 shadow-sm">
-                        <div class="card-body p-3">
-                            <h6 class="card-title mb-3">Staff Commendations</h6>
-                            <div class="text-center mb-3">
-                                <div class="fw-bold text-warning fs-4">--</div>
-                                <div class="small text-muted">Total Commendations</div>
-                            </div>
-                            <canvas id="staffChart" width="300" height="150"></canvas>
-                        </div>
-                    </div>
-                </div>
-            </div>
 
-            <!-- Recent Feedback -->
-            <div class="row">
-                <div class="col-12">
-                    <div class="card border-0 shadow-sm">
-                        <div class="card-body p-3">
-                            <h6 class="card-title mb-3">Recent Feedback</h6>
-                            <div class="text-center py-4 text-muted">
-                                <i class="bi bi-inbox fs-1 mb-2"></i>
-                                <p>No feedback data available</p>
-                                <button class="btn btn-primary btn-sm" onclick="window.location.href='/admin/stores/${storeId}/feedback'">
-                                    View All Feedback
+                    <!-- Analytics Tab -->
+                    <div class="tab-pane fade" id="analytics" role="tabpanel">
+                        <div class="p-4">
+                            <h5 class="mb-4">Store Analytics</h5>
+                            <div class="row g-4">
+                                <div class="col-md-6">
+                                    <div class="card border-0 shadow-sm">
+                                        <div class="card-body p-3">
+                                            <h6 class="card-title mb-3">5-Star Rating Analytics</h6>
+                                            <div class="row text-center mb-3">
+                                                <div class="col-4">
+                                                    <div class="fw-bold text-primary">--</div>
+                                                    <div class="small text-muted">5-Star Rate</div>
+                                                </div>
+                                                <div class="col-4">
+                                                    <div class="fw-bold text-success">--</div>
+                                                    <div class="small text-muted">4+ Star Rate</div>
+                                                </div>
+                                                <div class="col-4">
+                                                    <div class="fw-bold text-info">--</div>
+                                                    <div class="small text-muted">Quality Score</div>
+                                                </div>
+                                            </div>
+                                            <canvas id="ratingChart" width="300" height="150"></canvas>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="card border-0 shadow-sm">
+                                        <div class="card-body p-3">
+                                            <h6 class="card-title mb-3">Staff Commendations</h6>
+                                            <div class="text-center mb-3">
+                                                <div class="fw-bold text-warning fs-4">--</div>
+                                                <div class="small text-muted">Total Commendations</div>
+                                            </div>
+                                            <canvas id="staffChart" width="300" height="150"></canvas>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Staff Tab -->
+                    <div class="tab-pane fade" id="staff" role="tabpanel">
+                        <div class="p-4">
+                            <h5 class="mb-4">Staff Rankings</h5>
+                            <div class="text-center py-5 text-muted">
+                                <i class="bi bi-people fs-1 mb-3"></i>
+                                <p class="mb-3">No staff data available</p>
+                                <button class="btn btn-primary" onclick="window.location.href='/admin/stores/${storeId}/staff'">
+                                    <i class="bi bi-arrow-right me-2"></i>Manage Staff
                                 </button>
                             </div>
                         </div>
@@ -1324,7 +1347,7 @@ window.showStoreDetails = function(storeId) {
     const modal = new bootstrap.Modal(document.getElementById('storeDetailsModal'));
     modal.show();
     
-    // Initialize charts after modal is shown
+    // Initialize charts after modal is shown and analytics tab is clicked
     setTimeout(() => {
         initializeCharts();
     }, 500);
