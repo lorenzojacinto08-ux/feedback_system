@@ -426,7 +426,7 @@ PURPOSE: "Store Management" page. Allows adding/editing stores, viewing
     <div class="row g-3 mb-3">
       {% for store in stores %}
         <div class="col-md-6 col-lg-4">
-          <div class="card store-card h-100">
+          <div class="card store-card h-100" onclick="showStoreDetails({{ store.id }})" style="cursor: pointer;">
             <div class="card-body p-3">
               <!-- Store Header -->
               <div class="d-flex align-items-start justify-content-between mb-3">
@@ -441,7 +441,7 @@ PURPOSE: "Store Management" page. Allows adding/editing stores, viewing
                     {% endif %}
                   </p>
                 </div>
-                <div class="form-check">
+                <div class="form-check" onclick="event.stopPropagation();">
                   <input class="form-check-input" type="checkbox" value="{{ store.id }}" id="storeSelect{{ store.id }}">
                   <label class="form-check-label" for="storeSelect{{ store.id }}"></label>
                 </div>
@@ -465,13 +465,13 @@ PURPOSE: "Store Management" page. Allows adding/editing stores, viewing
                 <div class="col-6">
                   <div class="text-center p-2 bg-light rounded">
                     <div class="small text-muted">Feedback</div>
-                    <div class="fw-bold text-primary">5</div>
+                    <div class="fw-bold text-primary">{{ store.feedback_count or 0 }}</div>
                   </div>
                 </div>
                 <div class="col-6">
                   <div class="text-center p-2 bg-light rounded">
                     <div class="small text-muted">Staff</div>
-                    <div class="fw-bold text-info">5</div>
+                    <div class="fw-bold text-info">{{ store.staff_count or 0 }}</div>
                   </div>
                 </div>
               </div>
@@ -493,10 +493,10 @@ PURPOSE: "Store Management" page. Allows adding/editing stores, viewing
               {% endif %}
 
               <!-- Action Buttons -->
-              <div class="d-flex gap-2">
-                <button type="button" class="btn btn-sm btn-primary flex-fill" onclick="showStoreDetails({{ store.id }})">
-                  <i class="bi bi-speedometer2 me-1"></i>View Details
-                </button>
+              <div class="d-flex gap-2" onclick="event.stopPropagation();">
+                <a href="{{ url_for('store_feedback', store_id=store.id) }}" class="btn btn-sm btn-primary flex-fill">
+                  <i class="bi bi-chat-left-text me-1"></i>Feedback
+                </a>
                 <div class="btn-group" role="group">
                   <button type="button" class="btn btn-sm btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
                     <i class="bi bi-gear"></i>
@@ -1268,104 +1268,27 @@ window.showStoreDetails = function(storeId) {
     fetchStoreData(storeId);
 };
 
-// Function to fetch store data (using mock data for now)
+// Function to fetch store data from real API endpoints
 async function fetchStoreData(storeId) {
     try {
-        // Simulate API delay
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        // Fetch all data in parallel
+        const [feedbackResponse, analyticsResponse, staffResponse] = await Promise.all([
+            fetch(`/api/stores/${storeId}/feedback`),
+            fetch(`/api/stores/${storeId}/analytics`),
+            fetch(`/api/stores/${storeId}/staff`)
+        ]);
         
-        // Mock feedback data
-        const feedbackData = [
-            {
-                id: 12345,
-                customer_name: "John Doe",
-                comment: "Great service and friendly staff!",
-                rating: 5.0,
-                status: "resolved",
-                store_id: storeId
-            },
-            {
-                id: 12346,
-                customer_name: "Jane Smith",
-                comment: "Good experience overall",
-                rating: 4.0,
-                status: "pending",
-                store_id: storeId
-            },
-            {
-                id: 12347,
-                customer_name: "Mike Johnson",
-                comment: "Average service, could be better",
-                rating: 3.0,
-                status: "resolved",
-                store_id: storeId
-            },
-            {
-                id: 12348,
-                customer_name: "Sarah Davis",
-                comment: "Excellent customer service",
-                rating: 5.0,
-                status: "resolved",
-                store_id: storeId
-            },
-            {
-                id: 12349,
-                customer_name: "Tom Wilson",
-                comment: "Quick and efficient service",
-                rating: 4.5,
-                status: "resolved",
-                store_id: storeId
-            }
-        ];
+        // Check if all responses are ok
+        if (!feedbackResponse.ok || !analyticsResponse.ok || !staffResponse.ok) {
+            throw new Error('One or more API requests failed');
+        }
         
-        // Mock analytics data
-        const analyticsData = {
-            rating_metrics: {
-                five_star_rate: 60,
-                four_plus_star_rate: 85,
-                quality_score: 4.2,
-                distribution: [12, 8, 3, 1, 1]
-            },
-            staff_metrics: {
-                total_commendations: 1
-            }
-        };
+        // Parse JSON responses
+        const feedbackData = await feedbackResponse.json();
+        const analyticsData = await analyticsResponse.json();
+        const staffData = await staffResponse.json();
         
-        // Mock staff data
-        const staffData = [
-            {
-                name: "Sarah Wilson",
-                position: "Store Manager",
-                commendations: 1,
-                store_id: storeId
-            },
-            {
-                name: "Tom Brown",
-                position: "Sales Associate",
-                commendations: 0,
-                store_id: storeId
-            },
-            {
-                name: "Emily Davis",
-                position: "Customer Service",
-                commendations: 0,
-                store_id: storeId
-            },
-            {
-                name: "James Miller",
-                position: "Sales Associate",
-                commendations: 0,
-                store_id: storeId
-            },
-            {
-                name: "Lisa Anderson",
-                position: "Cashier",
-                commendations: 0,
-                store_id: storeId
-            }
-        ];
-        
-        // Update modal with mock data
+        // Update modal with real data
         updateStoreModal(storeId, feedbackData, analyticsData, staffData);
         
     } catch (error) {
@@ -1401,11 +1324,35 @@ function updateStoreModal(storeId, feedbackData, analyticsData, staffData) {
                             </p>
                         </div>
 
+                        <!-- Store Details Section -->
+                        <div class="mb-4">
+                            <h6 class="text-muted mb-2 small fw-bold">STORE DETAILS</h6>
+                            <div class="small text-muted">
+                                <div class="mb-1"><strong>Store ID:</strong> #${store.id}</div>
+                                ${store.contact_number ? `<div class="mb-1"><i class="bi bi-telephone me-1"></i>${store.contact_number}</div>` : ''}
+                                ${store.email ? `<div class="mb-1"><i class="bi bi-envelope me-1"></i>${store.email}</div>` : ''}
+                                <div class="mb-1"><i class="bi bi-people me-1"></i>${staffData.length || 0} Staff Members</div>
+                                <div class="mb-1"><i class="bi bi-chat-left-text me-1"></i>${feedbackData.length || 0} Feedback Entries</div>
+                            </div>
+                        </div>
+
+                        <!-- QR Code Section -->
+                        <div class="mb-4 text-center">
+                            <h6 class="text-muted mb-2 small fw-bold">STORE QR CODE</h6>
+                            <div class="p-3 bg-light rounded border">
+                                <img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(window.location.origin + '/feedback/' + store.id)}" 
+                                     alt="Store QR Code" 
+                                     class="img-fluid" 
+                                     style="max-width: 120px;">
+                                <div class="small text-muted mt-2">Scan to give feedback</div>
+                            </div>
+                        </div>
+
                         <!-- Action Buttons -->
                         <div class="mt-auto">
                             <div class="d-flex flex-column gap-2">
-                                <button class="btn btn-outline-secondary btn-sm w-100" onclick="generateQRCode(${storeId})">
-                                    <i class="bi bi-qr-code me-2"></i>QR Code
+                                <button class="btn btn-outline-secondary btn-sm w-100" onclick="downloadQRCode(${storeId})">
+                                    <i class="bi bi-download me-2"></i>Download QR
                                 </button>
                                 <button class="btn btn-outline-secondary btn-sm w-100" onclick="editStore(${storeId})">
                                     <i class="bi bi-pencil me-2"></i>Edit Store

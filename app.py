@@ -1205,13 +1205,172 @@ def create_app() -> Flask:
             public_url = get_store_public_url(store_id=int(selected_store["id"]))
             qr_data_uri = generate_qr_data_uri(public_url)
 
+        # Enhance stores with real feedback and staff counts
+        stores_with_counts = []
+        for store in stores:
+            store_id = store["id"]
+            feedback_count = get_feedback_count_for_store(store_id)
+            staff_count = get_staff_count_for_store(store_id)
+            store_with_counts = dict(store)
+            store_with_counts["feedback_count"] = feedback_count
+            store_with_counts["staff_count"] = staff_count
+            stores_with_counts.append(store_with_counts)
+
         return render_template(
             "manage_stores/stores.html",
-            stores=stores,
+            stores=stores_with_counts,
             selected_store=selected_store,
             public_url=public_url,
             qr_data_uri=qr_data_uri,
         )
+
+    def get_feedback_count_for_store(store_id: int) -> int:
+        """Get the total number of feedback responses for a store."""
+        conn = get_db_connection()
+        try:
+            cursor = conn.cursor()
+            cursor.execute(
+                "SELECT COUNT(*) FROM responses WHERE store_id = %s",
+                (store_id,)
+            )
+            count = cursor.fetchone()[0]
+            return int(count) if count else 0
+        finally:
+            conn.close()
+
+    def get_staff_count_for_store(store_id: int) -> int:
+        """Get the total number of staff members for a store."""
+        conn = get_db_connection()
+        try:
+            cursor = conn.cursor()
+            cursor.execute(
+                "SELECT COUNT(*) FROM staff WHERE store_id = %s",
+                (store_id,)
+            )
+            count = cursor.fetchone()[0]
+            return int(count) if count else 0
+        finally:
+            conn.close()
+
+    # API endpoint for store feedback data
+    @app.route("/api/stores/<int:store_id>/feedback", methods=["GET"])
+    def api_store_feedback(store_id: int):
+        """API endpoint to get feedback data for a store."""
+        store = fetch_store_by_id(store_id=store_id)
+        if not store:
+            return jsonify({"error": "Store not found"}), 404
+        
+        feedback = fetch_responses_for_store(store_id=store_id, limit=5)
+        return jsonify(feedback)
+
+    # API endpoint for store analytics data
+    @app.route("/api/stores/<int:store_id>/analytics", methods=["GET"])
+    def api_store_analytics(store_id: int):
+        """API endpoint to get analytics data for a store."""
+        store = fetch_store_by_id(store_id=store_id)
+        if not store:
+            return jsonify({"error": "Store not found"}), 404
+        
+        # Fetch all feedback for analytics
+        all_feedback = fetch_responses_for_store(store_id=store_id, limit=1000)
+        total_feedback = len(all_feedback)
+        
+        # Calculate ratings
+        all_response_ids = [int(r["id"]) for r in all_feedback]
+        answers_by_response_id = fetch_answers_for_responses(all_response_ids) if all_feedback else {}
+        
+        # Rating distribution
+        rating_distribution = [0, 0, 0, 0, 0]  # 1-5 stars
+        total_ratings = 0
+        for response_id, answers in answers_by_response_id.items():
+            for answer in answers:
+                if answer.get("rating_value"):
+                    rating = int(float(answer["rating_value"]))
+                    if 1 <= rating <= 5:
+                        rating_distribution[rating - 1] += 1
+                        total_ratings += 1
+        
+        # Calculate percentages
+        five_star_count = rating_distribution[4]
+        four_star_count = rating_distribution[3]
+        
+        five_star_rate = round((five_star_count / total_ratings * 100), 1) if total_ratings > 0 else 0
+        four_plus_star_rate = round(((four_star_count + five_star_count) / total_ratings * 100), 1) if total_ratings > 0 else 0
+        
+        # Quality score
+        quality_score = round(
+            (rating_distribution[0] * 1 + rating_distribution[1] * 2 + 
+             rating_distribution[2] * 3 + rating_distribution[3] * 4 + 
+             rating_distribution[4] * 5) / total_ratings, 1
+        ) if total_ratings > 0 else 0
+        
+        # Staff commendations count
+        conn = get_db_connection()
+        try:
+            cursor = conn.cursor()
+            if all_response_ids:
+                placeholders = ','.join(['%s'] * len(all_response_ids))
+                cursor.execute(f"""
+                    SELECT COUNT(*) FROM staff_commendations 
+                    WHERE response_id IN ({placeholders})
+                """, all_response_ids)
+                total_commendations = cursor.fetchone()[0]
+            else:
+                total_commendations = 0
+        finally:
+            conn.close()
+        
+        return jsonify({
+            "rating_metrics": {
+                "five_star_rate": five_star_rate,
+                "four_plus_star_rate": four_plus_star_rate,
+                "quality_score": quality_score,
+                "distribution": rating_distribution
+            },
+            "staff_metrics": {
+                "total_commendations": total_commendations
+            }
+        })
+
+    # API endpoint for store staff data
+    @app.route("/api/stores/<int:store_id>/staff", methods=["GET"])
+    def api_store_staff(store_id: int):
+        """API endpoint to get staff data for a store."""
+        store = fetch_store_by_id(store_id=store_id)
+        if not store:
+            return jsonify({"error": "Store not found"}), 404
+        
+        conn = get_db_connection()
+        try:
+            cursor = conn.cursor(dictionary=True)
+            
+            # Fetch staff with commendation counts
+            cursor.execute("""
+                SELECT s.id, s.first_name, s.last_name, s.position, s.role, s.status,
+                       COUNT(sc.id) as commendations
+                FROM staff s
+                LEFT JOIN staff_commendations sc ON s.id = sc.staff_id
+                WHERE s.store_id = %s
+                GROUP BY s.id
+                ORDER BY commendations DESC, s.last_name, s.first_name
+            """, (store_id,))
+            
+            staff_members = cursor.fetchall()
+            
+            # Format staff data
+            formatted_staff = []
+            for staff in staff_members:
+                formatted_staff.append({
+                    "id": staff["id"],
+                    "name": f"{staff['first_name']} {staff['last_name']}",
+                    "position": staff["position"] or staff["role"].title(),
+                    "commendations": staff["commendations"],
+                    "store_id": store_id
+                })
+            
+            return jsonify(formatted_staff)
+        finally:
+            conn.close()
 
     # -------------------------
     # PUBLIC SURVEY
