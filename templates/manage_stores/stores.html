@@ -1226,7 +1226,7 @@ function updateStoreModal(storeId, feedbackData, analyticsData, staffData) {
                         <!-- QR Code Section -->
                         <div class="mb-4 text-center">
                             <h6 class="text-muted mb-2 small fw-bold">STORE QR CODE</h6>
-                            <img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(window.location.origin + '/feedback/' + store.id)}" 
+                            <img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(window.location.origin + '/s/' + store.id)}" 
                                  alt="Store QR Code" 
                                  class="img-fluid" 
                                  style="max-width: 120px;">

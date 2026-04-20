@@ -564,7 +564,7 @@ PURPOSE: "Feedback Management" page. Displays all customer responses/submissions
       <!-- QR Code -->
       <div class="col-lg-3 text-center">
         <div class="d-flex align-items-center justify-content-center gap-3">
-          <img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data={{ request.url_root }}feedback/{{ store.id }}" 
+          <img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data={{ request.url_root }}s/{{ store.id }}" 
                alt="QR Code" class="rounded" style="width:55px;height:55px;">
           <div>
             <div class="text-muted small">Scan to give feedback</div>
@@ -1496,7 +1496,7 @@ PURPOSE: "Feedback Management" page. Displays all customer responses/submissions
 
   // Function to download QR code
   function downloadQRCode(storeId, storeName) {
-    const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${window.location.origin}/feedback/${storeId}`;
+    const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${window.location.origin}/s/${storeId}`;
     
     // Create a temporary link to download the QR code
     const link = document.createElement('a');
