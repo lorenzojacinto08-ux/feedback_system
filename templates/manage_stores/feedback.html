@@ -511,7 +511,7 @@ PURPOSE: "Feedback Management" page. Displays all customer responses/submissions
           <div>
             <h2 class="mb-2 fw-bold">{{ store.store_name }}</h2>
             <div class="d-flex gap-2 mb-2">
-              <span class="badge bg-{{ store.status == 'active' ? 'success' : store.status == 'inactive' ? 'secondary' : 'warning' }}">
+              <span class="badge bg-{{ 'success' if store.status == 'active' else 'secondary' if store.status == 'inactive' else 'warning' }}">
                 {{ store.status|title }}
               </span>
               {% if store.store_type %}
