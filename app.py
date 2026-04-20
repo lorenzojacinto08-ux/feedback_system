@@ -2255,6 +2255,20 @@ def create_app() -> Flask:
                     commendations_by_response_id[response_id] = []
                 commendations_by_response_id[response_id].append(commendation)
 
+        # Calculate staff count and average rating
+        staff_count = get_staff_count_for_store(store_id)
+        
+        # Calculate average rating from responses
+        avg_ratings = []
+        for response in responses:
+            response_answers = answers_by_response_id.get(response["id"], [])
+            rating_answers = [a for a in response_answers if a.get("question_type") == "rating"]
+            if rating_answers:
+                avg_rating = sum(a.get("rating_value", 0) for a in rating_answers) / len(rating_answers)
+                avg_ratings.append(avg_rating)
+        
+        average_rating = round(sum(avg_ratings) / len(avg_ratings), 1) if avg_ratings else 0.0
+
         return render_template(
             "manage_stores/feedback.html",
             store=store,
@@ -2262,6 +2276,8 @@ def create_app() -> Flask:
             answers_by_response_id=answers_by_response_id,
             commendations_by_response_id=commendations_by_response_id,
             current_status=status,
+            staff_count=staff_count,
+            average_rating=average_rating,
         )
 
     @app.route("/admin/responses/<int:response_id>/status", methods=["POST"])

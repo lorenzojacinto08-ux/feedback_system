@@ -501,9 +501,92 @@ PURPOSE: "Feedback Management" page. Displays all customer responses/submissions
 {% endblock %} {% block content %}
 
 
-<div class="d-flex justify-content-between align-items-start mb-4">
-  <div style="flex: 1; min-width: 300px">
-    <h2 class="page-title">Store Management - {{ store.store_name }}</h2>
+<!-- Store Dashboard Header -->
+<div class="card border-0 shadow-sm mb-4">
+  <div class="card-body p-4">
+    <div class="row g-4">
+      <!-- Store Info Section -->
+      <div class="col-lg-8">
+        <div class="d-flex align-items-start justify-content-between mb-3">
+          <div>
+            <h2 class="mb-2 fw-bold">{{ store.store_name }}</h2>
+            <div class="d-flex gap-2 mb-2">
+              <span class="badge bg-{{ store.status == 'active' ? 'success' : store.status == 'inactive' ? 'secondary' : 'warning' }}">
+                {{ store.status|title }}
+              </span>
+              {% if store.store_type %}
+              <span class="badge bg-light text-dark">{{ store.store_type|title }}</span>
+              {% endif %}
+            </div>
+          </div>
+          <div class="btn-group">
+            <button class="btn btn-outline-primary btn-sm" onclick="editStore({{ store.id }})">
+              <i class="bi bi-pencil me-1"></i>Edit Store
+            </button>
+            <button class="btn btn-outline-secondary btn-sm" onclick="downloadQRCode({{ store.id }}, '{{ store.store_name }}')">
+              <i class="bi bi-download me-1"></i>Download QR
+            </button>
+          </div>
+        </div>
+        
+        <div class="row g-3">
+          <div class="col-md-6">
+            <p class="mb-1 text-muted small"><i class="bi bi-geo-alt me-1"></i>
+              {{ store.address or 'No address provided' }}{% if store.city %}, {{ store.city }}{% endif %}
+            </p>
+            {% if store.contact_number %}
+            <p class="mb-1 text-muted small"><i class="bi bi-telephone me-1"></i>{{ store.contact_number }}</p>
+            {% endif %}
+            {% if store.email %}
+            <p class="mb-1 text-muted small"><i class="bi bi-envelope me-1"></i>{{ store.email }}</p>
+            {% endif %}
+          </div>
+          
+          <!-- Key Metrics -->
+          <div class="col-md-6">
+            <div class="row g-2">
+              <div class="col-4">
+                <div class="text-center p-2 bg-light rounded">
+                  <div class="fw-bold text-primary">{{ responses|length }}</div>
+                  <div class="small text-muted">Feedback</div>
+                </div>
+              </div>
+              <div class="col-4">
+                <div class="text-center p-2 bg-light rounded">
+                  <div class="fw-bold text-info">{{ staff_count or 0 }}</div>
+                  <div class="small text-muted">Staff</div>
+                </div>
+              </div>
+              <div class="col-4">
+                <div class="text-center p-2 bg-light rounded">
+                  <div class="fw-bold text-success">{{ average_rating or '0.0' }}/5</div>
+                  <div class="small text-muted">Rating</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- QR Code Section -->
+      <div class="col-lg-4">
+        <div class="card bg-light border-0 h-100">
+          <div class="card-body p-3 text-center">
+            <h6 class="mb-3 small fw-bold text-muted">STORE QR CODE</h6>
+            <div class="mb-2">
+              <img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data={{ request.url_root }}feedback/{{ store.id }}" 
+                   alt="Store QR Code" 
+                   class="img-fluid rounded"
+                   style="max-width: 120px;">
+            </div>
+            <p class="small text-muted mb-2">Scan to give feedback</p>
+            <button class="btn btn-primary btn-sm" onclick="downloadQRCode({{ store.id }}, '{{ store.store_name }}')">
+              <i class="bi bi-download me-1"></i>Download QR
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -1262,6 +1345,25 @@ PURPOSE: "Feedback Management" page. Displays all customer responses/submissions
         </div>
       `;
     }
+  }
+
+  // Function to download QR code
+  function downloadQRCode(storeId, storeName) {
+    const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${window.location.origin}/feedback/${storeId}`;
+    
+    // Create a temporary link to download the QR code
+    const link = document.createElement('a');
+    link.href = qrUrl;
+    link.download = `QR_${storeName.replace(/[^a-z0-9]/gi, '_')}.png`;
+    link.target = '_blank';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }
+
+  // Function to edit store
+  function editStore(storeId) {
+    window.location.href = `/admin/stores/${storeId}/edit`;
   }
 
   // Function to load staff data
