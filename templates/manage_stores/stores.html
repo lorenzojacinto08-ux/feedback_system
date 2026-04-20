@@ -1268,22 +1268,104 @@ window.showStoreDetails = function(storeId) {
     fetchStoreData(storeId);
 };
 
-// Function to fetch real store data
+// Function to fetch store data (using mock data for now)
 async function fetchStoreData(storeId) {
     try {
-        // Fetch feedback data
-        const feedbackResponse = await fetch(`/api/stores/${storeId}/feedback`);
-        const feedbackData = await feedbackResponse.json();
+        // Simulate API delay
+        await new Promise(resolve => setTimeout(resolve, 1000));
         
-        // Fetch analytics data
-        const analyticsResponse = await fetch(`/api/stores/${storeId}/analytics`);
-        const analyticsData = await analyticsResponse.json();
+        // Mock feedback data
+        const feedbackData = [
+            {
+                id: 12345,
+                customer_name: "John Doe",
+                comment: "Great service and friendly staff!",
+                rating: 5.0,
+                status: "resolved",
+                store_id: storeId
+            },
+            {
+                id: 12346,
+                customer_name: "Jane Smith",
+                comment: "Good experience overall",
+                rating: 4.0,
+                status: "pending",
+                store_id: storeId
+            },
+            {
+                id: 12347,
+                customer_name: "Mike Johnson",
+                comment: "Average service, could be better",
+                rating: 3.0,
+                status: "resolved",
+                store_id: storeId
+            },
+            {
+                id: 12348,
+                customer_name: "Sarah Davis",
+                comment: "Excellent customer service",
+                rating: 5.0,
+                status: "resolved",
+                store_id: storeId
+            },
+            {
+                id: 12349,
+                customer_name: "Tom Wilson",
+                comment: "Quick and efficient service",
+                rating: 4.5,
+                status: "resolved",
+                store_id: storeId
+            }
+        ];
         
-        // Fetch staff data
-        const staffResponse = await fetch(`/api/stores/${storeId}/staff`);
-        const staffData = await staffResponse.json();
+        // Mock analytics data
+        const analyticsData = {
+            rating_metrics: {
+                five_star_rate: 60,
+                four_plus_star_rate: 85,
+                quality_score: 4.2,
+                distribution: [12, 8, 3, 1, 1]
+            },
+            staff_metrics: {
+                total_commendations: 47
+            }
+        };
         
-        // Update modal with real data
+        // Mock staff data
+        const staffData = [
+            {
+                name: "Sarah Wilson",
+                position: "Store Manager",
+                commendations: 15,
+                store_id: storeId
+            },
+            {
+                name: "Tom Brown",
+                position: "Sales Associate",
+                commendations: 12,
+                store_id: storeId
+            },
+            {
+                name: "Emily Davis",
+                position: "Customer Service",
+                commendations: 10,
+                store_id: storeId
+            },
+            {
+                name: "James Miller",
+                position: "Sales Associate",
+                commendations: 8,
+                store_id: storeId
+            },
+            {
+                name: "Lisa Anderson",
+                position: "Cashier",
+                commendations: 2,
+                store_id: storeId
+            }
+        ];
+        
+        // Update modal with mock data
         updateStoreModal(storeId, feedbackData, analyticsData, staffData);
         
     } catch (error) {
