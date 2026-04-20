@@ -1222,10 +1222,17 @@ PURPOSE: "Feedback Management" page. Displays all customer responses/submissions
   document.addEventListener('DOMContentLoaded', function() {
     // Add event listeners for tab changes
     const analyticsTab = document.getElementById('analytics-tab');
+    const staffTab = document.getElementById('staff-tab');
     
     if (analyticsTab) {
       analyticsTab.addEventListener('shown.bs.tab', function () {
         loadAnalyticsData();
+      });
+    }
+    
+    if (staffTab) {
+      staffTab.addEventListener('shown.bs.tab', function () {
+        loadStaffData();
       });
     }
   });
@@ -1266,6 +1273,78 @@ PURPOSE: "Feedback Management" page. Displays all customer responses/submissions
         </div>
       `;
     }
+  }
+
+  // Function to load staff data
+  async function loadStaffData() {
+    const storeId = {{ store.id }};
+    const staffContent = document.getElementById('staffContent');
+    
+    try {
+      staffContent.innerHTML = `
+        <div class="text-center py-3">
+          <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Loading staff data...</span>
+          </div>
+          <p class="mt-2 text-muted">Loading staff rankings...</p>
+        </div>
+      `;
+      
+      const response = await fetch(`/api/stores/${storeId}/staff`);
+      const staffData = await response.json();
+      
+      staffContent.innerHTML = generateStaffHtml(staffData);
+      
+    } catch (error) {
+      console.error('Error loading staff:', error);
+      staffContent.innerHTML = `
+        <div class="text-center py-5">
+          <div class="text-danger">
+            <i class="bi bi-exclamation-triangle fs-2"></i>
+            <p class="mt-3">Error loading staff data</p>
+          </div>
+        </div>
+      `;
+    }
+  }
+
+  // Helper function to generate staff HTML as ranked list
+  function generateStaffHtml(staffData) {
+    if (!staffData || staffData.length === 0) {
+      return `
+        <div class="text-center py-5">
+          <i class="bi bi-people text-muted fs-2"></i>
+          <p class="text-muted mt-3">No staff members found</p>
+        </div>
+      `;
+    }
+    
+    // Sort by commendations (highest first)
+    const sortedStaff = [...staffData].sort((a, b) => b.commendations - a.commendations);
+    
+    let html = '<div class="list-group">';
+    sortedStaff.forEach((staff, index) => {
+      const rank = index + 1;
+      const rankBg = rank === 1 ? 'bg-warning text-dark' : rank === 2 ? 'bg-secondary text-white' : rank === 3 ? 'bg-warning text-dark' : 'bg-light text-dark';
+      
+      html += `
+        <div class="list-group-item d-flex align-items-center">
+          <div class="me-3">
+            <span class="badge ${rankBg} rounded-circle" style="width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; font-size: 0.9rem;">#${rank}</span>
+          </div>
+          <div class="flex-grow-1">
+            <h6 class="mb-1 fw-bold">${staff.name}</h6>
+            <p class="mb-0 small text-muted">${staff.position || 'Staff'}</p>
+          </div>
+          <div class="text-end">
+            <div class="fw-bold text-primary">${staff.commendations}</div>
+            <div class="small text-muted">Commendations</div>
+          </div>
+        </div>
+      `;
+    });
+    html += '</div>';
+    return html;
   }
 
   // Function to download QR code
