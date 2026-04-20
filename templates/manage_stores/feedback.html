@@ -914,26 +914,26 @@ PURPOSE: "Feedback Management" page. Displays all customer responses/submissions
     const detailContent = document.getElementById('feedback-detail-content');
 
     detailContent.innerHTML = `
-      <div class="detail-header">
+      <div class="detail-header" style="padding:14px 16px;margin-bottom:12px;">
         <div class="d-flex justify-content-between align-items-start">
           <div>
-            <h2 class="h3 mb-3 fw-bold">${feedback.customerName}</h2>
-            <p class="text-muted mb-0 fs-5">${feedback.customerEmail || 'No email provided'}</p>
+            <h5 class="mb-1 fw-bold">${feedback.customerName}</h5>
+            <div class="small text-muted">${feedback.customerEmail || 'No email provided'}</div>
           </div>
-          <div class="d-flex align-items-center gap-3">
+          <div class="d-flex align-items-center gap-2">
             <div class="form-check form-switch">
               <input class="form-check-input" type="checkbox" id="statusToggle" ${feedback.status === 'resolved' ? 'checked' : ''}
                      onchange="toggleFeedbackStatus(${feedback.id}, this.checked)">
-              <label class="form-check-label fw-semibold" for="statusToggle">
+              <label class="form-check-label small fw-semibold" for="statusToggle">
                 ${feedback.status === 'resolved' ? 'Resolved' : 'Unresolved'}
               </label>
             </div>
-            <button type="button" class="btn btn-primary btn-sm" onclick="openReplyModal(${feedback.id})"
+            <button type="button" class="btn btn-primary btn-sm py-1 px-2" onclick="openReplyModal(${feedback.id})"
                     ${!feedback.customerEmail ? 'disabled' : ''}>
               <i class="bi bi-reply me-1"></i>Reply
             </button>
             <form method="POST" action="/admin/responses/${feedback.id}/delete?store_id={{ store.id }}" class="d-inline" onsubmit="return confirm('Are you sure you want to delete this feedback response? This action cannot be undone.');">
-              <button type="submit" class="btn btn-outline-danger btn-sm">
+              <button type="submit" class="btn btn-outline-danger btn-sm py-1 px-2">
                 <i class="bi bi-trash me-1"></i>Delete
               </button>
             </form>
@@ -941,83 +941,79 @@ PURPOSE: "Feedback Management" page. Displays all customer responses/submissions
         </div>
       </div>
 
-      <div class="customer-stats">
-        <div class="stat-card">
-          <div class="stat-value">${feedback.avgRating}/5</div>
+      <div class="customer-stats" style="gap:12px;margin-bottom:12px;">
+        <div class="stat-card" style="padding:10px;">
+          <div class="stat-value" style="font-size:1.25rem;">${feedback.avgRating}/5</div>
           <div class="stat-label">Average Rating</div>
         </div>
       </div>
 
       <div class="feedback-details">
-        <div class="section-card">
-          <h4 class="mb-4 fw-bold">Feedback Details</h4>
+        <div class="section-card" style="padding:14px 16px;margin-bottom:10px;">
+          <h6 class="mb-2 fw-bold">Feedback Details</h6>
           <div class="row">
             <div class="col-md-6">
-              <p class="mb-3 fs-5"><strong>Date & Time:</strong> ${feedback.submittedAt}</p>
-              <p class="mb-3 fs-5"><strong>Establishment:</strong> {{ store.store_name }}</p>
+              <p class="mb-2"><strong>Date & Time:</strong> ${feedback.submittedAt}</p>
+              <p class="mb-2"><strong>Establishment:</strong> {{ store.store_name }}</p>
             </div>
             <div class="col-md-6">
-              <p class="mb-3 fs-5"><strong>Service Type:</strong> --</p>
+              <p class="mb-2"><strong>Service Type:</strong> --</p>
             </div>
           </div>
         </div>
 
-        <div class="section-card">
-          <h4 class="mb-4 fw-bold">Specific Feedback</h4>
+        <div class="section-card" style="padding:14px 16px;margin-bottom:10px;">
+          <h6 class="mb-2 fw-bold">Specific Feedback</h6>
           ${renderFeedbackAnswers(feedback.answers)}
         </div>
 
-        <div class="section-card reply-section">
-          <h4 class="mb-4 fw-bold">Reply to Customer</h4>
+        <div class="section-card reply-section" style="padding:14px 16px;margin-bottom:10px;">
+          <h6 class="mb-2 fw-bold">Reply to Customer</h6>
 
-          <div class="row mb-3">
+          <div class="row mb-2">
             <div class="col-md-6">
-              <label for="emailTemplate" class="form-label fw-semibold">Email Template</label>
-              <select class="form-select" id="emailTemplate">
+              <label for="emailTemplate" class="form-label small fw-semibold mb-1">Email Template</label>
+              <select class="form-select form-select-sm" id="emailTemplate">
                 <option value="standard">Standard (Auto-selected based on rating)</option>
                 <option value="apology">Apology (For negative feedback)</option>
                 <option value="appreciation">Appreciation (For positive feedback)</option>
                 <option value="follow_up">Follow-up (For checking back)</option>
               </select>
-              <div class="form-text">Template will be auto-selected based on customer rating if "Standard" is chosen.</div>
+              <div class="form-text small">Template will be auto-selected based on customer rating if "Standard" is chosen.</div>
             </div>
           </div>
 
-          <div class="row mb-3">
+          <div class="row mb-2">
             <div class="col-md-6">
-              <label for="ccEmails" class="form-label fw-semibold">CC Emails (Optional)</label>
-              <input type="text" class="form-control" id="ccEmails" placeholder="manager@store.com, admin@company.com">
-              <div class="form-text">Separate multiple emails with commas.</div>
+              <label for="ccEmails" class="form-label small fw-semibold mb-1">CC Emails (Optional)</label>
+              <input type="text" class="form-control form-control-sm" id="ccEmails" placeholder="manager@store.com, admin@company.com">
+              <div class="form-text small">Separate multiple emails with commas.</div>
             </div>
             <div class="col-md-6">
-              <label for="bccEmails" class="form-label fw-semibold">BCC Emails (Optional)</label>
-              <input type="text" class="form-control" id="bccEmails" placeholder="admin@company.com">
-              <div class="form-text">Separate multiple emails with commas.</div>
+              <label for="bccEmails" class="form-label small fw-semibold mb-1">BCC Emails (Optional)</label>
+              <input type="text" class="form-control form-control-sm" id="bccEmails" placeholder="admin@company.com">
+              <div class="form-text small">Separate multiple emails with commas.</div>
             </div>
           </div>
 
-          <div class="mb-4">
-            <label for="replyMessage" class="form-label fw-semibold">Your Reply Message</label>
-            <textarea class="form-control form-control-lg" id="replyMessage" rows="6" placeholder="Type your response to the customer feedback here..."></textarea>
+          <div class="mb-2">
+            <label for="replyMessage" class="form-label small fw-semibold mb-1">Your Reply Message</label>
+            <textarea class="form-control" id="replyMessage" rows="4" placeholder="Type your response to the customer feedback here..."></textarea>
           </div>
 
           <div class="d-flex gap-2">
-            <button class="btn btn-primary btn-lg" onclick="sendReply(${feedback.id})">
-              <i class="bi bi-send me-2"></i>Send Reply
+            <button class="btn btn-primary btn-sm" onclick="sendReply(${feedback.id})">
+              <i class="bi bi-send me-1"></i>Send Reply
             </button>
-            <button class="btn btn-outline-secondary btn-lg" onclick="clearReplyForm()">
-              <i class="bi bi-arrow-clockwise me-2"></i>Clear
+            <button class="btn btn-outline-secondary btn-sm" onclick="clearReplyForm()">
+              <i class="bi bi-arrow-clockwise me-1"></i>Clear
             </button>
           </div>
 
-          <div class="alert alert-info mt-3">
-            <i class="bi bi-info-circle me-2"></i>
-            <strong>Auto-Template Selection:</strong> The system will automatically choose the appropriate template based on the customer's rating:
-            <ul class="mb-0 mt-2">
-              <li>Rating 1-2: Apology template</li>
-              <li>Rating 3: Standard template</li>
-              <li>Rating 4-5: Appreciation template</li>
-            </ul>
+          <div class="alert alert-info mt-2 py-2 small">
+            <i class="bi bi-info-circle me-1"></i>
+            <strong>Auto-Template:</strong> Template auto-selected by rating —
+            1-2: Apology, 3: Standard, 4-5: Appreciation
           </div>
         </div>
       </div>
@@ -1029,9 +1025,9 @@ PURPOSE: "Feedback Management" page. Displays all customer responses/submissions
     answers.forEach(answer => {
       if (answer.questionType === 'text') {
         html += `
-          <div class="mb-4">
-            <p class="mb-3 fs-5 fw-semibold">${answer.questionText}</p>
-            <div class="bg-light p-4 rounded-3">
+          <div class="mb-2">
+            <p class="mb-1 fw-semibold">${answer.questionText}</p>
+            <div class="bg-light p-2 rounded-3 small">
               ${answer.answerText}
             </div>
           </div>
@@ -1042,19 +1038,19 @@ PURPOSE: "Feedback Management" page. Displays all customer responses/submissions
           i < Math.round(value) ? '<i class="bi bi-star-fill text-warning"></i>' : '<i class="bi bi-star text-muted"></i>'
         ).join('');
         html += `
-          <div class="mb-4">
-            <p class="mb-3 fs-5 fw-semibold">${answer.questionText}</p>
-            <div class="d-flex align-items-center gap-3">
-              <span class="rating-stars fs-5">${stars}</span>
-              <span class="fw-bold fs-5">${value}/5</span>
+          <div class="mb-2">
+            <p class="mb-1 fw-semibold">${answer.questionText}</p>
+            <div class="d-flex align-items-center gap-2">
+              <span class="rating-stars">${stars}</span>
+              <span class="fw-bold">${value}/5</span>
             </div>
           </div>
         `;
       } else {
         html += `
-          <div class="mb-4">
-            <p class="mb-3 fs-5 fw-semibold">${answer.questionText}</p>
-            <div class="bg-light p-4 rounded-3">
+          <div class="mb-2">
+            <p class="mb-1 fw-semibold">${answer.questionText}</p>
+            <div class="bg-light p-2 rounded-3 small">
               ${answer.answerText || ''}
             </div>
           </div>
