@@ -1444,7 +1444,7 @@ PURPOSE: "Feedback Management" page. Displays all customer responses/submissions
     `;
   }
 
-  // Helper function to generate staff HTML (copied from stores.html)
+  // Helper function to generate staff HTML as ranked list
   function generateStaffHtml(staffData) {
     if (!staffData || staffData.length === 0) {
       return `
@@ -1455,28 +1455,27 @@ PURPOSE: "Feedback Management" page. Displays all customer responses/submissions
       `;
     }
     
-    let html = '<div class="row">';
-    staffData.forEach((staff, index) => {
-      const medal = index === 0 && staff.commendations > 0 ? 'medal' : '';
+    // Sort by commendations (highest first)
+    const sortedStaff = [...staffData].sort((a, b) => b.commendations - a.commendations);
+    
+    let html = '<div class="list-group">';
+    sortedStaff.forEach((staff, index) => {
+      const rank = index + 1;
+      const rankColor = rank === 1 ? 'warning' : rank === 2 ? 'secondary' : rank === 3 ? 'text-warning-50' : 'light';
+      const rankBg = rank === 1 ? 'bg-warning text-dark' : rank === 2 ? 'bg-secondary text-white' : rank === 3 ? 'bg-warning text-dark' : 'bg-light text-dark';
+      
       html += `
-        <div class="col-md-6 col-lg-4 mb-4">
-          <div class="card border-0 shadow-sm h-100">
-            <div class="card-body p-3">
-              <div class="d-flex align-items-center mb-3">
-                <div class="rounded-circle bg-primary bg-opacity-10 p-2 me-3">
-                  <i class="bi bi-person-circle text-primary fs-5"></i>
-                </div>
-                <div>
-                  <h6 class="mb-0 fw-bold">${staff.name}</h6>
-                  <p class="mb-0 small text-muted">${staff.position}</p>
-                </div>
-                ${medal ? '<i class="bi bi-award-fill text-warning ms-auto"></i>' : ''}
-              </div>
-              <div class="text-center">
-                <div class="fw-bold text-primary fs-4">${staff.commendations}</div>
-                <div class="small text-muted">Commendations</div>
-              </div>
-            </div>
+        <div class="list-group-item d-flex align-items-center">
+          <div class="me-3">
+            <span class="badge ${rankBg} rounded-circle" style="width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; font-size: 0.9rem;">#${rank}</span>
+          </div>
+          <div class="flex-grow-1">
+            <h6 class="mb-1 fw-bold">${staff.name}</h6>
+            <p class="mb-0 small text-muted">${staff.position || 'Staff'}</p>
+          </div>
+          <div class="text-end">
+            <div class="fw-bold text-primary">${staff.commendations}</div>
+            <div class="small text-muted">Commendations</div>
           </div>
         </div>
       `;
