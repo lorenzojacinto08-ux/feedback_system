@@ -460,18 +460,18 @@ PURPOSE: "Store Management" page. Allows adding/editing stores, viewing
                 {% endif %}
               </div>
 
-              <!-- Quick Stats -->
+              <!-- Performance Metrics -->
               <div class="row g-2 mb-3">
                 <div class="col-6">
                   <div class="text-center p-2 bg-light rounded">
                     <div class="small text-muted">Feedback</div>
-                    <div class="fw-bold text-primary">--</div>
+                    <div class="fw-bold text-primary">5</div>
                   </div>
                 </div>
                 <div class="col-6">
                   <div class="text-center p-2 bg-light rounded">
                     <div class="small text-muted">Staff</div>
-                    <div class="fw-bold text-info">--</div>
+                    <div class="fw-bold text-info">5</div>
                   </div>
                 </div>
               </div>
@@ -495,7 +495,7 @@ PURPOSE: "Store Management" page. Allows adding/editing stores, viewing
               <!-- Action Buttons -->
               <div class="d-flex gap-2">
                 <button type="button" class="btn btn-sm btn-primary flex-fill" onclick="showStoreDetails({{ store.id }})">
-                  <i class="bi bi-speedometer2 me-1"></i>Analytics
+                  <i class="bi bi-speedometer2 me-1"></i>View Details
                 </button>
                 <div class="btn-group" role="group">
                   <button type="button" class="btn btn-sm btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
@@ -1327,7 +1327,7 @@ async function fetchStoreData(storeId) {
                 distribution: [12, 8, 3, 1, 1]
             },
             staff_metrics: {
-                total_commendations: 47
+                total_commendations: 1
             }
         };
         
@@ -1336,31 +1336,31 @@ async function fetchStoreData(storeId) {
             {
                 name: "Sarah Wilson",
                 position: "Store Manager",
-                commendations: 15,
+                commendations: 1,
                 store_id: storeId
             },
             {
                 name: "Tom Brown",
                 position: "Sales Associate",
-                commendations: 12,
+                commendations: 0,
                 store_id: storeId
             },
             {
                 name: "Emily Davis",
                 position: "Customer Service",
-                commendations: 10,
+                commendations: 0,
                 store_id: storeId
             },
             {
                 name: "James Miller",
                 position: "Sales Associate",
-                commendations: 8,
+                commendations: 0,
                 store_id: storeId
             },
             {
                 name: "Lisa Anderson",
                 position: "Cashier",
-                commendations: 2,
+                commendations: 0,
                 store_id: storeId
             }
         ];
