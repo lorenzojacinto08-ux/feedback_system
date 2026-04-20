@@ -12,14 +12,10 @@ PURPOSE: "Feedback Management" page. Displays all customer responses/submissions
 <style>
   .feedback-container {
     display: flex;
-    height: calc(100vh - 200px);
-    margin: 0 -20px;
-    position: fixed;
-    top: 180px;
-    left: 20px;
-    right: 20px;
-    bottom: 20px;
-    z-index: 100;
+    min-height: 600px;
+    border: 1px solid #e9ecef;
+    border-radius: 8px;
+    overflow: hidden;
   }
 
   .feedback-list-panel {
@@ -27,7 +23,7 @@ PURPOSE: "Feedback Management" page. Displays all customer responses/submissions
     border-right: 1px solid #e9ecef;
     overflow-y: auto;
     background-color: #f8f9fa;
-    height: 100%;
+    max-height: 600px;
     position: relative;
     display: flex;
     flex-direction: column;
@@ -37,7 +33,7 @@ PURPOSE: "Feedback Management" page. Displays all customer responses/submissions
     overflow-y: auto;
     background-color: #fff;
     padding: 24px;
-    height: 100%;
+    max-height: 600px;
     position: relative;
   }
   .feedback-item {
@@ -476,12 +472,7 @@ PURPOSE: "Feedback Management" page. Displays all customer responses/submissions
   @media (max-width: 768px) {
     .feedback-container {
       flex-direction: column;
-      height: calc(100vh - 200px);
-      position: fixed;
-      top: 180px;
-      left: 10px;
-      right: 10px;
-      bottom: 10px;
+      min-height: 600px;
     }
 
     .feedback-list-panel {
@@ -497,7 +488,7 @@ PURPOSE: "Feedback Management" page. Displays all customer responses/submissions
     .feedback-detail-panel {
       padding: 1.3rem;
       flex: 1;
-      height: calc(100% - 300px);
+      min-height: 300px;
       overflow-y: auto;
     }
 
