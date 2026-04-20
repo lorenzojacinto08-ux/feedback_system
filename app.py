@@ -10,6 +10,8 @@ import mysql.connector
 from mysql.connector.connection import MySQLConnection
 import qrcode
 from email_config import EmailConfig
+from collections import defaultdict
+from datetime import datetime, timedelta
 
 
 load_dotenv()
@@ -1296,6 +1298,11 @@ def create_app() -> Flask:
         all_feedback = fetch_responses_for_store(store_id=store_id, limit=1000)
         total_feedback = len(all_feedback)
         
+        # Resolved / unresolved counts
+        resolved_count = sum(1 for f in all_feedback if f.get("status") == "resolved")
+        unresolved_count = total_feedback - resolved_count
+        resolution_rate = round((resolved_count / total_feedback * 100), 1) if total_feedback > 0 else 0
+        
         # Calculate ratings
         all_response_ids = [int(r["id"]) for r in all_feedback]
         answers_by_response_id = fetch_answers_for_responses(all_response_ids) if all_feedback else {}
@@ -1318,6 +1325,9 @@ def create_app() -> Flask:
         five_star_rate = round((five_star_count / total_ratings * 100), 1) if total_ratings > 0 else 0
         four_plus_star_rate = round(((four_star_count + five_star_count) / total_ratings * 100), 1) if total_ratings > 0 else 0
         
+        # Rating distribution percentages
+        rating_pcts = [round(c / total_ratings * 100, 1) if total_ratings > 0 else 0 for c in rating_distribution]
+        
         # Quality score
         quality_score = round(
             (rating_distribution[0] * 1 + rating_distribution[1] * 2 + 
@@ -1325,31 +1335,90 @@ def create_app() -> Flask:
              rating_distribution[4] * 5) / total_ratings, 1
         ) if total_ratings > 0 else 0
         
-        # Staff commendations count
+        # Monthly feedback trend (last 6 months)
+        monthly_trend = defaultdict(int)
+        now = datetime.now()
+        for fb in all_feedback:
+            submitted = fb.get("submitted_at")
+            if submitted:
+                if isinstance(submitted, str):
+                    try:
+                        submitted = datetime.strptime(submitted, "%Y-%m-%d %H:%M:%S")
+                    except (ValueError, TypeError):
+                        continue
+                key = submitted.strftime("%Y-%m")
+                monthly_trend[key] += 1
+        
+        # Build last 6 months labels and values
+        trend_labels = []
+        trend_values = []
+        for i in range(5, -1, -1):
+            d = now - timedelta(days=i * 30)
+            key = d.strftime("%Y-%m")
+            label = d.strftime("%b")
+            trend_labels.append(label)
+            trend_values.append(monthly_trend.get(key, 0))
+        
+        # Staff commendations count + top staff
         conn = get_db_connection()
         try:
-            cursor = conn.cursor()
+            cursor = conn.cursor(dictionary=True)
             if all_response_ids:
                 placeholders = ','.join(['%s'] * len(all_response_ids))
                 cursor.execute(f"""
-                    SELECT COUNT(*) FROM staff_commendations 
+                    SELECT COUNT(*) as cnt FROM staff_commendations 
                     WHERE response_id IN ({placeholders})
                 """, all_response_ids)
-                total_commendations = cursor.fetchone()[0]
+                total_commendations = cursor.fetchone()["cnt"]
+                
+                # Top 5 commended staff
+                cursor.execute(f"""
+                    SELECT s.first_name, s.last_name, s.position, s.role,
+                           COUNT(sc.id) as commendations
+                    FROM staff_commendations sc
+                    JOIN staff s ON s.id = sc.staff_id
+                    WHERE sc.response_id IN ({placeholders})
+                    GROUP BY s.id, s.first_name, s.last_name, s.position, s.role
+                    ORDER BY commendations DESC
+                    LIMIT 5
+                """, all_response_ids)
+                top_staff = cursor.fetchall()
             else:
                 total_commendations = 0
+                top_staff = []
         finally:
             conn.close()
         
+        formatted_top_staff = []
+        for s in top_staff:
+            formatted_top_staff.append({
+                "name": f"{s['first_name']} {s['last_name']}",
+                "position": s["position"] or (s["role"].title() if s["role"] else "Staff"),
+                "commendations": s["commendations"]
+            })
+        
         return jsonify({
+            "overview": {
+                "total_feedback": total_feedback,
+                "resolved": resolved_count,
+                "unresolved": unresolved_count,
+                "resolution_rate": resolution_rate,
+                "total_ratings": total_ratings
+            },
             "rating_metrics": {
                 "five_star_rate": five_star_rate,
                 "four_plus_star_rate": four_plus_star_rate,
                 "quality_score": quality_score,
-                "distribution": rating_distribution
+                "distribution": rating_distribution,
+                "distribution_pcts": rating_pcts
+            },
+            "trend": {
+                "labels": trend_labels,
+                "values": trend_values
             },
             "staff_metrics": {
-                "total_commendations": total_commendations
+                "total_commendations": total_commendations,
+                "top_staff": formatted_top_staff
             }
         })
 
