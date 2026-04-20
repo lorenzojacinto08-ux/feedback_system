@@ -18,6 +18,10 @@ PURPOSE: "Feedback Management" page. Displays all customer responses/submissions
     overflow: hidden;
   }
 
+  #staff.tab-pane {
+    padding: 0 !important;
+  }
+
   .feedback-list-panel {
     flex: 0 0 380px;
     border-right: 1px solid #e9ecef;
@@ -722,15 +726,12 @@ PURPOSE: "Feedback Management" page. Displays all customer responses/submissions
   </div>
   <!-- Staff Tab -->
   <div class="tab-pane fade" id="staff" role="tabpanel">
-    <div>
-      <h4 class="mb-2">Staff Rankings</h4>
-      <div id="staffContent">
-        <div class="text-center py-2">
-          <div class="spinner-border text-primary" role="status">
-            <span class="visually-hidden">Loading staff data...</span>
-          </div>
-          <p class="mt-2 text-muted">Loading staff rankings...</p>
+    <div id="staffContent">
+      <div class="text-center">
+        <div class="spinner-border text-primary" role="status">
+          <span class="visually-hidden">Loading staff data...</span>
         </div>
+        <p class="mt-1 text-muted">Loading staff rankings...</p>
       </div>
     </div>
   </div>
