@@ -752,6 +752,17 @@ PURPOSE: "Feedback Management" page. Displays all customer responses/submissions
         ratingValue: {{ answer.rating_value if answer.question_type == 'rating' else 0 }}
       }{% if not loop.last %},{% endif %}
       {% endfor %}
+    ],
+    commendedStaff: [
+      {% set comms = commendations_by_response_id.get(response.id, []) %}
+      {% for c in comms %}
+      {
+        name: {{ (c.first_name ~ " " ~ c.last_name) | tojson }},
+        position: {{ (c.position or c.role|title) | tojson }},
+        type: {{ (c.commendation_type or "excellent_service") | tojson }},
+        comment: {{ (c.comment or "") | tojson }}
+      }{% if not loop.last %},{% endif %}
+      {% endfor %}
     ]
   };
   {% endfor %}
@@ -957,7 +968,10 @@ PURPOSE: "Feedback Management" page. Displays all customer responses/submissions
               <p class="mb-2"><strong>Establishment:</strong> {{ store.store_name }}</p>
             </div>
             <div class="col-md-6">
-              <p class="mb-2"><strong>Service Type:</strong> --</p>
+              <p class="mb-2"><strong>Transaction #:</strong> ${feedback.receiptNumber || '<span class="text-muted">N/A</span>'}</p>
+              <p class="mb-2"><strong>Commended Staff:</strong> ${feedback.commendedStaff && feedback.commendedStaff.length > 0
+                ? feedback.commendedStaff.map(s => '<span class="badge bg-success bg-opacity-10 text-success me-1"><i class="bi bi-person-check me-1"></i>' + s.name + '</span>').join('')
+                : '<span class="text-muted">None</span>'}</p>
             </div>
           </div>
         </div>
