@@ -26,7 +26,7 @@ PURPOSE: "Store Management" page. Allows adding/editing stores, viewing
       </a>
       <button type="button" class="btn btn-primary d-flex align-items-center" data-bs-toggle="modal" data-bs-target="#addStoreModal">
         <i class="bi bi-plus-lg me-2"></i>
-        Add Store
+        + Add Store
       </button>
     </div>
   </div>
@@ -1339,13 +1339,11 @@ function updateStoreModal(storeId, feedbackData, analyticsData, staffData) {
                         <!-- QR Code Section -->
                         <div class="mb-4 text-center">
                             <h6 class="text-muted mb-2 small fw-bold">STORE QR CODE</h6>
-                            <div class="p-3 bg-light rounded border">
-                                <img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(window.location.origin + '/feedback/' + store.id)}" 
-                                     alt="Store QR Code" 
-                                     class="img-fluid" 
-                                     style="max-width: 120px;">
-                                <div class="small text-muted mt-2">Scan to give feedback</div>
-                            </div>
+                            <img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(window.location.origin + '/feedback/' + store.id)}" 
+                                 alt="Store QR Code" 
+                                 class="img-fluid" 
+                                 style="max-width: 120px;">
+                            <div class="small text-muted mt-2">Scan to give feedback</div>
                         </div>
 
                         <!-- Action Buttons -->
@@ -1367,12 +1365,7 @@ function updateStoreModal(storeId, feedbackData, analyticsData, staffData) {
                     <!-- Tab Navigation -->
                     <ul class="nav nav-tabs border-bottom" id="storeTabs" role="tablist">
                         <li class="nav-item" role="presentation">
-                            <button class="nav-link active" id="feedback-tab" data-bs-toggle="tab" data-bs-target="#feedback" type="button" role="tab">
-                                <i class="bi bi-chat-left-text me-2"></i>Feedback
-                            </button>
-                        </li>
-                        <li class="nav-item" role="presentation">
-                            <button class="nav-link" id="analytics-tab" data-bs-toggle="tab" data-bs-target="#analytics" type="button" role="tab">
+                            <button class="nav-link active" id="analytics-tab" data-bs-toggle="tab" data-bs-target="#analytics" type="button" role="tab">
                                 <i class="bi bi-speedometer2 me-2"></i>Analytics
                             </button>
                         </li>
@@ -1385,16 +1378,8 @@ function updateStoreModal(storeId, feedbackData, analyticsData, staffData) {
 
                     <!-- Tab Content -->
                     <div class="tab-content" id="storeTabContent">
-                        <!-- Feedback Tab -->
-                        <div class="tab-pane fade show active" id="feedback" role="tabpanel">
-                            <div class="p-4">
-                                <h5 class="mb-4">Recent Feedback</h5>
-                                ${generateFeedbackHtml(feedbackData)}
-                            </div>
-                        </div>
-
                         <!-- Analytics Tab -->
-                        <div class="tab-pane fade" id="analytics" role="tabpanel">
+                        <div class="tab-pane fade show active" id="analytics" role="tabpanel">
                             <div class="p-4">
                                 <h5 class="mb-4">Store Analytics</h5>
                                 ${generateAnalyticsHtml(analyticsData)}
