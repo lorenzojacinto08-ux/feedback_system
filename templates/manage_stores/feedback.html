@@ -83,7 +83,7 @@ PURPOSE: "Feedback Management" page. Displays all customer responses/submissions
     position: absolute;
     top: 18px;
     right: 18px;
-    font-size: 0.7rem;
+    font-size: 0.75rem;
     font-weight: 600;
     padding: 5px 10px;
     border-radius: 18px;
@@ -113,17 +113,17 @@ PURPOSE: "Feedback Management" page. Displays all customer responses/submissions
     font-weight: 700;
     color: #212529;
     margin-bottom: 7px;
-    font-size: 0.9rem;
-    letter-spacing: 0.5px;
+    font-size: 0.875rem;
+    letter-spacing: 0.3px;
   }
   .feedback-meta {
-    font-size: 0.8rem;
+    font-size: 0.8125rem;
     color: #6c757d;
     font-weight: 500;
   }
   .rating-stars {
     color: #d97706;
-    font-size: 0.85rem;
+    font-size: 0.8125rem;
     margin-bottom: 3px;
   }
   .rating-stars .bi-star-fill {
@@ -225,7 +225,7 @@ PURPOSE: "Feedback Management" page. Displays all customer responses/submissions
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
   }
   .stat-value {
-    font-size: 1.8rem;
+    font-size: 1.5rem;
     font-weight: 700;
     margin-bottom: 7px;
     color: #212529;
@@ -247,10 +247,10 @@ PURPOSE: "Feedback Management" page. Displays all customer responses/submissions
     color: #374151;
   }
   .stat-label {
-    font-size: 0.8rem;
+    font-size: 0.8125rem;
     color: #6c757d;
     font-weight: 600;
-    letter-spacing: 0.5px;
+    letter-spacing: 0.3px;
   }
 
   .stat-card:nth-child(1) .stat-label,
@@ -277,7 +277,7 @@ PURPOSE: "Feedback Management" page. Displays all customer responses/submissions
     border-radius: 0.5rem;
     border: 1px solid #d1d5db;
     transition: all 0.2s ease;
-    font-size: 0.9rem;
+    font-size: 0.875rem;
     background-color: white;
     color: #212529;
   }
@@ -292,7 +292,7 @@ PURPOSE: "Feedback Management" page. Displays all customer responses/submissions
   .form-control-lg {
     border-radius: 0.5rem;
     border: 1px solid #d1d5db;
-    font-size: 1rem;
+    font-size: 0.9375rem;
     background-color: white;
     color: #212529;
   }
@@ -315,7 +315,7 @@ PURPOSE: "Feedback Management" page. Displays all customer responses/submissions
     border-radius: 0.5rem;
     font-weight: 600;
     transition: all 0.2s ease;
-    font-size: 0.9rem;
+    font-size: 0.875rem;
   }
 
   .btn:hover {
@@ -353,7 +353,7 @@ PURPOSE: "Feedback Management" page. Displays all customer responses/submissions
 
   .btn-lg {
     padding: 0.7rem 1.4rem;
-    font-size: 1rem;
+    font-size: 0.9375rem;
   }
 
   /* Enhanced badges to match dashboard */
@@ -382,16 +382,16 @@ PURPOSE: "Feedback Management" page. Displays all customer responses/submissions
 
   /* Enhanced empty states */
   .text-center.py-5 {
-    padding: 4rem 0 !important;
+    padding: 3rem 0 !important;
   }
 
   .text-center.py-5 i {
-    font-size: 4rem !important;
-    margin-bottom: 1.5rem;
+    font-size: 3rem !important;
+    margin-bottom: 1rem;
   }
 
   .text-center.py-5 h4 {
-    font-size: 1.5rem;
+    font-size: 1.125rem;
     margin-bottom: 1rem;
   }
 
@@ -451,7 +451,7 @@ PURPOSE: "Feedback Management" page. Displays all customer responses/submissions
   }
 
   .success-notification .notification-icon {
-    font-size: 1.2rem;
+    font-size: 1rem;
     flex-shrink: 0;
   }
 
@@ -462,11 +462,11 @@ PURPOSE: "Feedback Management" page. Displays all customer responses/submissions
   .success-notification .notification-title {
     font-weight: 600;
     margin-bottom: 2px;
-    font-size: 0.9rem;
+    font-size: 0.875rem;
   }
 
   .success-notification .notification-message {
-    font-size: 0.8rem;
+    font-size: 0.8125rem;
     opacity: 0.9;
   }
 
@@ -474,7 +474,7 @@ PURPOSE: "Feedback Management" page. Displays all customer responses/submissions
     background: none;
     border: none;
     color: white;
-    font-size: 1.2rem;
+    font-size: 1rem;
     cursor: pointer;
     opacity: 0.7;
     transition: opacity 0.2s;
@@ -528,15 +528,15 @@ PURPOSE: "Feedback Management" page. Displays all customer responses/submissions
           <div>
             <div class="d-flex align-items-center gap-2">
               <h5 class="mb-0 fw-bold">{{ store.store_name }}</h5>
-              <span class="badge bg-{{ 'success' if store.status == 'active' else 'secondary' if store.status == 'inactive' else 'warning' }}" style="font-size:0.7rem;">{{ store.status|title }}</span>
+              <span class="badge bg-{{ 'success' if store.status == 'active' else 'secondary' if store.status == 'inactive' else 'warning' }}">{{ store.status|title }}</span>
               {% if store.store_type %}
-              <span class="badge bg-light text-dark" style="font-size:0.7rem;">{{ store.store_type|title }}</span>
+              <span class="badge bg-light text-dark">{{ store.store_type|title }}</span>
               {% endif %}
             </div>
-            <div class="mt-1" style="font-size:0.78rem;">
-              <span class="text-muted"><i class="bi bi-geo-alt me-1"></i>{{ store.address or 'No address' }}{% if store.city %}, {{ store.city }}{% endif %}</span>
+            <div class="mt-1 small text-muted">
+              <i class="bi bi-geo-alt me-1"></i>{{ store.address or 'No address' }}{% if store.city %}, {{ store.city }}{% endif %}
               {% if store.contact_number %}
-              <span class="text-muted ms-2"><i class="bi bi-telephone me-1"></i>{{ store.contact_number }}</span>
+              <span class="ms-2"><i class="bi bi-telephone me-1"></i>{{ store.contact_number }}</span>
               {% endif %}
             </div>
           </div>
@@ -547,16 +547,16 @@ PURPOSE: "Feedback Management" page. Displays all customer responses/submissions
       <div class="col-lg-3">
         <div class="d-flex gap-2 justify-content-center">
           <div class="text-center px-3 py-1 bg-light rounded">
-            <div class="fw-bold text-primary" style="font-size:0.95rem;">{{ responses|length }}</div>
-            <div class="text-muted" style="font-size:0.7rem;">Feedback</div>
+            <div class="fw-bold text-primary">{{ responses|length }}</div>
+            <div class="text-muted small">Feedback</div>
           </div>
           <div class="text-center px-3 py-1 bg-light rounded">
-            <div class="fw-bold text-info" style="font-size:0.95rem;">{{ staff_count or 0 }}</div>
-            <div class="text-muted" style="font-size:0.7rem;">Staff</div>
+            <div class="fw-bold text-info">{{ staff_count or 0 }}</div>
+            <div class="text-muted small">Staff</div>
           </div>
           <div class="text-center px-3 py-1 bg-light rounded">
-            <div class="fw-bold text-success" style="font-size:0.95rem;">{{ average_rating or '0.0' }}/5</div>
-            <div class="text-muted" style="font-size:0.7rem;">Rating</div>
+            <div class="fw-bold text-success">{{ average_rating or '0.0' }}/5</div>
+            <div class="text-muted small">Rating</div>
           </div>
         </div>
       </div>
@@ -567,8 +567,8 @@ PURPOSE: "Feedback Management" page. Displays all customer responses/submissions
           <img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data={{ request.url_root }}feedback/{{ store.id }}" 
                alt="QR Code" class="rounded" style="width:55px;height:55px;">
           <div>
-            <div class="text-muted" style="font-size:0.7rem;">Scan to give feedback</div>
-            <button class="btn btn-primary btn-sm mt-1 py-0 px-2" style="font-size:0.75rem;" onclick="downloadQRCode({{ store.id }}, {{ store.store_name|tojson }})">
+            <div class="text-muted small">Scan to give feedback</div>
+            <button class="btn btn-primary btn-sm mt-1 py-0 px-2" onclick="downloadQRCode({{ store.id }}, {{ store.store_name|tojson }})">
               <i class="bi bi-download me-1"></i>Download
             </button>
           </div>
@@ -577,7 +577,7 @@ PURPOSE: "Feedback Management" page. Displays all customer responses/submissions
 
       <!-- Edit Button -->
       <div class="col-lg-2 text-end">
-        <button class="btn btn-outline-primary btn-sm py-1 px-2" style="font-size:0.8rem;" onclick="editStore({{ store.id }})">
+        <button class="btn btn-outline-primary btn-sm py-1 px-2" onclick="editStore({{ store.id }})">
           <i class="bi bi-pencil me-1"></i>Edit
         </button>
       </div>
@@ -1354,7 +1354,7 @@ PURPOSE: "Feedback Management" page. Displays all customer responses/submissions
     html += `
       <div class="card border-0 shadow-sm">
         <div class="table-responsive">
-          <table class="table table-hover align-middle mb-0" style="font-size: 0.9rem;">
+          <table class="table table-hover align-middle mb-0" style="font-size: 0.875rem;">
             <thead>
               <tr class="bg-light">
                 <th class="ps-3" style="width: 60px;">Rank</th>
@@ -1378,13 +1378,13 @@ PURPOSE: "Feedback Management" page. Displays all customer responses/submissions
 
       let rankHtml;
       if (rank === 1) {
-        rankHtml = '<div class="rounded-circle bg-warning text-white d-inline-flex align-items-center justify-content-center shadow-sm" style="width:28px;height:28px;font-size:0.75rem;"><i class="bi bi-trophy-fill"></i></div>';
+        rankHtml = '<div class="rounded-circle bg-warning text-white d-inline-flex align-items-center justify-content-center shadow-sm" style="width:28px;height:28px;font-size:0.8125rem;"><i class="bi bi-trophy-fill"></i></div>';
       } else if (rank === 2) {
-        rankHtml = '<div class="rounded-circle bg-secondary bg-opacity-25 text-dark d-inline-flex align-items-center justify-content-center" style="width:28px;height:28px;font-size:0.8rem;font-weight:600;">2</div>';
+        rankHtml = '<div class="rounded-circle bg-secondary bg-opacity-25 text-dark d-inline-flex align-items-center justify-content-center" style="width:28px;height:28px;font-size:0.8125rem;font-weight:600;">2</div>';
       } else if (rank === 3) {
-        rankHtml = '<div class="rounded-circle bg-warning bg-opacity-25 text-dark d-inline-flex align-items-center justify-content-center" style="width:28px;height:28px;font-size:0.8rem;font-weight:600;">3</div>';
+        rankHtml = '<div class="rounded-circle bg-warning bg-opacity-25 text-dark d-inline-flex align-items-center justify-content-center" style="width:28px;height:28px;font-size:0.8125rem;font-weight:600;">3</div>';
       } else {
-        rankHtml = `<span class="text-muted ps-2" style="font-size:0.85rem;">${rank}</span>`;
+        rankHtml = `<span class="text-muted ps-2" style="font-size:0.875rem;">${rank}</span>`;
       }
 
       html += `
@@ -1392,7 +1392,7 @@ PURPOSE: "Feedback Management" page. Displays all customer responses/submissions
                 <td class="ps-3">${rankHtml}</td>
                 <td>
                   <div class="d-flex align-items-center">
-                    <div class="rounded-circle bg-primary bg-opacity-10 text-primary d-flex align-items-center justify-content-center me-2" style="width:34px;height:34px;font-size:0.75rem;font-weight:600;">${initials.toUpperCase()}</div>
+                    <div class="rounded-circle bg-primary bg-opacity-10 text-primary d-flex align-items-center justify-content-center me-2" style="width:34px;height:34px;font-size:0.8125rem;font-weight:600;">${initials.toUpperCase()}</div>
                     <div>
                       <div class="fw-semibold">${staff.name}</div>
                     </div>
@@ -1401,7 +1401,7 @@ PURPOSE: "Feedback Management" page. Displays all customer responses/submissions
                 <td class="text-muted">${staff.position || '—'}</td>
                 <td class="text-center">${statusBadge}</td>
                 <td class="text-center">
-                  <span class="badge bg-primary bg-opacity-10 text-primary px-2 py-1" style="font-size:0.8rem;">${staff.commendations}</span>
+                  <span class="badge bg-primary bg-opacity-10 text-primary px-2 py-1">${staff.commendations}</span>
                 </td>
                 <td>
                   <div class="progress" style="height:6px;">
@@ -1487,190 +1487,6 @@ PURPOSE: "Feedback Management" page. Displays all customer responses/submissions
   }
 
 </script>
-
-<style>
-  /* Enhanced form controls with white background */
-  .form-control {
-    border-radius: 0.5rem;
-    border: 1px solid #dee2e6;
-    transition: all 0.3s ease;
-    font-size: 0.9rem;
-    background-color: white;
-    color: #212529;
-  }
-
-  .form-control:focus {
-    border-color: #000000;
-    box-shadow: 0 0 0 0.2rem rgba(0, 0, 0, 0.1);
-    transform: translateY(-1px);
-    background-color: white;
-  }
-
-  .form-control-lg {
-    border-radius: 0.5rem;
-    border: 2px solid rgba(0, 0, 0, 0.1);
-    font-size: 1rem;
-    background-color: white;
-    color: #212529;
-  }
-
-  .form-control-lg:focus {
-    border-color: var(--bs-primary);
-    box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
-    transform: translateY(-1px);
-    background-color: white;
-  }
-
-  .input-group-text {
-    border-radius: 0.5rem;
-    border: 2px solid rgba(0, 0, 0, 0.1);
-    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-  }
-
-  /* Enhanced buttons with black and white theme */
-  .btn {
-    border-radius: 0.5rem;
-    font-weight: 600;
-    transition: all 0.3s ease;
-    font-size: 0.9rem;
-  }
-
-  .btn:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
-  }
-
-  .btn-primary {
-    background: #000000;
-    color: white;
-    border: 1px solid #000000;
-  }
-
-  .btn-outline-primary {
-    border: 1px solid #000000;
-    color: #000000;
-  }
-
-  .btn-outline-primary:hover {
-    background: #000000;
-    border-color: #000000;
-    color: white;
-    transform: translateY(-1px);
-  }
-
-  .btn-outline-secondary {
-    border: 2px solid var(--bs-secondary);
-    color: var(--bs-secondary);
-  }
-
-  .btn-outline-secondary:hover {
-    background: var(--bs-secondary);
-    border-color: var(--bs-secondary);
-  }
-
-  .btn-lg {
-    padding: 0.7rem 1.4rem;
-    font-size: 1rem;
-  }
-
-  /* Enhanced badges to match dashboard */
-  .badge {
-    font-weight: 600;
-    border-radius: 0.5rem;
-    font-size: 0.75rem;
-  }
-
-  /* Enhanced form switch */
-  .form-check-input {
-    border-radius: 1rem;
-    width: 3rem;
-    height: 1.5rem;
-  }
-
-  .form-check-input:checked {
-    background-color: var(--bs-success);
-    border-color: var(--bs-success);
-  }
-
-  .form-check-label {
-    font-weight: 600;
-    cursor: pointer;
-  }
-
-  /* Enhanced empty states */
-  .text-center.py-5 {
-    padding: 4rem 0 !important;
-  }
-
-  .text-center.py-5 i {
-    font-size: 4rem !important;
-    margin-bottom: 1.5rem;
-  }
-
-  .text-center.py-5 h4 {
-    font-size: 1.5rem;
-    margin-bottom: 1rem;
-  }
-
-  /* Enhanced search section */
-  .search-section {
-    background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
-    border-bottom: 2px solid #e9ecef;
-  }
-
-  /* Enhanced feedback list panel */
-  .feedback-list-panel {
-    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-    border-right: 2px solid #e9ecef;
-  }
-
-  /* Enhanced feedback detail panel */
-  .feedback-detail-panel {
-    background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
-    padding: 1.8rem;
-    height: 100%;
-    overflow-y: auto;
-  }
-
-  /* Enhanced container */
-  .feedback-container {
-    background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
-    border: 1px solid rgba(0, 0, 0, 0.05);
-  }
-
-  /* Enhanced responsive design */
-  @media (max-width: 768px) {
-    .feedback-container {
-      flex-direction: column;
-      height: calc(100vh - 200px);
-      position: fixed;
-      top: 180px;
-      left: 10px;
-      right: 10px;
-      bottom: 10px;
-    }
-
-    .feedback-list-panel {
-      flex: none;
-      max-height: 300px;
-      border-right: none;
-      border-bottom: 2px solid #e9ecef;
-      height: 300px;
-    }
-
-    .feedback-detail-panel {
-      padding: 1.3rem;
-      flex: 1;
-      height: calc(100% - 300px);
-      overflow-y: auto;
-    }
-
-    .customer-stats {
-      grid-template-columns: repeat(2, 1fr);
-      gap: 1rem;
-    }
-  }
-</style>
 
 <!-- Reply Modal -->
 <div

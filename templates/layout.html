@@ -19,6 +19,7 @@ PURPOSE: This is the main "shell" for all Admin pages. It contains the
       crossorigin="anonymous"
     />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
       :root {
         /* Primary Colors - Orange Theme */
@@ -51,15 +52,24 @@ PURPOSE: This is the main "shell" for all Admin pages. It contains the
       body {
         background-color: var(--neutral-50);
         color: var(--neutral-900);
-        font-family:
-          -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
           "Helvetica Neue", Arial, sans-serif;
+        font-size: 0.875rem;
+        line-height: 1.5;
         display: flex;
         flex-direction: column;
         min-height: 100vh;
         height: 100vh;
         overflow: hidden;
       }
+
+      h1 { font-size: 1.5rem; font-weight: 700; }
+      h2 { font-size: 1.25rem; font-weight: 700; }
+      h3 { font-size: 1.125rem; font-weight: 600; }
+      h4 { font-size: 1rem; font-weight: 600; }
+      h5 { font-size: 0.9375rem; font-weight: 600; }
+      h6 { font-size: 0.875rem; font-weight: 600; }
+      .small, small { font-size: 0.8125rem; }
 
       .sidebar {
         min-height: 100vh;
