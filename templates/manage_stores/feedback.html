@@ -18,12 +18,21 @@ PURPOSE: "Feedback Management" page. Displays all customer responses/submissions
     overflow: hidden;
   }
 
-  #staff.tab-pane {
+  #staff.tab-pane,
+  #analytics.tab-pane {
     padding: 0 !important;
   }
 
   #storeTabContent {
     padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  .tab-pane:not(.show) {
+    display: none !important;
+    height: 0 !important;
+    min-height: 0 !important;
+    overflow: hidden !important;
   }
 
   .feedback-list-panel {
@@ -596,7 +605,7 @@ PURPOSE: "Feedback Management" page. Displays all customer responses/submissions
 </div>
 
 <!-- Tab Navigation -->
-<ul class="nav nav-tabs border-bottom mb-1" id="storeTabs" role="tablist">
+<ul class="nav nav-tabs border-bottom" id="storeTabs" role="tablist">
   <li class="nav-item" role="presentation">
     <button class="nav-link active" id="feedback-tab" data-bs-toggle="tab" data-bs-target="#feedback" type="button" role="tab">
       <i class="bi bi-chat-left-text me-2"></i>Feedback
