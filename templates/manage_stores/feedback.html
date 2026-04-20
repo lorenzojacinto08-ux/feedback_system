@@ -523,7 +523,7 @@ PURPOSE: "Feedback Management" page. Displays all customer responses/submissions
             <button class="btn btn-outline-primary btn-sm" onclick="editStore({{ store.id }})">
               <i class="bi bi-pencil me-1"></i>Edit Store
             </button>
-            <button class="btn btn-outline-secondary btn-sm" onclick="downloadQRCode({{ store.id }}, '{{ store.store_name }}')">
+            <button class="btn btn-outline-secondary btn-sm" onclick="downloadQRCode({{ store.id }}, {{ store.store_name|tojson }})">
               <i class="bi bi-download me-1"></i>Download QR
             </button>
           </div>
@@ -580,7 +580,7 @@ PURPOSE: "Feedback Management" page. Displays all customer responses/submissions
                    style="max-width: 120px;">
             </div>
             <p class="small text-muted mb-2">Scan to give feedback</p>
-            <button class="btn btn-primary btn-sm" onclick="downloadQRCode({{ store.id }}, '{{ store.store_name }}')">
+            <button class="btn btn-primary btn-sm" onclick="downloadQRCode({{ store.id }}, {{ store.store_name|tojson }})">
               <i class="bi bi-download me-1"></i>Download QR
             </button>
           </div>
