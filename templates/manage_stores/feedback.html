@@ -512,36 +512,65 @@ PURPOSE: "Feedback Management" page. Displays all customer responses/submissions
 
 <div class="d-flex justify-content-between align-items-start mb-4">
   <div style="flex: 1; min-width: 300px">
-    <h2 class="page-title">Feedback Management - {{ store.store_name }}</h2>
-  </div>
-  <div class="btn-group" role="group" style="flex-shrink: 0">
-    <button
-      type="button"
-      class="btn btn-outline-primary active"
-      onclick="filterFeedback('unresolved', this)"
-    >
-      <i class="bi bi-exclamation-circle me-1"></i>Unresolved ({{
-      responses|selectattr('status', 'equalto', 'unresolved')|list|length }})
-    </button>
-    <button
-      type="button"
-      class="btn btn-outline-secondary"
-      onclick="filterFeedback('resolved', this)"
-    >
-      <i class="bi bi-check-circle me-1"></i>Resolved ({{
-      responses|selectattr('status', 'equalto', 'resolved')|list|length }})
-    </button>
-    <button
-      type="button"
-      class="btn btn-outline-secondary"
-      onclick="filterFeedback('all', this)"
-    >
-      <i class="bi bi-list-ul me-1"></i>All ({{ responses|length }})
-    </button>
+    <h2 class="page-title">Store Management - {{ store.store_name }}</h2>
   </div>
 </div>
 
-<div class="feedback-container shadow-lg rounded">
+<!-- Tab Navigation -->
+<ul class="nav nav-tabs border-bottom mb-4" id="storeTabs" role="tablist">
+  <li class="nav-item" role="presentation">
+    <button class="nav-link active" id="feedback-tab" data-bs-toggle="tab" data-bs-target="#feedback" type="button" role="tab">
+      <i class="bi bi-chat-left-text me-2"></i>Feedback
+    </button>
+  </li>
+  <li class="nav-item" role="presentation">
+    <button class="nav-link" id="analytics-tab" data-bs-toggle="tab" data-bs-target="#analytics" type="button" role="tab">
+      <i class="bi bi-speedometer2 me-2"></i>Analytics
+    </button>
+  </li>
+  <li class="nav-item" role="presentation">
+    <button class="nav-link" id="staff-tab" data-bs-toggle="tab" data-bs-target="#staff" type="button" role="tab">
+      <i class="bi bi-people me-2"></i>Staff
+    </button>
+  </li>
+</ul>
+
+<!-- Tab Content -->
+<div class="tab-content" id="storeTabContent">
+  <!-- Feedback Tab -->
+  <div class="tab-pane fade show active" id="feedback" role="tabpanel">
+    <div class="d-flex justify-content-between align-items-start mb-4">
+      <div style="flex: 1; min-width: 300px">
+        <h4 class="mb-0">Feedback Management</h4>
+      </div>
+      <div class="btn-group" role="group" style="flex-shrink: 0">
+        <button
+          type="button"
+          class="btn btn-outline-primary active"
+          onclick="filterFeedback('unresolved', this)"
+        >
+          <i class="bi bi-exclamation-circle me-1"></i>Unresolved ({{
+          responses|selectattr('status', 'equalto', 'unresolved')|list|length }})
+        </button>
+        <button
+          type="button"
+          class="btn btn-outline-secondary"
+          onclick="filterFeedback('resolved', this)"
+        >
+          <i class="bi bi-check-circle me-1"></i>Resolved ({{
+          responses|selectattr('status', 'equalto', 'resolved')|list|length }})
+        </button>
+        <button
+          type="button"
+          class="btn btn-outline-secondary"
+          onclick="filterFeedback('all', this)"
+        >
+          <i class="bi bi-list-ul me-1"></i>All ({{ responses|length }})
+        </button>
+      </div>
+    </div>
+
+    <div class="feedback-container shadow-lg rounded">
   <!-- Left Panel - Feedback List -->
   <div class="feedback-list-panel">
     <div class="search-section p-3">
@@ -614,6 +643,39 @@ PURPOSE: "Feedback Management" page. Displays all customer responses/submissions
           <i class="bi bi-chat-left-text text-primary fs-5"></i>
         </div>
         <h4 class="text-muted mt-3">Select a feedback entry to view details</h4>
+      </div>
+    </div>
+  </div>
+</div>
+    </div>
+  </div>
+
+  <!-- Analytics Tab -->
+  <div class="tab-pane fade" id="analytics" role="tabpanel">
+    <div class="p-4">
+      <h4 class="mb-4">Store Analytics</h4>
+      <div id="analyticsContent">
+        <div class="text-center py-5">
+          <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Loading analytics...</span>
+          </div>
+          <p class="mt-3 text-muted">Loading store analytics...</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Staff Tab -->
+  <div class="tab-pane fade" id="staff" role="tabpanel">
+    <div class="p-4">
+      <h4 class="mb-4">Staff Rankings</h4>
+      <div id="staffContent">
+        <div class="text-center py-5">
+          <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Loading staff data...</span>
+          </div>
+          <p class="mt-3 text-muted">Loading staff rankings...</p>
+        </div>
       </div>
     </div>
   </div>
@@ -1154,6 +1216,181 @@ PURPOSE: "Feedback Management" page. Displays all customer responses/submissions
     }
   });
 
+  // Tab event listeners for analytics and staff data
+  document.addEventListener('DOMContentLoaded', function() {
+    // Add event listeners for tab changes
+    const analyticsTab = document.getElementById('analytics-tab');
+    const staffTab = document.getElementById('staff-tab');
+    
+    if (analyticsTab) {
+      analyticsTab.addEventListener('shown.bs.tab', function () {
+        loadAnalyticsData();
+      });
+    }
+    
+    if (staffTab) {
+      staffTab.addEventListener('shown.bs.tab', function () {
+        loadStaffData();
+      });
+    }
+  });
+
+  // Function to load analytics data
+  async function loadAnalyticsData() {
+    const storeId = {{ store.id }};
+    const analyticsContent = document.getElementById('analyticsContent');
+    
+    try {
+      analyticsContent.innerHTML = `
+        <div class="text-center py-5">
+          <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Loading analytics...</span>
+          </div>
+          <p class="mt-3 text-muted">Loading store analytics...</p>
+        </div>
+      `;
+      
+      const response = await fetch(`/api/stores/${storeId}/analytics`);
+      const analyticsData = await response.json();
+      
+      analyticsContent.innerHTML = generateAnalyticsHtml(analyticsData);
+      
+      // Initialize charts if needed
+      if (typeof initializeChartsWithData === 'function') {
+        initializeChartsWithData(analyticsData, []);
+      }
+      
+    } catch (error) {
+      console.error('Error loading analytics:', error);
+      analyticsContent.innerHTML = `
+        <div class="text-center py-5">
+          <div class="text-danger">
+            <i class="bi bi-exclamation-triangle fs-2"></i>
+            <p class="mt-3">Error loading analytics data</p>
+          </div>
+        </div>
+      `;
+    }
+  }
+
+  // Function to load staff data
+  async function loadStaffData() {
+    const storeId = {{ store.id }};
+    const staffContent = document.getElementById('staffContent');
+    
+    try {
+      staffContent.innerHTML = `
+        <div class="text-center py-5">
+          <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Loading staff data...</span>
+          </div>
+          <p class="mt-3 text-muted">Loading staff rankings...</p>
+        </div>
+      `;
+      
+      const response = await fetch(`/api/stores/${storeId}/staff`);
+      const staffData = await response.json();
+      
+      staffContent.innerHTML = generateStaffHtml(staffData);
+      
+    } catch (error) {
+      console.error('Error loading staff data:', error);
+      staffContent.innerHTML = `
+        <div class="text-center py-5">
+          <div class="text-danger">
+            <i class="bi bi-exclamation-triangle fs-2"></i>
+            <p class="mt-3">Error loading staff data</p>
+          </div>
+        </div>
+      `;
+    }
+  }
+
+  // Helper function to generate analytics HTML (copied from stores.html)
+  function generateAnalyticsHtml(analyticsData) {
+    const ratingMetrics = analyticsData.rating_metrics || {};
+    const staffMetrics = analyticsData.staff_metrics || {};
+    
+    return `
+      <div class="row g-4">
+        <div class="col-md-6">
+          <div class="card border-0 shadow-sm">
+            <div class="card-body p-3">
+              <h6 class="card-title mb-3">5-Star Rating Analytics</h6>
+              <div class="row text-center mb-3">
+                <div class="col-4">
+                  <div class="fw-bold text-primary fs-4">${ratingMetrics.five_star_rate || 0}%</div>
+                  <div class="small text-muted">5-Star Rate</div>
+                </div>
+                <div class="col-4">
+                  <div class="fw-bold text-info fs-4">${ratingMetrics.four_plus_star_rate || 0}%</div>
+                  <div class="small text-muted">4+ Star Rate</div>
+                </div>
+                <div class="col-4">
+                  <div class="fw-bold text-success fs-4">${ratingMetrics.quality_score || 0}</div>
+                  <div class="small text-muted">Quality Score</div>
+                </div>
+              </div>
+              <canvas id="ratingChart" width="400" height="200"></canvas>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-6">
+          <div class="card border-0 shadow-sm">
+            <div class="card-body p-3">
+              <h6 class="card-title mb-3">Staff Commendations</h6>
+              <div class="text-center mb-3">
+                <div class="fw-bold text-warning fs-4">${staffMetrics.total_commendations || 0}</div>
+                <div class="small text-muted">Total Commendations</div>
+              </div>
+              <canvas id="commendationsChart" width="400" height="200"></canvas>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  // Helper function to generate staff HTML (copied from stores.html)
+  function generateStaffHtml(staffData) {
+    if (!staffData || staffData.length === 0) {
+      return `
+        <div class="text-center py-5">
+          <i class="bi bi-people text-muted fs-2"></i>
+          <p class="text-muted mt-3">No staff members found</p>
+        </div>
+      `;
+    }
+    
+    let html = '<div class="row">';
+    staffData.forEach((staff, index) => {
+      const medal = index === 0 && staff.commendations > 0 ? 'medal' : '';
+      html += `
+        <div class="col-md-6 col-lg-4 mb-4">
+          <div class="card border-0 shadow-sm h-100">
+            <div class="card-body p-3">
+              <div class="d-flex align-items-center mb-3">
+                <div class="rounded-circle bg-primary bg-opacity-10 p-2 me-3">
+                  <i class="bi bi-person-circle text-primary fs-5"></i>
+                </div>
+                <div>
+                  <h6 class="mb-0 fw-bold">${staff.name}</h6>
+                  <p class="mb-0 small text-muted">${staff.position}</p>
+                </div>
+                ${medal ? '<i class="bi bi-award-fill text-warning ms-auto"></i>' : ''}
+              </div>
+              <div class="text-center">
+                <div class="fw-bold text-primary fs-4">${staff.commendations}</div>
+                <div class="small text-muted">Commendations</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+    });
+    html += '</div>';
+    return html;
+  }
 
 </script>
 
