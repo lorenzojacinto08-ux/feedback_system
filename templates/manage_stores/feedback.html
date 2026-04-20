@@ -502,15 +502,15 @@ PURPOSE: "Feedback Management" page. Displays all customer responses/submissions
 
 
 <!-- Store Dashboard Header -->
-<div class="card border-0 shadow-sm mb-4">
-  <div class="card-body p-4">
-    <div class="row g-4">
+<div class="card border-0 shadow-sm mb-3">
+  <div class="card-body p-3">
+    <div class="row g-3">
       <!-- Store Info Section -->
       <div class="col-lg-8">
-        <div class="d-flex align-items-start justify-content-between mb-3">
+        <div class="d-flex align-items-center justify-content-between mb-2">
           <div>
-            <h2 class="mb-2 fw-bold">{{ store.store_name }}</h2>
-            <div class="d-flex gap-2 mb-2">
+            <h3 class="mb-1 fw-bold">{{ store.store_name }}</h3>
+            <div class="d-flex gap-2 mb-1">
               <span class="badge bg-{{ 'success' if store.status == 'active' else 'secondary' if store.status == 'inactive' else 'warning' }}">
                 {{ store.status|title }}
               </span>
@@ -521,24 +521,24 @@ PURPOSE: "Feedback Management" page. Displays all customer responses/submissions
           </div>
           <div class="btn-group">
             <button class="btn btn-outline-primary btn-sm" onclick="editStore({{ store.id }})">
-              <i class="bi bi-pencil me-1"></i>Edit Store
+              <i class="bi bi-pencil me-1"></i>Edit
             </button>
             <button class="btn btn-outline-secondary btn-sm" onclick="downloadQRCode({{ store.id }}, {{ store.store_name|tojson }})">
-              <i class="bi bi-download me-1"></i>Download QR
+              <i class="bi bi-download me-1"></i>QR
             </button>
           </div>
         </div>
         
-        <div class="row g-3">
+        <div class="row g-2">
           <div class="col-md-6">
-            <p class="mb-1 text-muted small"><i class="bi bi-geo-alt me-1"></i>
+            <p class="mb-0 text-muted small"><i class="bi bi-geo-alt me-1"></i>
               {{ store.address or 'No address provided' }}{% if store.city %}, {{ store.city }}{% endif %}
             </p>
             {% if store.contact_number %}
-            <p class="mb-1 text-muted small"><i class="bi bi-telephone me-1"></i>{{ store.contact_number }}</p>
+            <p class="mb-0 text-muted small"><i class="bi bi-telephone me-1"></i>{{ store.contact_number }}</p>
             {% endif %}
             {% if store.email %}
-            <p class="mb-1 text-muted small"><i class="bi bi-envelope me-1"></i>{{ store.email }}</p>
+            <p class="mb-0 text-muted small"><i class="bi bi-envelope me-1"></i>{{ store.email }}</p>
             {% endif %}
           </div>
           
@@ -546,21 +546,21 @@ PURPOSE: "Feedback Management" page. Displays all customer responses/submissions
           <div class="col-md-6">
             <div class="row g-2">
               <div class="col-4">
-                <div class="text-center p-2 bg-light rounded">
-                  <div class="fw-bold text-primary">{{ responses|length }}</div>
-                  <div class="small text-muted">Feedback</div>
+                <div class="text-center p-1 bg-light rounded">
+                  <div class="fw-bold text-primary small">{{ responses|length }}</div>
+                  <div class="small text-muted" style="font-size: 0.7rem;">Feedback</div>
                 </div>
               </div>
               <div class="col-4">
-                <div class="text-center p-2 bg-light rounded">
-                  <div class="fw-bold text-info">{{ staff_count or 0 }}</div>
-                  <div class="small text-muted">Staff</div>
+                <div class="text-center p-1 bg-light rounded">
+                  <div class="fw-bold text-info small">{{ staff_count or 0 }}</div>
+                  <div class="small text-muted" style="font-size: 0.7rem;">Staff</div>
                 </div>
               </div>
               <div class="col-4">
-                <div class="text-center p-2 bg-light rounded">
-                  <div class="fw-bold text-success">{{ average_rating or '0.0' }}/5</div>
-                  <div class="small text-muted">Rating</div>
+                <div class="text-center p-1 bg-light rounded">
+                  <div class="fw-bold text-success small">{{ average_rating or '0.0' }}/5</div>
+                  <div class="small text-muted" style="font-size: 0.7rem;">Rating</div>
                 </div>
               </div>
             </div>
@@ -571,17 +571,17 @@ PURPOSE: "Feedback Management" page. Displays all customer responses/submissions
       <!-- QR Code Section -->
       <div class="col-lg-4">
         <div class="card bg-light border-0 h-100">
-          <div class="card-body p-3 text-center">
-            <h6 class="mb-3 small fw-bold text-muted">STORE QR CODE</h6>
-            <div class="mb-2">
+          <div class="card-body p-2 text-center">
+            <h6 class="mb-2 small fw-bold text-muted" style="font-size: 0.75rem;">STORE QR CODE</h6>
+            <div class="mb-1">
               <img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data={{ request.url_root }}feedback/{{ store.id }}" 
                    alt="Store QR Code" 
                    class="img-fluid rounded"
-                   style="max-width: 120px;">
+                   style="max-width: 100px;">
             </div>
-            <p class="small text-muted mb-2">Scan to give feedback</p>
-            <button class="btn btn-primary btn-sm" onclick="downloadQRCode({{ store.id }}, {{ store.store_name|tojson }})">
-              <i class="bi bi-download me-1"></i>Download QR
+            <p class="small text-muted mb-1" style="font-size: 0.7rem;">Scan to give feedback</p>
+            <button class="btn btn-primary btn-sm" style="font-size: 0.75rem;" onclick="downloadQRCode({{ store.id }}, {{ store.store_name|tojson }})">
+              <i class="bi bi-download me-1"></i>Download
             </button>
           </div>
         </div>
