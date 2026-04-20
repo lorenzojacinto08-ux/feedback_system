@@ -1252,6 +1252,27 @@ def create_app() -> Flask:
         finally:
             conn.close()
 
+    def get_staff_performance_for_store(store_id: int) -> List[Dict[str, Any]]:
+        """Get staff members for a store ranked by commendations."""
+        conn = get_db_connection()
+        try:
+            cursor = conn.cursor(dictionary=True)
+            cursor.execute(
+                """
+                SELECT s.id, s.first_name, s.last_name, s.position, s.role,
+                       COUNT(sc.id) as commendation_count
+                FROM staff s
+                LEFT JOIN staff_commendations sc ON s.id = sc.staff_id
+                WHERE s.store_id = %s
+                GROUP BY s.id, s.first_name, s.last_name, s.position, s.role
+                ORDER BY commendation_count DESC
+                """,
+                (store_id,)
+            )
+            return cursor.fetchall()
+        finally:
+            conn.close()
+
     # API endpoint for store feedback data
     @app.route("/api/stores/<int:store_id>/feedback", methods=["GET"])
     def api_store_feedback(store_id: int):
@@ -2257,6 +2278,7 @@ def create_app() -> Flask:
 
         # Calculate staff count and average rating
         staff_count = get_staff_count_for_store(store_id)
+        staff_performance = get_staff_performance_for_store(store_id)
         
         # Calculate average rating from responses
         avg_ratings = []
@@ -2277,6 +2299,7 @@ def create_app() -> Flask:
             commendations_by_response_id=commendations_by_response_id,
             current_status=status,
             staff_count=staff_count,
+            staff_performance=staff_performance,
             average_rating=average_rating,
         )
 
