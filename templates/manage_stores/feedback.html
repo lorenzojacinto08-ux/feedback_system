@@ -1640,23 +1640,26 @@ PURPOSE: "Feedback Management" page. Displays all customer responses/submissions
   }
 
   // Function to download QR code
-  async function downloadQRCode(storeId, storeName) {
+  function downloadQRCode(storeId, storeName) {
     const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(window.location.origin + '/s/' + storeId)}`;
-    try {
-      const response = await fetch(qrUrl);
-      const blob = await response.blob();
-      const blobUrl = URL.createObjectURL(blob);
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = function() {
+      const canvas = document.createElement('canvas');
+      canvas.width = img.width;
+      canvas.height = img.height;
+      canvas.getContext('2d').drawImage(img, 0, 0);
       const link = document.createElement('a');
-      link.href = blobUrl;
+      link.href = canvas.toDataURL('image/png');
       link.download = `QR_${storeName.replace(/[^a-z0-9]/gi, '_')}.png`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-      URL.revokeObjectURL(blobUrl);
-    } catch (err) {
-      console.error('QR download failed:', err);
+    };
+    img.onerror = function() {
       window.open(qrUrl, '_blank');
-    }
+    };
+    img.src = qrUrl;
   }
 
   // Function to edit store
