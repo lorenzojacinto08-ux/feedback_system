@@ -4,7 +4,7 @@ import io
 import urllib.parse
 from typing import List, Dict, Any
 
-from flask import Flask, render_template, redirect, url_for, request, flash, jsonify
+from flask import Flask, render_template, redirect, url_for, request, flash, jsonify, send_file
 from dotenv import load_dotenv
 import mysql.connector
 from mysql.connector.connection import MySQLConnection
@@ -610,6 +610,29 @@ def create_app() -> Flask:
         img.save(buf, format="PNG")
         encoded = base64.b64encode(buf.getvalue()).decode("utf-8")
         return f"data:image/png;base64,{encoded}"
+
+    @app.route("/admin/stores/<int:store_id>/qr-download")
+    def download_qr(store_id: int):
+        """Download QR code as PNG file."""
+        store = fetch_store_by_id(store_id=store_id)
+        if not store:
+            flash("Store not found", "danger")
+            return redirect(url_for("stores_management"))
+        public_url = get_store_public_url(store_id=store_id)
+        qr = qrcode.QRCode(
+            version=None,
+            error_correction=qrcode.constants.ERROR_CORRECT_M,
+            box_size=10,
+            border=2,
+        )
+        qr.add_data(public_url)
+        qr.make(fit=True)
+        img = qr.make_image(fill_color="black", back_color="white")
+        buf = io.BytesIO()
+        img.save(buf, format="PNG")
+        buf.seek(0)
+        filename = f"QR_{store['store_name'].replace(' ', '_')}.png"
+        return send_file(buf, mimetype="image/png", as_attachment=True, download_name=filename)
 
     # -------------------------
     # TEMPLATE QUESTIONNAIRE CRUD

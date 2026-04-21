@@ -568,9 +568,9 @@ PURPOSE: "Feedback Management" page. Displays all customer responses/submissions
                alt="QR Code" class="rounded" style="width:55px;height:55px;">
           <div>
             <div class="text-muted small">Scan to give feedback</div>
-            <button class="btn btn-primary btn-sm mt-1 py-0 px-2" onclick="downloadQRCode({{ store.id }}, {{ store.store_name|tojson }})">
+            <a href="{{ url_for('download_qr', store_id=store.id) }}" class="btn btn-primary btn-sm mt-1 py-0 px-2">
               <i class="bi bi-download me-1"></i>Download
-            </button>
+            </a>
           </div>
         </div>
       </div>
