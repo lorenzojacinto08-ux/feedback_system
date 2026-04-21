@@ -1409,12 +1409,55 @@ def create_app() -> Flask:
                 """
             )
             top_stores = cursor.fetchall()
-            
+
+            # Best overall store (highest average rating with minimum responses)
+            cursor.execute(
+                """
+                SELECT s.id, s.store_name, s.address, s.city,
+                       COUNT(DISTINCT r.id) as total_responses,
+                       AVG(CASE WHEN q2.question_type = 'rating' THEN a.rating_value END) as avg_rating
+                FROM stores s
+                LEFT JOIN questionnaires q ON s.id = q.store_id
+                LEFT JOIN responses r ON q.id = r.questionnaire_id
+                LEFT JOIN answers a ON r.id = a.response_id
+                LEFT JOIN questions q2 ON a.question_id = q2.id
+                WHERE q2.question_type = 'rating'
+                GROUP BY s.id, s.store_name, s.address, s.city
+                HAVING total_responses >= 1
+                ORDER BY avg_rating DESC, total_responses DESC
+                LIMIT 1
+                """
+            )
+            best_overall_store = cursor.fetchone()
+            if best_overall_store:
+                best_overall_store['avg_rating'] = float(best_overall_store['avg_rating']) if best_overall_store['avg_rating'] is not None else 0.0
+
+            # Best overall staff (most commended staff)
+            cursor.execute(
+                """
+                SELECT s.id, s.first_name, s.last_name, s.position, s.role,
+                       COUNT(sc.id) as commendation_count,
+                       st.store_name
+                FROM staff s
+                LEFT JOIN staff_commendations sc ON s.id = sc.staff_id
+                LEFT JOIN responses r ON sc.response_id = r.id
+                LEFT JOIN questionnaires q ON r.questionnaire_id = q.id
+                LEFT JOIN stores st ON q.store_id = st.id
+                GROUP BY s.id, s.first_name, s.last_name, s.position, s.role, st.store_name
+                HAVING commendation_count > 0
+                ORDER BY commendation_count DESC
+                LIMIT 1
+                """
+            )
+            best_overall_staff = cursor.fetchone()
+
             return {
                 'stores_data': stores_data,
                 'overall_stats': overall_stats,
                 'recent_activity': recent_activity,
-                'top_stores': top_stores
+                'top_stores': top_stores,
+                'best_overall_store': best_overall_store,
+                'best_overall_staff': best_overall_staff
             }
         finally:
             conn.close()
