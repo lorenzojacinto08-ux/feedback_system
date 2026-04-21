@@ -2149,6 +2149,93 @@ def create_app() -> Flask:
 
         return redirect(url_for("stores_management"))
 
+    @app.route("/admin/backup/csv", methods=["GET"])
+    def backup_csv_route():
+        """Export all data to CSV for backup purposes."""
+        conn = get_db_connection()
+        try:
+            cursor = conn.cursor(dictionary=True)
+
+            # Fetch all data
+            cursor.execute("SELECT * FROM stores")
+            stores = cursor.fetchall()
+
+            cursor.execute("SELECT * FROM responses")
+            responses = cursor.fetchall()
+
+            cursor.execute("SELECT * FROM answers")
+            answers = cursor.fetchall()
+
+            cursor.execute("SELECT * FROM staff")
+            staff = cursor.fetchall()
+
+            cursor.execute("SELECT * FROM staff_commendations")
+            commendations = cursor.fetchall()
+
+            # Create in-memory CSV
+            output = io.StringIO()
+            writer = csv.writer(output)
+
+            # Write stores
+            writer.writerow(["--- STORES ---"])
+            if stores:
+                writer.writerow(stores[0].keys())
+                for row in stores:
+                    writer.writerow(row.values())
+            writer.writerow([])
+
+            # Write responses
+            writer.writerow(["--- RESPONSES ---"])
+            if responses:
+                writer.writerow(responses[0].keys())
+                for row in responses:
+                    writer.writerow(row.values())
+            writer.writerow([])
+
+            # Write answers
+            writer.writerow(["--- ANSWERS ---"])
+            if answers:
+                writer.writerow(answers[0].keys())
+                for row in answers:
+                    writer.writerow(row.values())
+            writer.writerow([])
+
+            # Write staff
+            writer.writerow(["--- STAFF ---"])
+            if staff:
+                writer.writerow(staff[0].keys())
+                for row in staff:
+                    writer.writerow(row.values())
+            writer.writerow([])
+
+            # Write commendations
+            writer.writerow(["--- STAFF COMMENDATIONS ---"])
+            if commendations:
+                writer.writerow(commendations[0].keys())
+                for row in commendations:
+                    writer.writerow(row.values())
+
+            output.seek(0)
+            csv_data = output.getvalue()
+
+            # Generate filename with timestamp
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            filename = f"feedback_system_backup_{timestamp}.csv"
+
+            # Send as downloadable file
+            return send_file(
+                io.BytesIO(csv_data.encode('utf-8')),
+                mimetype='text/csv',
+                as_attachment=True,
+                download_name=filename
+            )
+        except Exception as e:
+            logger.error(f"Error creating CSV backup: {e}")
+            flash(f"Error creating backup: {e}", "danger")
+            return redirect(url_for("stores_management"))
+        finally:
+            conn.close()
+
     # -------------------------
     # STAFF MANAGEMENT
     # -------------------------

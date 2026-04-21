@@ -441,23 +441,27 @@ function editQuestion(btn) {
     const questionType = btn.getAttribute('data-type');
     const isRequired = btn.getAttribute('data-req') === 'true';
     const allowComment = btn.getAttribute('data-allow-comment') === 'true';
+    const minLabel = btn.getAttribute('data-min-label') || 'Poor';
+    const maxLabel = btn.getAttribute('data-max-label') || 'Excellent';
 
     console.log('Edit question:', questionId);
-    
+
     // Set form target action
     const form = document.getElementById('editQuestionForm');
     form.action = '/admin/questionnaire/questions/' + questionId + '/edit';
-    
+
     // Populate fields
     document.getElementById('edit_question_text').value = questionText;
     document.getElementById('edit_question_type').value = questionType;
     document.getElementById('edit_is_required').checked = isRequired;
     document.getElementById('edit_allow_comment').checked = allowComment;
-    
+    document.getElementById('edit_min_label').value = minLabel;
+    document.getElementById('edit_max_label').value = maxLabel;
+
     // Show/hide rating-specific fields
     toggleRatingLabels(document.getElementById('edit_question_type'), 'rating-labels-edit');
     toggleCommentVisibility(document.getElementById('edit_question_type'), 'edit_allow_comment_container');
-    
+
     // Show modal
     const modal = new bootstrap.Modal(document.getElementById('editQuestionModal'));
     modal.show();
