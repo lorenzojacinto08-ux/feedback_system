@@ -425,9 +425,39 @@ PURPOSE: "Store Management" page. Allows adding/editing stores, viewing
                     {% endif %}
                   </p>
                 </div>
-                <div class="form-check" onclick="event.stopPropagation();">
-                  <input class="form-check-input" type="checkbox" value="{{ store.id }}" id="storeSelect{{ store.id }}">
-                  <label class="form-check-label" for="storeSelect{{ store.id }}"></label>
+                <div class="d-flex align-items-center gap-2" onclick="event.stopPropagation();">
+                  <div class="btn-group" role="group">
+                    <button type="button" class="btn btn-sm btn-outline-secondary border-0 rounded-circle p-1" data-bs-toggle="dropdown" aria-expanded="false" style="width:30px;height:30px;line-height:1;">
+                      <i class="bi bi-three-dots-vertical"></i>
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end shadow-sm" style="min-width:180px;z-index:1050;">
+                      <li class="dropdown-header small fw-bold text-muted">Quick Actions</li>
+                      <li><a class="dropdown-item py-2" href="{{ url_for('store_feedback', store_id=store.id) }}">
+                        <i class="bi bi-chat-left-text me-2 text-primary"></i>View Feedback
+                      </a></li>
+                      <li><a class="dropdown-item py-2" href="{{ url_for('staff_management', store_id=store.id) }}">
+                        <i class="bi bi-people me-2 text-info"></i>Manage Staff
+                      </a></li>
+                      <li><a class="dropdown-item py-2" href="#" onclick="generateQRCode({{ store.id }})">
+                        <i class="bi bi-qr-code me-2 text-success"></i>QR Code
+                      </a></li>
+                      <li><hr class="dropdown-divider my-1"></li>
+                      <li class="dropdown-header small fw-bold text-muted">Manage</li>
+                      <li><a class="dropdown-item py-2" href="#" onclick="editStore({{ store.id }})">
+                        <i class="bi bi-pencil me-2 text-secondary"></i>Edit Store
+                      </a></li>
+                      <li><a class="dropdown-item py-2" href="#" onclick="toggleStoreStatus({{ store.id }})">
+                        <i class="bi bi-toggle-on me-2 text-warning"></i>Toggle Status
+                      </a></li>
+                      <li><a class="dropdown-item py-2 text-danger" href="#" onclick="deleteStore({{ store.id }})">
+                        <i class="bi bi-trash me-2"></i>Delete Store
+                      </a></li>
+                    </ul>
+                  </div>
+                  <div class="form-check mb-0">
+                    <input class="form-check-input" type="checkbox" value="{{ store.id }}" id="storeSelect{{ store.id }}">
+                    <label class="form-check-label" for="storeSelect{{ store.id }}"></label>
+                  </div>
                 </div>
               </div>
 
@@ -481,32 +511,9 @@ PURPOSE: "Store Management" page. Allows adding/editing stores, viewing
                 <a href="{{ url_for('store_feedback', store_id=store.id) }}" class="btn btn-sm btn-primary flex-fill">
                   <i class="bi bi-chat-left-text me-1"></i>Feedback
                 </a>
-                <div class="btn-group" role="group">
-                  <button type="button" class="btn btn-sm btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
-                    <i class="bi bi-gear"></i>
-                  </button>
-                  <ul class="dropdown-menu">
-                    <li><a class="dropdown-item small" href="{{ url_for('store_feedback', store_id=store.id) }}">
-                      <i class="bi bi-chat-left-text me-2"></i>View Feedback
-                    </a></li>
-                    <li><a class="dropdown-item small" href="{{ url_for('staff_management', store_id=store.id) }}">
-                      <i class="bi bi-people me-2"></i>Manage Staff
-                    </a></li>
-                    <li><a class="dropdown-item small" href="#" onclick="generateQRCode({{ store.id }})">
-                      <i class="bi bi-qr-code me-2"></i>QR Code
-                    </a></li>
-                    <li><hr class="dropdown-divider"></li>
-                    <li><a class="dropdown-item small" href="#" onclick="editStore({{ store.id }})">
-                      <i class="bi bi-pencil me-2"></i>Edit Store
-                    </a></li>
-                    <li><a class="dropdown-item small text-warning" href="#" onclick="toggleStoreStatus({{ store.id }})">
-                      <i class="bi bi-toggle-on me-2"></i>Toggle Status
-                    </a></li>
-                    <li><a class="dropdown-item small text-danger" href="#" onclick="deleteStore({{ store.id }})">
-                      <i class="bi bi-trash me-2"></i>Delete Store
-                    </a></li>
-                  </ul>
-                </div>
+                <a href="{{ url_for('staff_management', store_id=store.id) }}" class="btn btn-sm btn-outline-info flex-fill">
+                  <i class="bi bi-people me-1"></i>Staff
+                </a>
               </div>
             </div>
           </div>
@@ -535,6 +542,8 @@ PURPOSE: "Store Management" page. Allows adding/editing stores, viewing
     border-left: 4px solid transparent;
     background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
     border: 1px solid #dee2e6;
+    overflow: visible;
+    position: relative;
 }
 
 .store-card:hover {
