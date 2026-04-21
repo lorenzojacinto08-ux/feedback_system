@@ -1483,17 +1483,23 @@ PURPOSE: "Feedback Management" page. Displays all customer responses/submissions
   }
 
   // Function to download QR code
-  function downloadQRCode(storeId, storeName) {
-    const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${window.location.origin}/s/${storeId}`;
-    
-    // Create a temporary link to download the QR code
-    const link = document.createElement('a');
-    link.href = qrUrl;
-    link.download = `QR_${storeName.replace(/[^a-z0-9]/gi, '_')}.png`;
-    link.target = '_blank';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+  async function downloadQRCode(storeId, storeName) {
+    const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(window.location.origin + '/s/' + storeId)}`;
+    try {
+      const response = await fetch(qrUrl);
+      const blob = await response.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      link.download = `QR_${storeName.replace(/[^a-z0-9]/gi, '_')}.png`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(blobUrl);
+    } catch (err) {
+      console.error('QR download failed:', err);
+      window.open(qrUrl, '_blank');
+    }
   }
 
   // Function to edit store
