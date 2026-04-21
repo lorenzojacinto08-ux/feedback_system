@@ -1489,6 +1489,10 @@ PURPOSE: "Feedback Management" page. Displays all customer responses/submissions
       `;
     }
     
+    // Store for edit modal lookups
+    window._staffLookup = {};
+    staffData.forEach(s => { window._staffLookup[s.id] = s; });
+
     const sortedStaff = [...staffData].sort((a, b) => b.commendations - a.commendations);
     const totalStaff = sortedStaff.length;
     const totalCommendations = sortedStaff.reduce((sum, s) => sum + s.commendations, 0);
@@ -1586,10 +1590,10 @@ PURPOSE: "Feedback Management" page. Displays all customer responses/submissions
                 </td>
                 <td class="text-center">
                   <div class="d-flex gap-1 justify-content-center">
-                    <button class="btn btn-sm btn-outline-primary py-0 px-1" onclick="openEditStaffModal(${JSON.stringify(staff).replace(/"/g, '&quot;')})" title="Edit">
+                    <button class="btn btn-sm btn-outline-primary py-0 px-1" onclick="openEditStaffModal(${staff.id})" title="Edit">
                       <i class="bi bi-pencil"></i>
                     </button>
-                    <button class="btn btn-sm btn-outline-danger py-0 px-1" onclick="deleteStaffMember(${staff.id}, '${staff.name.replace(/'/g, "\\'")}')" title="Delete">
+                    <button class="btn btn-sm btn-outline-danger py-0 px-1" onclick="deleteStaffMember(${staff.id})" title="Delete">
                       <i class="bi bi-trash"></i>
                     </button>
                   </div>
@@ -1609,7 +1613,9 @@ PURPOSE: "Feedback Management" page. Displays all customer responses/submissions
   }
 
   // Staff management functions
-  function openEditStaffModal(staff) {
+  function openEditStaffModal(staffId) {
+    const staff = window._staffLookup[staffId];
+    if (!staff) return;
     document.getElementById('inline_edit_first_name').value = staff.first_name || '';
     document.getElementById('inline_edit_last_name').value = staff.last_name || '';
     document.getElementById('inline_edit_email').value = staff.email || '';
@@ -1617,12 +1623,14 @@ PURPOSE: "Feedback Management" page. Displays all customer responses/submissions
     document.getElementById('inline_edit_position').value = staff.position || '';
     document.getElementById('inline_edit_role').value = staff.role || 'staff';
     document.getElementById('inline_edit_status').value = staff.status || 'active';
-    document.getElementById('inlineEditStaffForm').action = `/admin/stores/{{ store.id }}/staff/${staff.id}/edit`;
+    document.getElementById('inlineEditStaffForm').action = `/admin/stores/{{ store.id }}/staff/${staffId}/edit`;
     const modal = new bootstrap.Modal(document.getElementById('inlineEditStaffModal'));
     modal.show();
   }
 
-  function deleteStaffMember(staffId, staffName) {
+  function deleteStaffMember(staffId) {
+    const staff = window._staffLookup[staffId];
+    const staffName = staff ? staff.name : 'this staff member';
     if (!confirm(`Are you sure you want to delete ${staffName}? This action cannot be undone.`)) return;
     const form = document.createElement('form');
     form.method = 'POST';
