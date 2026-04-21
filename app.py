@@ -13,7 +13,7 @@ from mysql.connector.connection import MySQLConnection
 import qrcode
 from email_config import EmailConfig
 from collections import defaultdict
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 
 load_dotenv()
@@ -1876,12 +1876,15 @@ def create_app() -> Flask:
         conn = get_db_connection()
         try:
             cursor = conn.cursor()
+            # Use Philippine time (UTC+08:00)
+            ph_tz = timezone(timedelta(hours=8))
+            now_ph = datetime.now(ph_tz).strftime("%Y-%m-%d %H:%M:%S")
             cursor.execute(
                 """
-                INSERT INTO responses (questionnaire_id, store_id, user_email, receipt_number)
-                VALUES (%s, %s, %s, %s)
+                INSERT INTO responses (questionnaire_id, store_id, user_email, receipt_number, submitted_at)
+                VALUES (%s, %s, %s, %s, %s)
                 """,
-                (int(questionnaire["id"]), store_id, user_email, receipt_number),
+                (int(questionnaire["id"]), store_id, user_email, receipt_number, now_ph),
             )
             response_id = int(cursor.lastrowid)
 
