@@ -491,7 +491,7 @@ PURPOSE: "Store Management" page. Allows adding/editing stores, viewing
                 {% if store.contact_number %}
                 <div class="d-flex align-items-center mb-1">
                   <i class="bi bi-telephone-fill me-2" style="font-size:.7rem;color:var(--primary-400)"></i>
-                  <span class="small text-muted">{{ store.contact_number }}</span>
+                  <span class="small text-muted" style="word-break: break-all; white-space: normal;">{{ store.contact_number }}</span>
                 </div>
                 {% endif %}
                 {% if store.email %}
