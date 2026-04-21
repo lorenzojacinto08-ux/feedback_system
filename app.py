@@ -2313,7 +2313,7 @@ def create_app() -> Flask:
             if status == "unresolved":
                 cursor.execute(
                     """
-                    SELECT id, questionnaire_id, store_id, user_email, submitted_at, status
+                    SELECT id, questionnaire_id, store_id, user_email, receipt_number, submitted_at, status
                     FROM responses
                     WHERE store_id = %s AND status = 'unresolved'
                     ORDER BY submitted_at DESC, id DESC
@@ -2324,7 +2324,7 @@ def create_app() -> Flask:
             elif status == "resolved":
                 cursor.execute(
                     """
-                    SELECT id, questionnaire_id, store_id, user_email, submitted_at, status
+                    SELECT id, questionnaire_id, store_id, user_email, receipt_number, submitted_at, status
                     FROM responses
                     WHERE store_id = %s AND status = 'resolved'
                     ORDER BY submitted_at DESC, id DESC
@@ -2335,7 +2335,7 @@ def create_app() -> Flask:
             else:
                 cursor.execute(
                     """
-                    SELECT id, questionnaire_id, store_id, user_email, submitted_at, status
+                    SELECT id, questionnaire_id, store_id, user_email, receipt_number, submitted_at, status
                     FROM responses
                     WHERE store_id = %s
                     ORDER BY submitted_at DESC, id DESC
