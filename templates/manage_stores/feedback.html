@@ -1058,6 +1058,7 @@ PURPOSE: "Feedback Management" page. Displays all customer responses/submissions
               <span class="rating-stars">${stars}</span>
               <span class="fw-bold">${value}/5</span>
             </div>
+            ${answer.answerText ? `<div class="bg-light p-2 rounded-3 small mt-1 text-muted"><i class="bi bi-chat-left-text me-1"></i>${answer.answerText}</div>` : ''}
           </div>
         `;
       } else {
