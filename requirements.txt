@@ -7,3 +7,4 @@ flask-mail==0.9.1
 sendgrid==6.11.0
 gunicorn==21.2.0
 requests==2.31.0
+fpdf2==2.7.9

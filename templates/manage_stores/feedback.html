@@ -602,6 +602,11 @@ PURPOSE: "Feedback Management" page. Displays all customer responses/submissions
       <i class="bi bi-people me-2"></i>Staff
     </button>
   </li>
+  <li class="nav-item" role="presentation">
+    <button class="nav-link" id="reports-tab" data-bs-toggle="tab" data-bs-target="#reports" type="button" role="tab">
+      <i class="bi bi-file-earmark-arrow-down me-2"></i>Reports
+    </button>
+  </li>
 </ul>
 
 
@@ -731,6 +736,59 @@ PURPOSE: "Feedback Management" page. Displays all customer responses/submissions
           <span class="visually-hidden">Loading staff data...</span>
         </div>
         <p class="mt-2 text-muted">Loading staff data...</p>
+      </div>
+    </div>
+  </div>
+  <!-- Reports Tab -->
+  <div class="tab-pane fade" id="reports" role="tabpanel">
+    <div class="pt-3">
+      <h4 class="mb-3">Download Reports</h4>
+      <div class="card border-0 shadow-sm">
+        <div class="card-body p-4">
+          <div class="row align-items-end g-3">
+            <div class="col-md-4">
+              <label for="reportMonth" class="form-label fw-semibold">Select Period</label>
+              <input type="month" id="reportMonth" class="form-control">
+              <div class="form-text">Leave empty for all-time report.</div>
+            </div>
+            <div class="col-md-8">
+              <div class="d-flex gap-2 flex-wrap">
+                <button class="btn btn-danger d-flex align-items-center" onclick="downloadReport('pdf')">
+                  <i class="bi bi-file-earmark-pdf me-2"></i>Download PDF
+                </button>
+                <button class="btn btn-success d-flex align-items-center" onclick="downloadReport('csv')">
+                  <i class="bi bi-filetype-csv me-2"></i>Download CSV
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card border-0 shadow-sm mt-3">
+        <div class="card-body p-4">
+          <h6 class="fw-bold mb-3"><i class="bi bi-info-circle me-2"></i>Report Contents</h6>
+          <div class="row g-3">
+            <div class="col-md-6">
+              <div class="d-flex align-items-start gap-2 mb-2">
+                <i class="bi bi-file-earmark-pdf text-danger mt-1"></i>
+                <div>
+                  <strong>PDF Report</strong>
+                  <p class="text-muted small mb-0">Summary with KPIs, rating distribution, top commended staff, and feedback details table. Ideal for presentations and management review.</p>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="d-flex align-items-start gap-2 mb-2">
+                <i class="bi bi-filetype-csv text-success mt-1"></i>
+                <div>
+                  <strong>CSV Export</strong>
+                  <p class="text-muted small mb-0">Raw feedback data with all questions, ratings, answers, and commended staff. Ideal for data analysis in Excel or Google Sheets.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -1665,6 +1723,14 @@ PURPOSE: "Feedback Management" page. Displays all customer responses/submissions
   // Function to edit store
   function editStore(storeId) {
     window.location.href = `/admin/stores/${storeId}/edit`;
+  }
+
+  // Function to download report (PDF or CSV)
+  function downloadReport(format) {
+    const month = document.getElementById('reportMonth').value;
+    let url = `/admin/stores/{{ store.id }}/report/${format}`;
+    if (month) url += `?month=${month}`;
+    window.location.href = url;
   }
 
   // Helper function to generate analytics HTML

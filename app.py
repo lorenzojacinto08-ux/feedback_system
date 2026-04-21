@@ -1,8 +1,10 @@
 import os
+import csv
 import base64
 import io
 import urllib.parse
 from typing import List, Dict, Any
+from fpdf import FPDF
 
 from flask import Flask, render_template, redirect, url_for, request, flash, jsonify, send_file
 from dotenv import load_dotenv
@@ -633,6 +635,237 @@ def create_app() -> Flask:
         buf.seek(0)
         filename = f"QR_{store['store_name'].replace(' ', '_')}.png"
         return send_file(buf, mimetype="image/png", as_attachment=True, download_name=filename)
+
+    # -------------------------
+    # REPORT GENERATION (CSV & PDF)
+    # -------------------------
+    def _get_report_data(store_id: int, month: str = None):
+        """Gather feedback data for reports, optionally filtered by month (YYYY-MM)."""
+        store = fetch_store_by_id(store_id=store_id)
+        if not store:
+            return None, None, None, None, None
+        all_feedback = fetch_responses_for_store(store_id=store_id, limit=10000)
+
+        # Filter by month if provided
+        if month:
+            filtered = []
+            for fb in all_feedback:
+                submitted = fb.get("submitted_at")
+                if submitted:
+                    if isinstance(submitted, str):
+                        try:
+                            submitted = datetime.strptime(submitted, "%Y-%m-%d %H:%M:%S")
+                        except (ValueError, TypeError):
+                            continue
+                    if submitted.strftime("%Y-%m") == month:
+                        filtered.append(fb)
+            all_feedback = filtered
+
+        response_ids = [int(r["id"]) for r in all_feedback]
+        answers_map = fetch_answers_for_responses(response_ids) if response_ids else {}
+
+        # Get commendations
+        commendations_map = {}
+        if response_ids:
+            conn = get_db_connection()
+            try:
+                cursor = conn.cursor(dictionary=True)
+                ph = ','.join(['%s'] * len(response_ids))
+                cursor.execute(f"""
+                    SELECT sc.response_id, s.first_name, s.last_name, s.position
+                    FROM staff_commendations sc
+                    JOIN staff s ON s.id = sc.staff_id
+                    WHERE sc.response_id IN ({ph})
+                """, response_ids)
+                for row in cursor.fetchall():
+                    commendations_map.setdefault(int(row["response_id"]), []).append(row)
+            finally:
+                conn.close()
+
+        return store, all_feedback, answers_map, commendations_map, response_ids
+
+    @app.route("/admin/stores/<int:store_id>/report/csv")
+    def download_report_csv(store_id: int):
+        """Download feedback data as CSV."""
+        month = request.args.get("month", "")
+        store, feedback_list, answers_map, commendations_map, _ = _get_report_data(store_id, month or None)
+        if not store:
+            flash("Store not found", "danger")
+            return redirect(url_for("stores_management"))
+
+        output = io.StringIO()
+        writer = csv.writer(output)
+        writer.writerow([
+            "Feedback ID", "Date", "Email", "Receipt #", "Status",
+            "Question", "Type", "Rating", "Answer",
+            "Commended Staff"
+        ])
+
+        for fb in feedback_list:
+            fb_id = int(fb["id"])
+            submitted = fb.get("submitted_at", "")
+            if hasattr(submitted, "strftime"):
+                submitted = submitted.strftime("%Y-%m-%d %H:%M:%S")
+            email = fb.get("user_email", "")
+            receipt = fb.get("receipt_number", "")
+            status = fb.get("status", "")
+            answers = answers_map.get(fb_id, [])
+            comms = commendations_map.get(fb_id, [])
+            comm_names = ", ".join(f"{c['first_name']} {c['last_name']}" for c in comms)
+
+            if answers:
+                for ans in answers:
+                    writer.writerow([
+                        fb_id, submitted, email, receipt, status,
+                        ans.get("question_text", ""),
+                        ans.get("question_type", ""),
+                        ans.get("rating_value", ""),
+                        ans.get("answer_text", ""),
+                        comm_names
+                    ])
+            else:
+                writer.writerow([fb_id, submitted, email, receipt, status, "", "", "", "", comm_names])
+
+        buf = io.BytesIO()
+        buf.write(output.getvalue().encode("utf-8"))
+        buf.seek(0)
+        month_label = month if month else "all"
+        filename = f"Report_{store['store_name'].replace(' ', '_')}_{month_label}.csv"
+        return send_file(buf, mimetype="text/csv", as_attachment=True, download_name=filename)
+
+    @app.route("/admin/stores/<int:store_id>/report/pdf")
+    def download_report_pdf(store_id: int):
+        """Download feedback report as PDF."""
+        month = request.args.get("month", "")
+        store, feedback_list, answers_map, commendations_map, _ = _get_report_data(store_id, month or None)
+        if not store:
+            flash("Store not found", "danger")
+            return redirect(url_for("stores_management"))
+
+        total = len(feedback_list)
+        resolved = sum(1 for f in feedback_list if f.get("status") == "resolved")
+        unresolved = total - resolved
+        resolution_rate = round(resolved / total * 100, 1) if total > 0 else 0
+
+        # Rating stats
+        rating_dist = [0, 0, 0, 0, 0]
+        total_ratings = 0
+        for fb in feedback_list:
+            for ans in answers_map.get(int(fb["id"]), []):
+                rv = ans.get("rating_value")
+                if rv:
+                    r = int(float(rv))
+                    if 1 <= r <= 5:
+                        rating_dist[r - 1] += 1
+                        total_ratings += 1
+        avg_rating = round(sum((i + 1) * c for i, c in enumerate(rating_dist)) / total_ratings, 2) if total_ratings > 0 else 0
+
+        # Top commended staff
+        staff_counts = defaultdict(int)
+        for fb in feedback_list:
+            for c in commendations_map.get(int(fb["id"]), []):
+                staff_counts[f"{c['first_name']} {c['last_name']}"] += 1
+        top_staff = sorted(staff_counts.items(), key=lambda x: x[1], reverse=True)[:10]
+
+        # Build PDF
+        month_label = month if month else "All Time"
+        pdf = FPDF()
+        pdf.set_auto_page_break(auto=True, margin=15)
+        pdf.add_page()
+
+        # Title
+        pdf.set_font("Helvetica", "B", 18)
+        pdf.cell(0, 12, f"{store['store_name']} - Feedback Report", ln=True, align="C")
+        pdf.set_font("Helvetica", "", 11)
+        pdf.cell(0, 8, f"Period: {month_label}  |  Generated: {datetime.now().strftime('%Y-%m-%d %H:%M')}", ln=True, align="C")
+        pdf.ln(8)
+
+        # KPI Summary
+        pdf.set_font("Helvetica", "B", 13)
+        pdf.cell(0, 8, "Summary", ln=True)
+        pdf.set_font("Helvetica", "", 10)
+        col_w = 47.5
+        pdf.set_fill_color(240, 240, 240)
+        for label, val in [("Total Feedback", total), ("Resolved", resolved), ("Unresolved", unresolved), ("Resolution Rate", f"{resolution_rate}%")]:
+            pdf.cell(col_w, 18, f"{label}\n{val}", border=1, align="C", fill=True)
+        pdf.ln(18)
+        pdf.ln(4)
+
+        # Rating summary
+        pdf.set_font("Helvetica", "B", 13)
+        pdf.cell(0, 8, "Ratings", ln=True)
+        pdf.set_font("Helvetica", "", 10)
+        pdf.cell(95, 8, f"Average Rating: {avg_rating} / 5", ln=False)
+        pdf.cell(95, 8, f"Total Ratings: {total_ratings}", ln=True)
+        # Rating distribution table
+        pdf.set_font("Helvetica", "B", 9)
+        for i in range(5):
+            pdf.cell(38, 7, f"{i+1} Star", border=1, align="C", fill=True)
+        pdf.ln(7)
+        pdf.set_font("Helvetica", "", 9)
+        for i in range(5):
+            pct = round(rating_dist[i] / total_ratings * 100, 1) if total_ratings > 0 else 0
+            pdf.cell(38, 7, f"{rating_dist[i]} ({pct}%)", border=1, align="C")
+        pdf.ln(7)
+        pdf.ln(6)
+
+        # Top Commended Staff
+        if top_staff:
+            pdf.set_font("Helvetica", "B", 13)
+            pdf.cell(0, 8, "Top Commended Staff", ln=True)
+            pdf.set_font("Helvetica", "B", 9)
+            pdf.set_fill_color(230, 230, 230)
+            pdf.cell(10, 7, "#", border=1, align="C", fill=True)
+            pdf.cell(100, 7, "Staff Member", border=1, fill=True)
+            pdf.cell(40, 7, "Commendations", border=1, align="C", fill=True)
+            pdf.ln(7)
+            pdf.set_font("Helvetica", "", 9)
+            for idx, (name, count) in enumerate(top_staff, 1):
+                pdf.cell(10, 7, str(idx), border=1, align="C")
+                pdf.cell(100, 7, name, border=1)
+                pdf.cell(40, 7, str(count), border=1, align="C")
+                pdf.ln(7)
+            pdf.ln(6)
+
+        # Feedback Detail Table
+        pdf.set_font("Helvetica", "B", 13)
+        pdf.cell(0, 8, "Feedback Details", ln=True)
+        pdf.set_font("Helvetica", "B", 8)
+        pdf.set_fill_color(230, 230, 230)
+        col_widths = [15, 30, 45, 25, 20, 55]
+        headers = ["ID", "Date", "Email", "Receipt #", "Status", "Avg Rating"]
+        for i, h in enumerate(headers):
+            pdf.cell(col_widths[i], 7, h, border=1, align="C", fill=True)
+        pdf.ln(7)
+
+        pdf.set_font("Helvetica", "", 7)
+        for fb in feedback_list:
+            fb_id = int(fb["id"])
+            submitted = fb.get("submitted_at", "")
+            if hasattr(submitted, "strftime"):
+                submitted = submitted.strftime("%m/%d/%y")
+            elif isinstance(submitted, str) and len(submitted) > 10:
+                submitted = submitted[:10]
+            email = (fb.get("user_email", "") or "")[:25]
+            receipt = (fb.get("receipt_number", "") or "")[:15]
+            status = fb.get("status", "")
+            answers = answers_map.get(fb_id, [])
+            ratings = [float(a["rating_value"]) for a in answers if a.get("rating_value")]
+            avg_r = round(sum(ratings) / len(ratings), 1) if ratings else "N/A"
+
+            pdf.cell(col_widths[0], 6, str(fb_id), border=1, align="C")
+            pdf.cell(col_widths[1], 6, str(submitted), border=1, align="C")
+            pdf.cell(col_widths[2], 6, email, border=1)
+            pdf.cell(col_widths[3], 6, receipt, border=1, align="C")
+            pdf.cell(col_widths[4], 6, status, border=1, align="C")
+            pdf.cell(col_widths[5], 6, str(avg_r), border=1, align="C")
+            pdf.ln(6)
+
+        buf = io.BytesIO()
+        pdf.output(buf)
+        buf.seek(0)
+        filename = f"Report_{store['store_name'].replace(' ', '_')}_{month_label.replace(' ', '_')}.pdf"
+        return send_file(buf, mimetype="application/pdf", as_attachment=True, download_name=filename)
 
     # -------------------------
     # TEMPLATE QUESTIONNAIRE CRUD
