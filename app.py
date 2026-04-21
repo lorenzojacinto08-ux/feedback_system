@@ -2255,11 +2255,9 @@ def create_app() -> Flask:
                 flash("No template questionnaire found. Please create one first.", "danger")
                 return redirect(url_for("stores_management"))
 
-            questionnaire_id = int(template_questionnaire["id"])
-
             # Fetch questions from template questionnaire
-            cursor.execute("SELECT * FROM questions WHERE questionnaire_id = %s", (questionnaire_id,))
-            questions = cursor.fetchall()
+            cursor.execute("SELECT * FROM questions WHERE questionnaire_id = %s", (template_questionnaire["id"],))
+            template_questions = cursor.fetchall()
 
             total_responses = 0
             total_answers = 0
@@ -2290,6 +2288,53 @@ def create_app() -> Flask:
             for store in stores:
                 store_id = int(store["id"])
 
+                # Fetch or create store-specific questionnaire
+                cursor.execute("SELECT * FROM questionnaires WHERE store_id = %s", (store_id,))
+                store_questionnaire = cursor.fetchone()
+
+                if not store_questionnaire:
+                    # Create a new questionnaire for this store from template
+                    cursor.execute(
+                        """
+                        INSERT INTO questionnaires (title, store_id, is_active, is_template)
+                        VALUES (%s, %s, %s, %s)
+                        """,
+                        (template_questionnaire["title"], store_id, True, False),
+                    )
+                    store_questionnaire_id = int(cursor.lastrowid)
+
+                    # Copy questions from template to store questionnaire
+                    for template_q in template_questions:
+                        cursor.execute(
+                            """
+                            INSERT INTO questions (questionnaire_id, question_text, question_type, is_required, min_label, max_label, allow_comment, question_order)
+                            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                            """,
+                            (store_questionnaire_id, template_q["question_text"], template_q["question_type"],
+                             template_q["is_required"], template_q["min_label"], template_q["max_label"],
+                             template_q["allow_comment"], template_q["question_order"]),
+                        )
+                        new_question_id = int(cursor.lastrowid)
+
+                        # Copy options if it's a multiple choice question
+                        if template_q["question_type"] == "multiple_choice":
+                            cursor.execute("SELECT * FROM question_options WHERE question_id = %s", (template_q["id"],))
+                            options = cursor.fetchall()
+                            for opt in options:
+                                cursor.execute(
+                                    """
+                                    INSERT INTO question_options (question_id, option_text)
+                                    VALUES (%s, %s)
+                                    """,
+                                    (new_question_id, opt["option_text"]),
+                                )
+                else:
+                    store_questionnaire_id = int(store_questionnaire["id"])
+
+                # Fetch questions for this store's questionnaire
+                cursor.execute("SELECT * FROM questions WHERE questionnaire_id = %s", (store_questionnaire_id,))
+                questions = cursor.fetchall()
+
                 # Fetch staff for this store
                 cursor.execute("SELECT * FROM staff WHERE store_id = %s", (store_id,))
                 staff_list = cursor.fetchall()
@@ -2308,7 +2353,7 @@ def create_app() -> Flask:
                         INSERT INTO responses (questionnaire_id, store_id, user_email, receipt_number, submitted_at, status)
                         VALUES (%s, %s, %s, %s, %s, %s)
                         """,
-                        (questionnaire_id, store_id, sample_emails[i % len(sample_emails)],
+                        (store_questionnaire_id, store_id, sample_emails[i % len(sample_emails)],
                          sample_receipts[i % len(sample_receipts)], now_ph, random.choice(['resolved', 'unresolved'])),
                     )
                     response_id = int(cursor.lastrowid)
