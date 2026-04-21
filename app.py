@@ -2112,6 +2112,43 @@ def create_app() -> Flask:
             
         return redirect(url_for("stores_management"))
 
+    @app.route("/admin/clear-feedback", methods=["POST"])
+    def clear_feedback_route():
+        """Clear all feedback data while preserving stores and their configuration."""
+        conn = get_db_connection()
+        try:
+            cursor = conn.cursor()
+
+            # Count before deletion for feedback
+            cursor.execute("SELECT COUNT(*) FROM responses")
+            responses_count = cursor.fetchone()[0]
+            cursor.execute("SELECT COUNT(*) FROM answers")
+            answers_count = cursor.fetchone()[0]
+            cursor.execute("SELECT COUNT(*) FROM staff_commendations")
+            commendations_count = cursor.fetchone()[0]
+
+            # Delete in correct order (respecting foreign keys)
+            # 1. Delete staff_commendations
+            cursor.execute("DELETE FROM staff_commendations")
+
+            # 2. Delete answers
+            cursor.execute("DELETE FROM answers")
+
+            # 3. Delete responses
+            cursor.execute("DELETE FROM responses")
+
+            conn.commit()
+
+            flash(f"Cleared {responses_count} responses, {answers_count} answers, and {commendations_count} commendations. Stores and configurations preserved.", "success")
+            logger.info(f"Cleared feedback data: {responses_count} responses, {answers_count} answers, {commendations_count} commendations")
+        except Exception as e:
+            logger.error(f"Error clearing feedback data: {e}")
+            flash(f"Error clearing feedback data: {e}", "danger")
+        finally:
+            conn.close()
+
+        return redirect(url_for("stores_management"))
+
     # -------------------------
     # STAFF MANAGEMENT
     # -------------------------

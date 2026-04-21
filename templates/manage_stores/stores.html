@@ -24,6 +24,12 @@ PURPOSE: "Store Management" page. Allows adding/editing stores, viewing
         <i class="bi bi-bar-chart me-2"></i>
         Dashboard
       </a>
+      <form method="POST" action="{{ url_for('clear_feedback_route') }}" onsubmit="return confirm('Are you sure you want to clear ALL feedback data? This will delete all responses, answers, and staff commendations. Stores and their configurations will be preserved. This action cannot be undone.');" class="d-inline">
+        <button type="submit" class="btn btn-outline-danger d-flex align-items-center">
+          <i class="bi bi-trash me-2"></i>
+          Clear All Feedback
+        </button>
+      </form>
       <button type="button" class="btn btn-primary d-flex align-items-center" data-bs-toggle="modal" data-bs-target="#addStoreModal">
         <i class="bi bi-plus-lg me-2"></i>
         + Add Store
