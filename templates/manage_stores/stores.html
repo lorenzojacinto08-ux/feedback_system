@@ -410,7 +410,7 @@ PURPOSE: "Store Management" page. Allows adding/editing stores, viewing
     <div class="row g-3 mb-3">
       {% for store in stores %}
         <div class="col-md-6 col-lg-4">
-          <div class="card store-card h-100 border-0 shadow-sm">
+          <div class="card store-card h-100 border-0 shadow-sm" data-store-id="{{ store.id }}">
             <!-- Status accent bar -->
             <div class="store-card-accent bg-{{ 'success' if store.status == 'active' else 'secondary' if store.status == 'inactive' else 'warning' }}"></div>
             <div class="card-body p-3 d-flex flex-column">
@@ -594,6 +594,7 @@ PURPOSE: "Store Management" page. Allows adding/editing stores, viewing
     transform: translateY(-1px);
 }
 
+.btn-outline-success:hover {
     border-color: #28a745;
     color: white;
     transform: translateY(-1px);
@@ -784,7 +785,7 @@ function filterStores() {
     const cards = document.querySelectorAll('.store-card');
     
     cards.forEach(card => {
-        const storeId = parseInt(card.querySelector('.form-check-input').value);
+        const storeId = parseInt(card.dataset.storeId);
         const store = storesData.find(s => s.id === storeId);
         
         if (!store) return;
@@ -811,8 +812,10 @@ function sortStores(sortBy) {
     const cards = Array.from(container.querySelectorAll('.col-md-6')).filter(col => col.style.display !== 'none');
     
     cards.sort((a, b) => {
-        const storeA = storesData.find(s => s.id === parseInt(a.querySelector('.form-check-input').value));
-        const storeB = storesData.find(s => s.id === parseInt(b.querySelector('.form-check-input').value));
+        const cardA = a.querySelector('.store-card');
+        const cardB = b.querySelector('.store-card');
+        const storeA = storesData.find(s => s.id === parseInt(cardA ? cardA.dataset.storeId : 0));
+        const storeB = storesData.find(s => s.id === parseInt(cardB ? cardB.dataset.storeId : 0));
         
         switch(sortBy) {
             case 'name':
@@ -876,9 +879,9 @@ function executeBulkActionFunc(action) {
                 message = `Successfully deleted ${storeIds.length} store(s)`;
                 // Remove deleted stores from view
                 storeIds.forEach(id => {
-                    const checkbox = document.querySelector(`input[value="${id}"]`);
-                    if (checkbox) {
-                        checkbox.closest('.col-md-6').remove();
+                    const card = document.querySelector(`.store-card[data-store-id="${id}"]`);
+                    if (card) {
+                        card.closest('.col-md-6').remove();
                     }
                 });
                 break;
@@ -908,9 +911,8 @@ function executeBulkActionFunc(action) {
         
         // Clear selections
         selectedStores.clear();
-        document.querySelectorAll('.form-check-input').forEach(cb => {
-            cb.checked = false;
-            cb.closest('.store-card').classList.remove('selected');
+        document.querySelectorAll('.store-card').forEach(card => {
+            card.classList.remove('selected');
         });
         updateBulkActionButton();
     }, 1500);

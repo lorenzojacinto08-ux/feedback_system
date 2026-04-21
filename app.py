@@ -2052,12 +2052,20 @@ def create_app() -> Flask:
     def delete_store_route(store_id: int):
         conn = get_db_connection()
         try:
+            cursor = conn.cursor()
             # Fetch store name before deletion for the notification
             cursor.execute("SELECT store_name FROM stores WHERE id = %s", (store_id,))
             store_row = cursor.fetchone()
             store_name = store_row[0] if store_row else "Unknown"
 
-            # Cascading delete: delete answers first
+            # Cascading delete: delete staff_commendations first
+            cursor.execute("""
+                DELETE sc FROM staff_commendations sc
+                JOIN responses r ON sc.response_id = r.id
+                WHERE r.store_id = %s
+            """, (store_id,))
+
+            # Delete answers
             cursor.execute("""
                 DELETE a FROM answers a
                 JOIN responses r ON a.response_id = r.id
@@ -2066,6 +2074,9 @@ def create_app() -> Flask:
             
             # Delete responses
             cursor.execute("DELETE FROM responses WHERE store_id = %s", (store_id,))
+
+            # Delete staff
+            cursor.execute("DELETE FROM staff WHERE store_id = %s", (store_id,))
             
             # Delete question options for store's questionnaires
             cursor.execute("""
