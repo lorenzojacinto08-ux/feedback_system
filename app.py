@@ -3,6 +3,13 @@ import csv
 import base64
 import io
 import urllib.parse
+import logging
+import sys
+import time
+import traceback
+import socket
+import re
+import random
 from typing import List, Dict, Any
 from fpdf import FPDF
 
@@ -23,8 +30,6 @@ def create_app() -> Flask:
     app = Flask(__name__)
 
     # --- LOGGING SETUP ---
-    import logging
-    import sys
     logging.basicConfig(
         level=logging.INFO,
         format='%(asctime)s [%(levelname)s] %(message)s',
@@ -100,7 +105,6 @@ def create_app() -> Flask:
     email_config.init_app(app)
 
     def init_master_schema() -> None:
-        import time
         retries = 3
         while retries > 0:
             try:
@@ -411,7 +415,6 @@ def create_app() -> Flask:
     @app.errorhandler(Exception)
     def handle_exception(e):
         """Global error handler to show tracebacks for ANY crash in Railway"""
-        import traceback
         error_details = traceback.format_exc()
         logger.error(f"Global Crash: {e}\n{error_details}")
         
@@ -586,7 +589,6 @@ def create_app() -> Flask:
 
     def get_store_public_url(store_id: int) -> str:
         # Get the IP address of the machine to make it accessible on the local network
-        import socket
         try:
             s = socket.socket(socket.socket(socket.AF_INET, socket.SOCK_DGRAM))
             s.connect(("8.8.8.8", 80))
@@ -1424,7 +1426,6 @@ def create_app() -> Flask:
             analytics = fetch_dashboard_analytics()
             return render_template("dashboard/dashboard.html", **analytics)
         except Exception as e:
-            import traceback
             error_details = traceback.format_exc()
             logger.error(f"Dashboard Crash: {e}\n{error_details}")
             return f"Dashboard Error: {e}<br><pre>{error_details}</pre>", 500
@@ -1785,7 +1786,6 @@ def create_app() -> Flask:
             return redirect(url_for("public_survey", store_id=store_id))
         
         # Basic receipt number validation (5-50 characters, letters, numbers, hyphens only)
-        import re
         if not re.match(r'^[A-Za-z0-9\-]{5,50}$', receipt_number):
             flash("Receipt number should be 5-50 characters (letters, numbers, and hyphens only).", "danger")
             return redirect(url_for("public_survey", store_id=store_id))
@@ -2282,8 +2282,6 @@ def create_app() -> Flask:
                 "Clean environment", "Helpful team", "Professional",
                 "Will return again"
             ]
-
-            import random
 
             for store in stores:
                 store_id = int(store["id"])
