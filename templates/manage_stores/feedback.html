@@ -748,7 +748,13 @@ PURPOSE: "Feedback Management" page. Displays all customer responses/submissions
           <div class="row align-items-end g-3">
             <div class="col-md-4">
               <label for="reportMonth" class="form-label fw-semibold">Select Period</label>
-              <input type="month" id="reportMonth" class="form-control">
+              <div class="input-group">
+                <span class="input-group-text"><i class="bi bi-calendar3"></i></span>
+                <input type="text" id="reportMonth" class="form-control" placeholder="Click to select month..." readonly>
+                <button type="button" class="btn btn-outline-secondary" onclick="document.getElementById('reportMonth')._flatpickr.clear()" title="Clear">
+                  <i class="bi bi-x-lg"></i>
+                </button>
+              </div>
               <div class="form-text">Leave empty for all-time report.</div>
             </div>
             <div class="col-md-8">
@@ -1727,10 +1733,30 @@ PURPOSE: "Feedback Management" page. Displays all customer responses/submissions
 
   // Function to download report (PDF or CSV)
   function downloadReport(format) {
-    const month = document.getElementById('reportMonth').value;
+    const fp = document.getElementById('reportMonth')._flatpickr;
+    const month = fp && fp.selectedDates.length > 0 ? fp.formatDate(fp.selectedDates[0], 'Y-m') : '';
     let url = `/admin/stores/{{ store.id }}/report/${format}`;
     if (month) url += `?month=${month}`;
     window.location.href = url;
+  }
+
+  // Initialize flatpickr month picker
+  if (typeof flatpickr !== 'undefined') {
+    flatpickr('#reportMonth', {
+      plugins: [],
+      dateFormat: 'F Y',
+      altInput: false,
+      disableMobile: true,
+      maxDate: 'today',
+      onChange: function(selectedDates, dateStr, instance) {
+        // Store YYYY-MM value as a data attribute for easy access
+        if (selectedDates.length > 0) {
+          instance.element.dataset.monthValue = instance.formatDate(selectedDates[0], 'Y-m');
+        } else {
+          instance.element.dataset.monthValue = '';
+        }
+      }
+    });
   }
 
   // Helper function to generate analytics HTML
