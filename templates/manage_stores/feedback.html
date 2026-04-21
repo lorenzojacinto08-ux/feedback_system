@@ -829,8 +829,6 @@ PURPOSE: "Feedback Management" page. Displays all customer responses/submissions
 
   function clearReplyForm() {
     document.getElementById('replyMessage').value = '';
-    document.getElementById('ccEmails').value = '';
-    document.getElementById('bccEmails').value = '';
     document.getElementById('emailTemplate').value = 'standard';
   }
 
@@ -851,10 +849,6 @@ PURPOSE: "Feedback Management" page. Displays all customer responses/submissions
     const templateSelect = document.getElementById('modalEmailTemplate');
     const templateType = templateSelect ? templateSelect.value : 'standard';
 
-    // Get CC/BCC emails
-    const ccEmails = document.getElementById('modalCcEmails') ? document.getElementById('modalCcEmails').value.split(',').map(e => e.trim()).filter(e => e) : [];
-    const bccEmails = document.getElementById('modalBccEmails') ? document.getElementById('modalBccEmails').value.split(',').map(e => e.trim()).filter(e => e) : [];
-
     try {
       // Show loading state
       const sendBtn = document.querySelector('#replyModal .btn-primary');
@@ -869,9 +863,7 @@ PURPOSE: "Feedback Management" page. Displays all customer responses/submissions
         },
         body: JSON.stringify({
           message: message,
-          template_type: templateType,
-          cc_emails: ccEmails,
-          bcc_emails: bccEmails
+          template_type: templateType
         })
       });
 
@@ -997,19 +989,6 @@ PURPOSE: "Feedback Management" page. Displays all customer responses/submissions
             </div>
           </div>
 
-          <div class="row mb-2">
-            <div class="col-md-6">
-              <label for="ccEmails" class="form-label small fw-semibold mb-1">CC Emails (Optional)</label>
-              <input type="text" class="form-control form-control-sm" id="ccEmails" placeholder="manager@store.com, admin@company.com">
-              <div class="form-text small">Separate multiple emails with commas.</div>
-            </div>
-            <div class="col-md-6">
-              <label for="bccEmails" class="form-label small fw-semibold mb-1">BCC Emails (Optional)</label>
-              <input type="text" class="form-control form-control-sm" id="bccEmails" placeholder="admin@company.com">
-              <div class="form-text small">Separate multiple emails with commas.</div>
-            </div>
-          </div>
-
           <div class="mb-2">
             <label for="replyMessage" class="form-label small fw-semibold mb-1">Your Reply Message</label>
             <textarea class="form-control" id="replyMessage" rows="4" placeholder="Type your response to the customer feedback here..."></textarea>
@@ -1112,10 +1091,6 @@ PURPOSE: "Feedback Management" page. Displays all customer responses/submissions
     const templateSelect = document.getElementById('emailTemplate');
     const templateType = templateSelect ? templateSelect.value : 'standard';
 
-    // Get CC/BCC emails
-    const ccEmails = document.getElementById('ccEmails') ? document.getElementById('ccEmails').value.split(',').map(e => e.trim()).filter(e => e) : [];
-    const bccEmails = document.getElementById('bccEmails') ? document.getElementById('bccEmails').value.split(',').map(e => e.trim()).filter(e => e) : [];
-
     try {
       // Show loading state
       const sendBtn = document.querySelector('.reply-section .btn-primary');
@@ -1130,9 +1105,7 @@ PURPOSE: "Feedback Management" page. Displays all customer responses/submissions
         },
         body: JSON.stringify({
           message: replyText,
-          template_type: templateType,
-          cc_emails: ccEmails,
-          bcc_emails: bccEmails
+          template_type: templateType
         })
       });
 
@@ -1724,33 +1697,6 @@ PURPOSE: "Feedback Management" page. Displays all customer responses/submissions
                 Template will be auto-selected based on customer rating if
                 "Standard" is chosen.
               </div>
-            </div>
-          </div>
-
-          <div class="row mb-3">
-            <div class="col-md-6">
-              <label for="modalCcEmails" class="form-label fw-semibold"
-                >CC Emails (Optional)</label
-              >
-              <input
-                type="text"
-                class="form-control"
-                id="modalCcEmails"
-                placeholder="manager@store.com, admin@company.com"
-              />
-              <div class="form-text">Separate multiple emails with commas.</div>
-            </div>
-            <div class="col-md-6">
-              <label for="modalBccEmails" class="form-label fw-semibold"
-                >BCC Emails (Optional)</label
-              >
-              <input
-                type="text"
-                class="form-control"
-                id="modalBccEmails"
-                placeholder="admin@company.com"
-              />
-              <div class="form-text">Separate multiple emails with commas.</div>
             </div>
           </div>
 
