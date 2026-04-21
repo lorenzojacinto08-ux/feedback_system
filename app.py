@@ -2236,6 +2236,150 @@ def create_app() -> Flask:
         finally:
             conn.close()
 
+    @app.route("/admin/seed-feedback", methods=["POST"])
+    def seed_feedback_route():
+        """Seed sample feedback data for each store with answers and staff commendations."""
+        conn = get_db_connection()
+        try:
+            cursor = conn.cursor(dictionary=True)
+
+            # Fetch all stores
+            cursor.execute("SELECT * FROM stores")
+            stores = cursor.fetchall()
+
+            # Fetch template questionnaire
+            cursor.execute("SELECT * FROM questionnaires WHERE is_template = TRUE LIMIT 1")
+            template_questionnaire = cursor.fetchone()
+
+            if not template_questionnaire:
+                flash("No template questionnaire found. Please create one first.", "danger")
+                return redirect(url_for("stores_management"))
+
+            questionnaire_id = int(template_questionnaire["id"])
+
+            # Fetch questions from template questionnaire
+            cursor.execute("SELECT * FROM questions WHERE questionnaire_id = %s", (questionnaire_id,))
+            questions = cursor.fetchall()
+
+            total_responses = 0
+            total_answers = 0
+            total_commendations = 0
+
+            # Sample data for feedback
+            sample_emails = [
+                "customer1@example.com", "customer2@example.com", "customer3@example.com",
+                "customer4@example.com", "customer5@example.com", "customer6@example.com",
+                "customer7@example.com", "customer8@example.com", "customer9@example.com",
+                "customer10@example.com"
+            ]
+
+            sample_receipts = [
+                "REC-001", "REC-002", "REC-003", "REC-004", "REC-005",
+                "REC-006", "REC-007", "REC-008", "REC-009", "REC-010"
+            ]
+
+            sample_answers_text = [
+                "Great service!", "Very satisfied", "Excellent experience",
+                "Good quality", "Friendly staff", "Quick service",
+                "Clean environment", "Helpful team", "Professional",
+                "Will return again"
+            ]
+
+            import random
+
+            for store in stores:
+                store_id = int(store["id"])
+
+                # Fetch staff for this store
+                cursor.execute("SELECT * FROM staff WHERE store_id = %s", (store_id,))
+                staff_list = cursor.fetchall()
+
+                # Determine number of feedbacks for this store (5-15)
+                num_feedbacks = random.randint(5, 15)
+
+                for i in range(num_feedbacks):
+                    # Use Philippine time
+                    ph_tz = timezone(timedelta(hours=8))
+                    now_ph = datetime.now(ph_tz).strftime("%Y-%m-%d %H:%M:%S")
+
+                    # Create response
+                    cursor.execute(
+                        """
+                        INSERT INTO responses (questionnaire_id, store_id, user_email, receipt_number, submitted_at, status)
+                        VALUES (%s, %s, %s, %s, %s, %s)
+                        """,
+                        (questionnaire_id, store_id, sample_emails[i % len(sample_emails)],
+                         sample_receipts[i % len(sample_receipts)], now_ph, random.choice(['resolved', 'unresolved'])),
+                    )
+                    response_id = int(cursor.lastrowid)
+                    total_responses += 1
+
+                    # Add answers for each question
+                    for question in questions:
+                        question_type = question["question_type"]
+
+                        if question_type == "rating":
+                            # Random rating 1-5
+                            rating = str(random.randint(1, 5))
+                            cursor.execute(
+                                """
+                                INSERT INTO answers (response_id, question_id, rating_value)
+                                VALUES (%s, %s, %s)
+                                """,
+                                (response_id, question["id"], rating),
+                            )
+                            total_answers += 1
+                        elif question_type == "text":
+                            # Random text answer
+                            answer_text = sample_answers_text[random.randint(0, len(sample_answers_text) - 1)]
+                            cursor.execute(
+                                """
+                                INSERT INTO answers (response_id, question_id, answer_text)
+                                VALUES (%s, %s, %s)
+                                """,
+                                (response_id, question["id"], answer_text),
+                            )
+                            total_answers += 1
+                        elif question_type == "multiple_choice":
+                            # Fetch options for this question
+                            cursor.execute("SELECT * FROM question_options WHERE question_id = %s", (question["id"],))
+                            options = cursor.fetchall()
+                            if options:
+                                selected_option = random.choice(options)
+                                cursor.execute(
+                                    """
+                                    INSERT INTO answers (response_id, question_id, answer_text)
+                                    VALUES (%s, %s, %s)
+                                    """,
+                                    (response_id, question["id"], selected_option["option_text"]),
+                                )
+                                total_answers += 1
+
+                    # Add staff commendations (if staff exists and rating was good)
+                    if staff_list and random.random() > 0.5:  # 50% chance
+                        num_commendations = random.randint(1, min(3, len(staff_list)))
+                        commended_staff = random.sample(staff_list, num_commendations)
+                        for staff in commended_staff:
+                            cursor.execute(
+                                """
+                                INSERT INTO staff_commendations (response_id, staff_id)
+                                VALUES (%s, %s)
+                                """,
+                                (response_id, staff["id"]),
+                            )
+                            total_commendations += 1
+
+            conn.commit()
+            flash(f"Seeded {total_responses} feedback responses, {total_answers} answers, and {total_commendations} staff commendations across {len(stores)} stores.", "success")
+            logger.info(f"Seeded feedback data: {total_responses} responses, {total_answers} answers, {total_commendations} commendations")
+        except Exception as e:
+            logger.error(f"Error seeding feedback data: {e}")
+            flash(f"Error seeding feedback data: {e}", "danger")
+        finally:
+            conn.close()
+
+        return redirect(url_for("stores_management"))
+
     # -------------------------
     # STAFF MANAGEMENT
     # -------------------------
