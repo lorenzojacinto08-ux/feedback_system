@@ -1436,7 +1436,7 @@ def create_app() -> Flask:
             
             # Fetch staff with commendation counts
             cursor.execute("""
-                SELECT s.id, s.first_name, s.last_name, s.position, s.role, s.status,
+                SELECT s.id, s.first_name, s.last_name, s.email, s.phone, s.position, s.role, s.status,
                        COUNT(sc.id) as commendations
                 FROM staff s
                 LEFT JOIN staff_commendations sc ON s.id = sc.staff_id
@@ -1458,6 +1458,8 @@ def create_app() -> Flask:
                     "first_name": staff["first_name"],
                     "last_name": staff["last_name"],
                     "position": staff["position"] or staff["role"].title(),
+                    "email": staff.get("email", "") or "",
+                    "phone": staff.get("phone", "") or "",
                     "role": staff["role"],
                     "status": staff["status"],
                     "commendations": staff["commendations"],
