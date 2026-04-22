@@ -1473,6 +1473,66 @@ def create_app() -> Flask:
             logger.error(f"Dashboard Crash: {e}\n{error_details}")
             return f"Dashboard Error: {e}<br><pre>{error_details}</pre>", 500
 
+    @app.route("/api/dashboard/analytics")
+    def api_dashboard_analytics():
+        """JSON endpoint for overall dashboard analytics (used by store filter)."""
+        try:
+            analytics = fetch_dashboard_analytics()
+            # Serialize for JSON
+            stores_data = analytics.get('stores_data', [])
+            overall = analytics.get('overall_stats', {})
+            recent = analytics.get('recent_activity', [])
+            top = analytics.get('top_stores', [])
+            best_store = analytics.get('best_overall_store')
+            best_staff = analytics.get('best_overall_staff')
+
+            # Format recent_activity dates
+            formatted_activity = []
+            for a in recent:
+                d = a.get('date')
+                formatted_activity.append({
+                    'date_label': d.strftime('%b %d') if d else '?',
+                    'responses': a.get('responses', 0)
+                })
+
+            return jsonify({
+                'stores_data': [
+                    {
+                        'id': s['id'],
+                        'store_name': s['store_name'],
+                        'address': s.get('address', ''),
+                        'city': s.get('city', ''),
+                        'total_responses': s.get('total_responses', 0),
+                        'avg_rating': float(s['avg_rating']) if s.get('avg_rating') else 0.0,
+                        'unique_users': s.get('unique_users', 0)
+                    } for s in stores_data
+                ],
+                'overall_stats': {
+                    'total_responses': overall.get('total_responses', 0),
+                    'total_stores': overall.get('total_stores', 0),
+                    'total_unique_users': overall.get('total_unique_users', 0),
+                    'overall_avg_rating': float(overall.get('overall_avg_rating', 0)),
+                    'total_questionnaires': overall.get('total_questionnaires', 0)
+                },
+                'recent_activity': formatted_activity,
+                'top_stores': [
+                    {'store_name': t['store_name'], 'response_count': t['response_count']}
+                    for t in top
+                ],
+                'best_overall_store': {
+                    'store_name': best_store['store_name'],
+                    'avg_rating': float(best_store['avg_rating'])
+                } if best_store else None,
+                'best_overall_staff': {
+                    'first_name': best_staff['first_name'],
+                    'last_name': best_staff['last_name'],
+                    'commendation_count': best_staff['commendation_count']
+                } if best_staff else None
+            })
+        except Exception as e:
+            logger.error(f"Dashboard API error: {e}")
+            return jsonify({'error': str(e)}), 500
+
     @app.route("/admin/stores/performance")
     def stores_performance():
         analytics = fetch_dashboard_analytics()
