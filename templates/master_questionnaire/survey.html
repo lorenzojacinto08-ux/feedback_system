@@ -418,42 +418,42 @@ PURPOSE: The actual "Feedback Form". This is the page the customer sees when
       });
     }
 
-    // Staff commendation star rating functions
-    function toggleStaffRating() {
-      const select = document.getElementById('staff_commendation');
-      const section = document.getElementById('staffRatingSection');
-      if (select.value) {
-        section.style.display = 'block';
-      } else {
-        section.style.display = 'none';
-        setCommendationRating(0);
-      }
-    }
-
-    function setCommendationRating(value) {
-      const stars = document.querySelectorAll('#commendationStars .commendation-star');
-      const input = document.getElementById('commendationRatingInput');
-      const label = document.getElementById('commendationRatingLabel');
-      
-      input.value = value;
-      
-      const labels = ['', 'Poor', 'Fair', 'Good', 'Very Good', 'Excellent'];
-      label.textContent = labels[value] || 'Tap a star to rate';
-      
-      stars.forEach(star => {
-        const starValue = parseInt(star.dataset.value);
-        if (starValue <= value) {
-          star.classList.remove('bi-star');
-          star.classList.add('bi-star-fill');
-          star.style.color = '#ffc107';
-        } else {
-          star.classList.remove('bi-star-fill');
-          star.classList.add('bi-star');
-          star.style.color = '#d1d5db';
-        }
-      });
-    }
-
   });
+
+  // Staff commendation star rating functions (global scope)
+  function toggleStaffRating() {
+    const select = document.getElementById('staff_commendation');
+    const section = document.getElementById('staffRatingSection');
+    if (select.value) {
+      section.style.display = 'block';
+    } else {
+      section.style.display = 'none';
+      setCommendationRating(0);
+    }
+  }
+
+  function setCommendationRating(value) {
+    const stars = document.querySelectorAll('#commendationStars .commendation-star');
+    const input = document.getElementById('commendationRatingInput');
+    const label = document.getElementById('commendationRatingLabel');
+    
+    input.value = value;
+    
+    const labels = ['', 'Poor', 'Fair', 'Good', 'Very Good', 'Excellent'];
+    label.textContent = labels[value] || 'Tap a star to rate';
+    
+    stars.forEach(star => {
+      const starValue = parseInt(star.dataset.value);
+      if (starValue <= value) {
+        star.classList.remove('bi-star');
+        star.classList.add('bi-star-fill');
+        star.style.color = '#ffc107';
+      } else {
+        star.classList.remove('bi-star-fill');
+        star.classList.add('bi-star');
+        star.style.color = '#d1d5db';
+      }
+    });
+  }
 </script>
 {% endblock %}
