@@ -1440,11 +1440,13 @@ def create_app() -> Flask:
             if best_overall_store:
                 best_overall_store['avg_rating'] = float(best_overall_store['avg_rating']) if best_overall_store['avg_rating'] is not None else 0.0
 
-            # Best overall staff (highest rated staff)
+            # Best overall staff (highest weighted score: avg_rating * SQRT(count))
             cursor.execute(
                 """
                 SELECT s.id, s.first_name, s.last_name, s.position, s.role,
                        AVG(sc.rating) as avg_rating,
+                       COUNT(sc.id) as commendation_count,
+                       AVG(sc.rating) * SQRT(COUNT(sc.id)) as weighted_score,
                        st.store_name
                 FROM staff s
                 LEFT JOIN staff_commendations sc ON s.id = sc.staff_id
@@ -1453,13 +1455,14 @@ def create_app() -> Flask:
                 LEFT JOIN stores st ON q.store_id = st.id
                 GROUP BY s.id, s.first_name, s.last_name, s.position, s.role, st.store_name
                 HAVING avg_rating IS NOT NULL
-                ORDER BY avg_rating DESC
+                ORDER BY weighted_score DESC
                 LIMIT 1
                 """
             )
             best_overall_staff = cursor.fetchone()
             if best_overall_staff:
                 best_overall_staff['avg_rating'] = float(best_overall_staff['avg_rating']) if best_overall_staff['avg_rating'] is not None else 0.0
+                best_overall_staff['weighted_score'] = float(best_overall_staff['weighted_score']) if best_overall_staff['weighted_score'] is not None else 0.0
 
             return {
                 'stores_data': stores_data,
@@ -1625,7 +1628,7 @@ def create_app() -> Flask:
             conn.close()
 
     def get_staff_performance_for_store(store_id: int) -> List[Dict[str, Any]]:
-        """Get staff members for a store ranked by average commendation rating."""
+        """Get staff members for a store ranked by weighted score (avg_rating * SQRT(count))."""
         conn = get_db_connection()
         try:
             cursor = conn.cursor(dictionary=True)
@@ -1633,12 +1636,13 @@ def create_app() -> Flask:
                 """
                 SELECT s.id, s.first_name, s.last_name, s.position, s.role,
                        AVG(sc.rating) as avg_rating,
-                       COUNT(sc.id) as commendation_count
+                       COUNT(sc.id) as commendation_count,
+                       AVG(sc.rating) * SQRT(COUNT(sc.id)) as weighted_score
                 FROM staff s
                 LEFT JOIN staff_commendations sc ON s.id = sc.staff_id
                 WHERE s.store_id = %s
                 GROUP BY s.id, s.first_name, s.last_name, s.position, s.role
-                ORDER BY avg_rating DESC, commendation_count DESC
+                ORDER BY weighted_score DESC
                 """,
                 (store_id,)
             )
@@ -1742,16 +1746,17 @@ def create_app() -> Flask:
                 """, all_response_ids)
                 total_commendations = cursor.fetchone()["cnt"]
                 
-                # Top 5 commended staff (by average rating)
+                # Top 5 commended staff (by weighted score: avg_rating * SQRT(count))
                 cursor.execute(f"""
                     SELECT s.first_name, s.last_name, s.position, s.role,
                            AVG(sc.rating) as avg_rating,
-                           COUNT(sc.id) as commendation_count
+                           COUNT(sc.id) as commendation_count,
+                           AVG(sc.rating) * SQRT(COUNT(sc.id)) as weighted_score
                     FROM staff_commendations sc
                     JOIN staff s ON s.id = sc.staff_id
                     WHERE sc.response_id IN ({placeholders})
                     GROUP BY s.id, s.first_name, s.last_name, s.position, s.role
-                    ORDER BY avg_rating DESC, commendation_count DESC
+                    ORDER BY weighted_score DESC
                     LIMIT 5
                 """, all_response_ids)
                 top_staff = cursor.fetchall()
@@ -1810,12 +1815,13 @@ def create_app() -> Flask:
             cursor.execute("""
                 SELECT s.id, s.first_name, s.last_name, s.email, s.phone, s.position, s.role, s.status,
                        AVG(sc.rating) as avg_rating,
-                       COUNT(sc.id) as commendation_count
+                       COUNT(sc.id) as commendation_count,
+                       AVG(sc.rating) * SQRT(COUNT(sc.id)) as weighted_score
                 FROM staff s
                 LEFT JOIN staff_commendations sc ON s.id = sc.staff_id
                 WHERE s.store_id = %s
                 GROUP BY s.id
-                ORDER BY avg_rating DESC, s.last_name, s.first_name
+                ORDER BY weighted_score DESC, s.last_name, s.first_name
             """, (store_id,))
             
             staff_members = cursor.fetchall()
@@ -2935,13 +2941,15 @@ def create_app() -> Flask:
                 if commendation['comment']:
                     staff_commendations[staff_id]['comments'].append(commendation['comment'])
         
-        # Calculate avg_rating for each staff and sort by avg_rating
+        # Calculate avg_rating and weighted_score for each staff, sort by weighted_score
         for staff_id in staff_commendations:
             if staff_commendations[staff_id]['total_commendations'] > 0:
                 staff_commendations[staff_id]['avg_rating'] = staff_commendations[staff_id]['rating_sum'] / staff_commendations[staff_id]['total_commendations']
+                staff_commendations[staff_id]['weighted_score'] = staff_commendations[staff_id]['avg_rating'] * (staff_commendations[staff_id]['total_commendations'] ** 0.5)
             else:
                 staff_commendations[staff_id]['avg_rating'] = 0
-        top_staff = sorted(staff_commendations.values(), key=lambda x: x['avg_rating'], reverse=True)
+                staff_commendations[staff_id]['weighted_score'] = 0
+        top_staff = sorted(staff_commendations.values(), key=lambda x: x['weighted_score'], reverse=True)
         
         # Identify staff with potential issues (low or no commendations)
         staff_performance = []
