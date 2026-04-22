@@ -943,6 +943,7 @@ PURPOSE: "Feedback Management" page. Displays all customer responses/submissions
         name: {{ (c.first_name ~ " " ~ c.last_name) | tojson }},
         position: {{ (c.position or c.role|title) | tojson }},
         type: {{ (c.commendation_type or "excellent_service") | tojson }},
+        rating: {{ (c.rating or 5) | tojson }},
         comment: {{ (c.comment or "") | tojson }}
       }{% if not loop.last %},{% endif %}
       {% endfor %}
@@ -1145,7 +1146,7 @@ PURPOSE: "Feedback Management" page. Displays all customer responses/submissions
             <div class="col-md-6">
               <p class="mb-2"><strong>Transaction #:</strong> ${feedback.receiptNumber || '<span class="text-muted">N/A</span>'}</p>
               <p class="mb-2"><strong>Commended Staff:</strong> ${feedback.commendedStaff && feedback.commendedStaff.length > 0
-                ? feedback.commendedStaff.map(s => '<span class="badge bg-success bg-opacity-10 text-success me-1"><i class="bi bi-person-check me-1"></i>' + s.name + '</span>').join('')
+                ? feedback.commendedStaff.map(s => '<div class="badge bg-success bg-opacity-10 text-success me-1 mb-1"><i class="bi bi-person-check me-1"></i>' + s.name + ' <span class="text-warning">' + s.rating + '★</span></div>').join('')
                 : '<span class="text-muted">None</span>'}</p>
             </div>
           </div>
