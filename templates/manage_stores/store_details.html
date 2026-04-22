@@ -379,8 +379,8 @@ PURPOSE: Comprehensive store details page showing feedback, analytics, and staff
                           <small class="text-muted">{{ top_staff[0].staff_position }}</small>
                         </div>
                         <div class="text-end">
-                          <span class="badge bg-success fs-6">{{ top_staff[0].total_commendations }}</span>
-                          <small class="text-muted d-block">total commendations</small>
+                          <span class="badge bg-success fs-6">{{ "%.1f"|format(top_staff[0].avg_rating) }} ★</span>
+                          <small class="text-muted d-block">avg rating</small>
                         </div>
                       </div>
                       {% endif %}
@@ -393,8 +393,8 @@ PURPOSE: Comprehensive store details page showing feedback, analytics, and staff
                           <small class="text-muted">{{ staff.staff_position }}</small>
                         </div>
                         <div class="text-end">
-                          <span class="badge bg-success">{{ staff.total_commendations }}</span>
-                          <small class="text-muted d-block">commendations</small>
+                          <span class="badge bg-success">{{ "%.1f"|format(staff.avg_rating) }} ★</span>
+                          <small class="text-muted d-block">avg rating</small>
                         </div>
                       </div>
                       {% endfor %}
@@ -422,8 +422,8 @@ PURPOSE: Comprehensive store details page showing feedback, analytics, and staff
                           <small class="text-muted">{{ staff.staff_position }}</small>
                         </div>
                         <div class="text-end">
-                          <span class="badge bg-secondary">{{ staff.commendation_count }}</span>
-                          <small class="text-muted d-block">commendations</small>
+                          <span class="badge bg-secondary">{{ "%.1f"|format(staff.avg_rating|default(0)) }} ★</span>
+                          <small class="text-muted d-block">avg rating</small>
                         </div>
                       </div>
                       {% endfor %}

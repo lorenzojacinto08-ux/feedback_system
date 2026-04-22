@@ -579,7 +579,7 @@ function buildStaffTable(topStaff) {
           </div>
         </td>
         <td class="text-end">
-          <span class="badge bg-warning bg-opacity-10 text-warning">${s.commendations}</span>
+          <span class="badge bg-warning bg-opacity-10 text-warning">${s.avg_rating.toFixed(1)} ★</span>
         </td>
       </tr>`;
   });
@@ -588,7 +588,7 @@ function buildStaffTable(topStaff) {
       <thead><tr>
         <th style="width:14%">#</th>
         <th style="width:52%">Staff</th>
-        <th style="width:34%" class="text-end">Commendations</th>
+        <th style="width:34%" class="text-end">Avg Rating</th>
       </tr></thead>
       <tbody>${rows}</tbody>
     </table>`;

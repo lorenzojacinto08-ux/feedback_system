@@ -1561,10 +1561,10 @@ PURPOSE: "Feedback Management" page. Displays all customer responses/submissions
     window._staffLookup = {};
     staffData.forEach(s => { window._staffLookup[s.id] = s; });
 
-    const sortedStaff = [...staffData].sort((a, b) => b.commendations - a.commendations);
+    const sortedStaff = [...staffData].sort((a, b) => (b.avg_rating || 0) - (a.avg_rating || 0));
     const totalStaff = sortedStaff.length;
-    const totalCommendations = sortedStaff.reduce((sum, s) => sum + s.commendations, 0);
-    const maxCommendations = sortedStaff.length > 0 ? sortedStaff[0].commendations : 0;
+    const totalCommendations = sortedStaff.reduce((sum, s) => sum + (s.commendation_count || 0), 0);
+    const maxRating = sortedStaff.length > 0 ? (sortedStaff[0].avg_rating || 0) : 0;
     const activeStaff = sortedStaff.filter(s => s.status === 'active').length;
 
     // Summary row
@@ -1608,7 +1608,7 @@ PURPOSE: "Feedback Management" page. Displays all customer responses/submissions
                 <th>Staff Member</th>
                 <th>Position</th>
                 <th class="text-center">Status</th>
-                <th class="text-center" style="width: 130px;">Commendations</th>
+                <th class="text-center" style="width: 130px;">Avg Rating</th>
                 <th style="width: 100px;">Performance</th>
                 <th class="text-center" style="width: 90px;">Actions</th>
               </tr>
@@ -1619,7 +1619,7 @@ PURPOSE: "Feedback Management" page. Displays all customer responses/submissions
     sortedStaff.forEach((staff, index) => {
       const rank = index + 1;
       const initials = (staff.first_name || staff.name.split(' ')[0])[0] + (staff.last_name || staff.name.split(' ').pop())[0];
-      const pct = maxCommendations > 0 ? Math.round((staff.commendations / maxCommendations) * 100) : 0;
+      const pct = maxRating > 0 ? Math.round(((staff.avg_rating || 0) / maxRating) * 100) : 0;
       const statusBadge = staff.status === 'active'
         ? '<span class="badge bg-success bg-opacity-10 text-success">Active</span>'
         : '<span class="badge bg-secondary bg-opacity-10 text-secondary">Inactive</span>';
@@ -1649,7 +1649,7 @@ PURPOSE: "Feedback Management" page. Displays all customer responses/submissions
                 <td class="text-muted">${staff.position || '—'}</td>
                 <td class="text-center">${statusBadge}</td>
                 <td class="text-center">
-                  <span class="badge bg-primary bg-opacity-10 text-primary px-2 py-1">${staff.commendations}</span>
+                  <span class="badge bg-warning bg-opacity-10 text-warning px-2 py-1">${(staff.avg_rating || 0).toFixed(1)} ★</span>
                 </td>
                 <td>
                   <div class="progress" style="height:6px;">

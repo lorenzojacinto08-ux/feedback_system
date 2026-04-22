@@ -158,6 +158,7 @@ def create_app() -> Flask:
                         id INT AUTO_INCREMENT PRIMARY KEY,
                         response_id INT NOT NULL,
                         staff_id INT NOT NULL,
+                        rating INT DEFAULT 5,
                         commendation_type ENUM('excellent_service', 'friendly_attitude', 'professional', 'helpful', 'knowledgeable') DEFAULT 'excellent_service',
                         comment TEXT,
                         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -393,6 +394,13 @@ def create_app() -> Flask:
                 if not cursor.fetchone():
                     logger.info("Adding 'receipt_number' column to responses table...")
                     cursor.execute("ALTER TABLE responses ADD COLUMN receipt_number VARCHAR(100) AFTER user_email")
+                    conn.commit()
+                
+                # Add rating column to staff_commendations if missing
+                cursor.execute("SHOW COLUMNS FROM staff_commendations LIKE 'rating'")
+                if not cursor.fetchone():
+                    logger.info("Adding 'rating' column to staff_commendations table...")
+                    cursor.execute("ALTER TABLE staff_commendations ADD COLUMN rating INT DEFAULT 5 AFTER staff_id")
                     conn.commit()
                 
                 conn.commit()
@@ -1432,11 +1440,11 @@ def create_app() -> Flask:
             if best_overall_store:
                 best_overall_store['avg_rating'] = float(best_overall_store['avg_rating']) if best_overall_store['avg_rating'] is not None else 0.0
 
-            # Best overall staff (most commended staff)
+            # Best overall staff (highest rated staff)
             cursor.execute(
                 """
                 SELECT s.id, s.first_name, s.last_name, s.position, s.role,
-                       COUNT(sc.id) as commendation_count,
+                       AVG(sc.rating) as avg_rating,
                        st.store_name
                 FROM staff s
                 LEFT JOIN staff_commendations sc ON s.id = sc.staff_id
@@ -1444,12 +1452,14 @@ def create_app() -> Flask:
                 LEFT JOIN questionnaires q ON r.questionnaire_id = q.id
                 LEFT JOIN stores st ON q.store_id = st.id
                 GROUP BY s.id, s.first_name, s.last_name, s.position, s.role, st.store_name
-                HAVING commendation_count > 0
-                ORDER BY commendation_count DESC
+                HAVING avg_rating IS NOT NULL
+                ORDER BY avg_rating DESC
                 LIMIT 1
                 """
             )
             best_overall_staff = cursor.fetchone()
+            if best_overall_staff:
+                best_overall_staff['avg_rating'] = float(best_overall_staff['avg_rating']) if best_overall_staff['avg_rating'] is not None else 0.0
 
             return {
                 'stores_data': stores_data,
@@ -1526,7 +1536,7 @@ def create_app() -> Flask:
                 'best_overall_staff': {
                     'first_name': best_staff['first_name'],
                     'last_name': best_staff['last_name'],
-                    'commendation_count': best_staff['commendation_count']
+                    'avg_rating': float(best_staff['avg_rating']) if best_staff.get('avg_rating') else 0.0
                 } if best_staff else None
             })
         except Exception as e:
@@ -1615,19 +1625,20 @@ def create_app() -> Flask:
             conn.close()
 
     def get_staff_performance_for_store(store_id: int) -> List[Dict[str, Any]]:
-        """Get staff members for a store ranked by commendations."""
+        """Get staff members for a store ranked by average commendation rating."""
         conn = get_db_connection()
         try:
             cursor = conn.cursor(dictionary=True)
             cursor.execute(
                 """
                 SELECT s.id, s.first_name, s.last_name, s.position, s.role,
+                       AVG(sc.rating) as avg_rating,
                        COUNT(sc.id) as commendation_count
                 FROM staff s
                 LEFT JOIN staff_commendations sc ON s.id = sc.staff_id
                 WHERE s.store_id = %s
                 GROUP BY s.id, s.first_name, s.last_name, s.position, s.role
-                ORDER BY commendation_count DESC
+                ORDER BY avg_rating DESC, commendation_count DESC
                 """,
                 (store_id,)
             )
@@ -1731,15 +1742,16 @@ def create_app() -> Flask:
                 """, all_response_ids)
                 total_commendations = cursor.fetchone()["cnt"]
                 
-                # Top 5 commended staff
+                # Top 5 commended staff (by average rating)
                 cursor.execute(f"""
                     SELECT s.first_name, s.last_name, s.position, s.role,
-                           COUNT(sc.id) as commendations
+                           AVG(sc.rating) as avg_rating,
+                           COUNT(sc.id) as commendation_count
                     FROM staff_commendations sc
                     JOIN staff s ON s.id = sc.staff_id
                     WHERE sc.response_id IN ({placeholders})
                     GROUP BY s.id, s.first_name, s.last_name, s.position, s.role
-                    ORDER BY commendations DESC
+                    ORDER BY avg_rating DESC, commendation_count DESC
                     LIMIT 5
                 """, all_response_ids)
                 top_staff = cursor.fetchall()
@@ -1754,7 +1766,7 @@ def create_app() -> Flask:
             formatted_top_staff.append({
                 "name": f"{s['first_name']} {s['last_name']}",
                 "position": s["position"] or (s["role"].title() if s["role"] else "Staff"),
-                "commendations": s["commendations"]
+                "avg_rating": float(s["avg_rating"]) if s["avg_rating"] else 0.0
             })
         
         return jsonify({
@@ -1794,22 +1806,23 @@ def create_app() -> Flask:
         try:
             cursor = conn.cursor(dictionary=True)
             
-            # Fetch staff with commendation counts
+            # Fetch staff with commendation ratings
             cursor.execute("""
                 SELECT s.id, s.first_name, s.last_name, s.email, s.phone, s.position, s.role, s.status,
-                       COUNT(sc.id) as commendations
+                       AVG(sc.rating) as avg_rating,
+                       COUNT(sc.id) as commendation_count
                 FROM staff s
                 LEFT JOIN staff_commendations sc ON s.id = sc.staff_id
                 WHERE s.store_id = %s
                 GROUP BY s.id
-                ORDER BY commendations DESC, s.last_name, s.first_name
+                ORDER BY avg_rating DESC, s.last_name, s.first_name
             """, (store_id,))
             
             staff_members = cursor.fetchall()
             
             # Format staff data
-            total_commendations = sum(s["commendations"] for s in staff_members) if staff_members else 0
-            max_commendations = max((s["commendations"] for s in staff_members), default=0)
+            total_commendations = sum(s["commendation_count"] or 0 for s in staff_members) if staff_members else 0
+            max_commendations = max((s["commendation_count"] or 0 for s in staff_members), default=0)
             formatted_staff = []
             for staff in staff_members:
                 formatted_staff.append({
@@ -1822,7 +1835,8 @@ def create_app() -> Flask:
                     "phone": staff.get("phone", "") or "",
                     "role": staff["role"],
                     "status": staff["status"],
-                    "commendations": staff["commendations"],
+                    "avg_rating": float(staff["avg_rating"]) if staff["avg_rating"] else 0.0,
+                    "commendation_count": staff["commendation_count"] or 0,
                     "store_id": store_id
                 })
             
@@ -2006,14 +2020,18 @@ def create_app() -> Flask:
                 staff_id = int(staff_commendation)
                 commendation_type = request.form.get("commendation_type", "excellent_service")
                 commendation_comment = request.form.get("commendation_comment", "").strip()
+                commendation_rating = request.form.get("commendation_rating", "5").strip()
+                if not commendation_rating or not commendation_rating.isdigit():
+                    commendation_rating = 5
+                commendation_rating = int(commendation_rating)
                 
                 # Verify staff exists and belongs to this store
                 cursor.execute("SELECT id FROM staff WHERE id = %s AND store_id = %s", (staff_id, store_id))
                 if cursor.fetchone():
                     cursor.execute("""
-                        INSERT INTO staff_commendations (response_id, staff_id, commendation_type, comment)
-                        VALUES (%s, %s, %s, %s)
-                    """, (response_id, staff_id, commendation_type, commendation_comment if commendation_comment else None))
+                        INSERT INTO staff_commendations (response_id, staff_id, rating, commendation_type, comment)
+                        VALUES (%s, %s, %s, %s, %s)
+                    """, (response_id, staff_id, commendation_rating, commendation_type, commendation_comment if commendation_comment else None))
 
             conn.commit()
         finally:
@@ -2899,11 +2917,13 @@ def create_app() -> Flask:
                         'staff_name': f"{commendation['first_name']} {commendation['last_name']}",
                         'staff_position': commendation['position'] or commendation['role'].title(),
                         'total_commendations': 0,
+                        'rating_sum': 0,
                         'commendation_types': {},
                         'comments': []
                     }
                 
                 staff_commendations[staff_id]['total_commendations'] += 1
+                staff_commendations[staff_id]['rating_sum'] += (commendation['rating'] or 5)
                 
                 # Count by type
                 c_type = commendation['commendation_type']
@@ -2915,8 +2935,13 @@ def create_app() -> Flask:
                 if commendation['comment']:
                     staff_commendations[staff_id]['comments'].append(commendation['comment'])
         
-        # Sort staff by total commendations
-        top_staff = sorted(staff_commendations.values(), key=lambda x: x['total_commendations'], reverse=True)
+        # Calculate avg_rating for each staff and sort by avg_rating
+        for staff_id in staff_commendations:
+            if staff_commendations[staff_id]['total_commendations'] > 0:
+                staff_commendations[staff_id]['avg_rating'] = staff_commendations[staff_id]['rating_sum'] / staff_commendations[staff_id]['total_commendations']
+            else:
+                staff_commendations[staff_id]['avg_rating'] = 0
+        top_staff = sorted(staff_commendations.values(), key=lambda x: x['avg_rating'], reverse=True)
         
         # Identify staff with potential issues (low or no commendations)
         staff_performance = []

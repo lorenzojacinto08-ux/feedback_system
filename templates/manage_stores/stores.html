@@ -1444,8 +1444,8 @@ function generateStaffHtml(staffData) {
                     </div>
                 </div>
                 <div class="text-end">
-                    <span class="badge bg-success fs-6">${staff.commendations || 0}</span>
-                    <div class="small text-muted">commendations</div>
+                    <span class="badge bg-warning fs-6">${(staff.avg_rating || 0).toFixed(1)} ★</span>
+                    <div class="small text-muted">avg rating</div>
                 </div>
             </div>
         </div>

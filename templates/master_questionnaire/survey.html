@@ -115,7 +115,7 @@ PURPOSE: The actual "Feedback Form". This is the page the customer sees when
               <div>
                 <h6 class="mb-1 fw-semibold">Staff Commendation (Optional)</h6>
                 <p class="text-muted small mb-0">
-                  Would you like to commend any staff member who provided excellent service?
+                  Would you like to rate a staff member who served you?
                 </p>
               </div>
             </div>
@@ -128,6 +128,7 @@ PURPOSE: The actual "Feedback Form". This is the page the customer sees when
                 id="staff_commendation"
                 name="staff_commendation"
                 class="form-select bg-white"
+                onchange="toggleStaffRating()"
               >
                 <option value="">No staff commendation</option>
                 {% for staff in staff_members %}
@@ -138,7 +139,22 @@ PURPOSE: The actual "Feedback Form". This is the page the customer sees when
               </select>
               <div class="form-text">
                 <i class="bi bi-info-circle me-1"></i>
-                Choose a staff member to recognize their excellent service.
+                Choose a staff member to rate their service.
+              </div>
+            </div>
+
+            <!-- Staff Star Rating (shown when a staff member is selected) -->
+            <div id="staffRatingSection" class="mb-3" style="display:none;">
+              <label class="form-label fw-medium">Rate this staff member</label>
+              <div class="commendation-stars d-flex gap-1" id="commendationStars">
+                {% for i in range(1, 6) %}
+                <i class="bi bi-star commendation-star" data-value="{{ i }}" onclick="setCommendationRating({{ i }})" style="font-size:1.75rem; cursor:pointer; color:#d1d5db; transition: color .2s, transform .15s;"></i>
+                {% endfor %}
+              </div>
+              <input type="hidden" name="commendation_rating" id="commendationRatingInput" value="0">
+              <div class="form-text mt-1">
+                <i class="bi bi-info-circle me-1"></i>
+                <span id="commendationRatingLabel">Tap a star to rate</span>
               </div>
             </div>
 
@@ -398,6 +414,42 @@ PURPOSE: The actual "Feedback Form". This is the page the customer sees when
           button.classList.remove("active");
           icon.classList.remove("bi-star-fill");
           icon.classList.add("bi-star");
+        }
+      });
+    }
+
+    // Staff commendation star rating functions
+    function toggleStaffRating() {
+      const select = document.getElementById('staff_commendation');
+      const section = document.getElementById('staffRatingSection');
+      if (select.value) {
+        section.style.display = 'block';
+      } else {
+        section.style.display = 'none';
+        setCommendationRating(0);
+      }
+    }
+
+    function setCommendationRating(value) {
+      const stars = document.querySelectorAll('#commendationStars .commendation-star');
+      const input = document.getElementById('commendationRatingInput');
+      const label = document.getElementById('commendationRatingLabel');
+      
+      input.value = value;
+      
+      const labels = ['', 'Poor', 'Fair', 'Good', 'Very Good', 'Excellent'];
+      label.textContent = labels[value] || 'Tap a star to rate';
+      
+      stars.forEach(star => {
+        const starValue = parseInt(star.dataset.value);
+        if (starValue <= value) {
+          star.classList.remove('bi-star');
+          star.classList.add('bi-star-fill');
+          star.style.color = '#ffc107';
+        } else {
+          star.classList.remove('bi-star-fill');
+          star.classList.add('bi-star');
+          star.style.color = '#d1d5db';
         }
       });
     }
