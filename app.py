@@ -984,7 +984,7 @@ def create_app() -> Flask:
             cursor.execute(
                 """
                 UPDATE questionnaires
-                SET title = %s, is_active = %s
+                SET title = %s, is_active = %s, updated_at = NOW()
                 WHERE id = %s
                 """,
                 (title, is_active, int(template["id"])),
