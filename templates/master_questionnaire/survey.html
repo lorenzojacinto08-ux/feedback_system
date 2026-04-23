@@ -318,9 +318,11 @@ PURPOSE: The actual "Feedback Form". This is the page the customer sees when
             <button
               type="submit"
               class="btn btn-primary btn-lg px-5 d-flex align-items-center mx-auto"
+              id="submitBtn"
+              onclick="disableSubmitButton(this)"
             >
               <i class="bi bi-send me-2"></i>
-              Submit Feedback
+              <span id="submitBtnText">Submit Feedback</span>
             </button>
             <p class="text-muted small mt-3 mb-0">
               <i class="bi bi-shield-check me-1"></i>
@@ -379,6 +381,13 @@ PURPOSE: The actual "Feedback Form". This is the page the customer sees when
 </style>
 
 <script>
+  // Prevent double submission
+  function disableSubmitButton(button) {
+    button.disabled = true;
+    const buttonText = document.getElementById('submitBtnText');
+    buttonText.textContent = 'Submitting...';
+  }
+
   // Simple star rating implementation
   document.addEventListener("DOMContentLoaded", function () {
     const starRatings = document.querySelectorAll(".star-rating");
