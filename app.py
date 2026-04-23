@@ -18,7 +18,7 @@ from mysql.connector.connection import MySQLConnection
 import qrcode
 from email_config import EmailConfig
 from collections import defaultdict
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 from fpdf import FPDF
 from dotenv import load_dotenv
 from datetime import datetime, timedelta, timezone
