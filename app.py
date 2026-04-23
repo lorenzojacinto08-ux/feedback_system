@@ -541,6 +541,19 @@ def create_app() -> Flask:
                     conn.commit()
                     logger.info("Created default dev user (username: dev, password: dev123)")
                 
+                # Check for users table columns - add max_stores and license_key for client licensing
+                cursor.execute("SHOW COLUMNS FROM users LIKE 'max_stores'")
+                if not cursor.fetchone():
+                    logger.info("Adding 'max_stores' column to users table...")
+                    cursor.execute("ALTER TABLE users ADD COLUMN max_stores INT DEFAULT 0 AFTER role")
+                    conn.commit()
+                
+                cursor.execute("SHOW COLUMNS FROM users LIKE 'license_key'")
+                if not cursor.fetchone():
+                    logger.info("Adding 'license_key' column to users table...")
+                    cursor.execute("ALTER TABLE users ADD COLUMN license_key VARCHAR(255) NULL AFTER max_stores")
+                    conn.commit()
+                
                 # Check for questionnaires table columns
                 cursor.execute("SHOW COLUMNS FROM questionnaires LIKE 'is_template'")
                 if not cursor.fetchone():
@@ -2168,6 +2181,7 @@ def create_app() -> Flask:
         email = request.form.get("email", "").strip()
         password = request.form.get("password", "")
         role = request.form.get("role", "user")
+        max_stores = int(request.form.get("max_stores", "0"))
         
         if not username or not email or not password:
             flash("Username, email, and password are required.", "danger")
@@ -2187,22 +2201,34 @@ def create_app() -> Flask:
                 flash("Username or email already exists.", "danger")
                 return redirect(url_for("admin_users"))
             
-            # Create user
+            # Create user (don't set license_key yet - client will configure it)
             password_hash = hash_password(password)
             cursor.execute(
-                "INSERT INTO users (username, email, password_hash, role) VALUES (%s, %s, %s, %s)",
-                (username, email, password_hash, role)
+                "INSERT INTO users (username, email, password_hash, role, max_stores, license_key) VALUES (%s, %s, %s, %s, %s, %s)",
+                (username, email, password_hash, role, max_stores if role == 'user' else 0, None)
             )
             conn.commit()
             conn.close()
             
-            flash("User created successfully.", "success")
-            log_audit(
-                entity_type="user",
-                entity_id=0,
-                action="created",
-                new_values=f"User {username} created with role {role}"
-            )
+            if role == 'user':
+                # Generate license key for client account
+                import secrets
+                license_key = secrets.token_urlsafe(32)
+                flash(f"Client account created successfully. License Key: {license_key} - Give this to the client to configure their account.", "success")
+                log_audit(
+                    entity_type="user",
+                    entity_id=0,
+                    action="created",
+                    new_values=f"Client {username} created with max_stores={max_stores}, license_key={license_key} (pending configuration)"
+                )
+            else:
+                flash("User created successfully.", "success")
+                log_audit(
+                    entity_type="user",
+                    entity_id=0,
+                    action="created",
+                    new_values=f"User {username} created with role {role}"
+                )
         except Exception as e:
             logger.error(f"Error creating user: {e}")
             flash("Failed to create user.", "danger")
@@ -2288,7 +2314,7 @@ def create_app() -> Flask:
         """Save license configuration"""
         license_key = request.form.get("license_key", "").strip()
         api_key = request.form.get("api_key", "").strip()
-        licensing_portal_url = request.form.get("licensing_portal_url", "").strip()
+        licensing_portal_url = request.form.get("licensing_portal_url", "http://feedbacklicensing-production.up.railway.app").strip()
         
         if not license_key or not api_key:
             flash("License key and API key are required.", "danger")
@@ -2299,37 +2325,86 @@ def create_app() -> Flask:
             cursor = conn.cursor()
             
             # Check if config exists
-            cursor.execute("SELECT id FROM license_config")
+            cursor.execute("SELECT id FROM license_config ORDER BY id DESC LIMIT 1")
             existing = cursor.fetchone()
             
             if existing:
                 # Update existing config
                 cursor.execute(
-                    """
-                    UPDATE license_config 
-                    SET license_key = %s, api_key = %s, licensing_portal_url = %s
-                    WHERE id = %s
-                    """,
-                    (license_key, api_key, licensing_portal_url or 'http://feedbacklicensing-production.up.railway.app', existing[0])
+                    "UPDATE license_config SET license_key = %s, api_key = %s, licensing_portal_url = %s WHERE id = %s",
+                    (license_key, api_key, licensing_portal_url, existing[0])
                 )
             else:
                 # Insert new config
                 cursor.execute(
-                    """
-                    INSERT INTO license_config (license_key, api_key, licensing_portal_url)
-                    VALUES (%s, %s, %s)
-                    """,
-                    (license_key, api_key, licensing_portal_url or 'http://feedbacklicensing-production.up.railway.app')
+                    "INSERT INTO license_config (license_key, api_key, licensing_portal_url) VALUES (%s, %s, %s)",
+                    (license_key, api_key, licensing_portal_url)
                 )
             
             conn.commit()
             conn.close()
+            
             flash("License configuration saved successfully.", "success")
+            log_audit(
+                entity_type="license_config",
+                entity_id=0,
+                action="updated",
+                new_values=f"License configured for portal: {licensing_portal_url}"
+            )
         except Exception as e:
             logger.error(f"Error saving license config: {e}")
             flash("Failed to save license configuration.", "danger")
         
         return redirect(url_for("admin_license_config"))
+
+    @app.route("/client/license-config")
+    @login_required
+    def client_license_config():
+        """Client license configuration page"""
+        user = get_user_by_id(session['user_id'])
+        
+        # Only allow client users to access this page
+        if user['role'] != 'user':
+            flash("This page is for client accounts only.", "danger")
+            return redirect(url_for("admin_dashboard"))
+        
+        return render_template("client/license_config.html", user=user)
+
+    @app.route("/client/license-config/save", methods=["POST"])
+    @login_required
+    def client_save_license_config():
+        """Save client license configuration"""
+        license_key = request.form.get("license_key", "").strip()
+        
+        if not license_key:
+            flash("License key is required.", "danger")
+            return redirect(url_for("client_license_config"))
+        
+        try:
+            conn = get_db_connection()
+            cursor = conn.cursor()
+            
+            # Update user's license key
+            cursor.execute(
+                "UPDATE users SET license_key = %s WHERE id = %s",
+                (license_key, session['user_id'])
+            )
+            
+            conn.commit()
+            conn.close()
+            
+            flash("License key configured successfully. You can now add stores.", "success")
+            log_audit(
+                entity_type="user",
+                entity_id=session['user_id'],
+                action="license_configured",
+                new_values=f"License key configured for user {session['user_id']}"
+            )
+        except Exception as e:
+            logger.error(f"Error saving client license config: {e}")
+            flash("Failed to configure license key.", "danger")
+        
+        return redirect(url_for("client_license_config"))
 
     @app.route("/admin/reset-database", methods=["POST"])
     @role_required('dev')
@@ -3271,17 +3346,40 @@ def create_app() -> Flask:
             flash("Please enter a valid email address.", "danger")
             return redirect(url_for("stores_management"))
 
-        # Check license store limit
-        config = get_license_config()
-        if not config or not config.get("license_key"):
-            flash("No license configured. Please configure a license to create stores.", "danger")
-            return redirect(url_for("admin_license_config"))
+        # Check store limit based on user role and membership
+        user = get_user_by_id(session['user_id'])
         
-        if not check_store_limit():
-            license_status = validate_license_from_portal()
-            max_stores = license_status.get("max_stores", 0)
-            flash(f"License limit reached. You can only create up to {max_stores} stores.", "danger")
-            return redirect(url_for("stores_management"))
+        if user['role'] == 'user':
+            # Client account - check if license is configured
+            if not user.get('license_key'):
+                flash("Please configure your license key first. Contact your administrator for your license key.", "danger")
+                return redirect(url_for("client_license_config"))
+            
+            # Check their max_stores limit
+            max_stores = user.get('max_stores', 0)
+            if max_stores > 0:
+                conn = get_db_connection()
+                try:
+                    cursor = conn.cursor()
+                    cursor.execute("SELECT COUNT(*) FROM stores")
+                    current_count = cursor.fetchone()[0]
+                    if current_count >= max_stores:
+                        flash(f"Your membership limit reached. You can only create up to {max_stores} stores. Contact support to upgrade.", "danger")
+                        return redirect(url_for("stores_management"))
+                finally:
+                    conn.close()
+        else:
+            # Admin/Dev/Superadmin - check global license
+            config = get_license_config()
+            if not config or not config.get("license_key"):
+                flash("No license configured. Please configure a license to create stores.", "danger")
+                return redirect(url_for("admin_license_config"))
+            
+            if not check_store_limit():
+                license_status = validate_license_from_portal()
+                max_stores = license_status.get("max_stores", 0)
+                flash(f"License limit reached. You can only create up to {max_stores} stores.", "danger")
+                return redirect(url_for("stores_management"))
 
         # Handle logo upload
         logo_url = None

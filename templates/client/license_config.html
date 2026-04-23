@@ -1,0 +1,48 @@
+{% extends "layout.html" %}
+
+{% block title %}License Configuration · Feedback System{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <div>
+    <h2 class="page-title mb-1">License Configuration</h2>
+    <p class="page-subtitle mb-0">Configure your license key to activate your account</p>
+  </div>
+</div>
+
+<div class="row g-4">
+  <div class="col-12 col-lg-6">
+    <div class="card border-0 shadow-lg mb-4">
+      <div class="card-body p-4">
+        <div class="d-flex align-items-center gap-2 mb-3 pb-3" style="border-bottom:1px solid var(--neutral-200);">
+          <div class="survey-section-icon" style="background:linear-gradient(135deg, rgba(249, 115, 22, 0.15) 0%, rgba(249, 115, 22, 0.25) 100%);">
+            <i class="bi bi-key-fill" style="color:var(--primary-600) !important;opacity:1;"></i>
+          </div>
+          <div>
+            <h6 class="mb-0 fw-bold" style="font-size:1rem;">Enter Your License Key</h6>
+            <small class="text-muted" style="font-size:.75rem;">Configure the license key provided by your administrator</small>
+          </div>
+        </div>
+
+        <form method="POST" action="{{ url_for('client_save_license_config') }}" class="vstack gap-3">
+          <div>
+            <label class="form-label fw-semibold" for="license_key">License Key</label>
+            <input class="form-control" id="license_key" name="license_key" required placeholder="Enter license key from administrator" value="{{ user.license_key if user.license_key else '' }}" />
+            <small class="text-muted">Contact your administrator to get your license key</small>
+          </div>
+          <button class="btn btn-primary" type="submit">
+            <i class="bi bi-check-lg me-2"></i>Save License Key
+          </button>
+        </form>
+
+        {% if user.license_key %}
+        <div class="mt-4 p-3 bg-light rounded">
+          <h6 class="fw-bold mb-2"><i class="bi bi-info-circle me-2"></i>Your Membership Details</h6>
+          <p class="small text-muted mb-0">Max Stores: {{ user.max_stores if user.max_stores > 0 else 'Unlimited' }}</p>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
