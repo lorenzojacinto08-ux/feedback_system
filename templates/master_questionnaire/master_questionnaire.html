@@ -59,15 +59,15 @@ PURPOSE: "Master Questionnaire" editor. Allows admins to build the global templa
               <label class="form-label fw-medium" for="title">Questionnaire Title</label>
               <input class="form-control" id="title" name="title" value="{{ master.title }}" required />
             </div>
+            <div>
+              <label class="form-label fw-medium" for="updated_at">Last Updated</label>
+              <input type="date" class="form-control" id="updated_at" name="updated_at" value="{{ master.updated_at.strftime('%Y-%m-%d') if master.updated_at else '' }}" />
+              <small class="text-muted">Leave blank to use current date</small>
+            </div>
             <div class="d-flex gap-2 align-items-center">
               <button class="btn btn-primary d-flex align-items-center flex-grow-1" type="submit">
                 <i class="bi bi-check-lg me-2"></i>Save Changes
               </button>
-            </div>
-            <div class="text-center">
-              <span class="text-muted small">
-                Updated: {{ master.updated_at.strftime('%b %d, %Y') if master.updated_at else 'Never' }}
-              </span>
             </div>
           </form>
           <hr class="my-3">

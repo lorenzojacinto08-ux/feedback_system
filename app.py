@@ -976,19 +976,29 @@ def create_app() -> Flask:
             conn.close()
         return {"id": template_id, "title": "Customer Feedback", "is_active": 1, "version": 1, "created_at": None, "is_template": True}
 
-    def update_template_questionnaire(title: str, is_active: bool) -> None:
+    def update_template_questionnaire(title: str, is_active: bool, updated_at: str | None = None) -> None:
         template = ensure_template_questionnaire()
         conn = get_db_connection()
         try:
             cursor = conn.cursor()
-            cursor.execute(
-                """
-                UPDATE questionnaires
-                SET title = %s, is_active = %s, updated_at = NOW()
-                WHERE id = %s
-                """,
-                (title, is_active, int(template["id"])),
-            )
+            if updated_at:
+                cursor.execute(
+                    """
+                    UPDATE questionnaires
+                    SET title = %s, is_active = %s, updated_at = %s
+                    WHERE id = %s
+                    """,
+                    (title, is_active, updated_at, int(template["id"])),
+                )
+            else:
+                cursor.execute(
+                    """
+                    UPDATE questionnaires
+                    SET title = %s, is_active = %s, updated_at = NOW()
+                    WHERE id = %s
+                    """,
+                    (title, is_active, int(template["id"])),
+                )
             conn.commit()
         finally:
             conn.close()
@@ -1217,12 +1227,13 @@ def create_app() -> Flask:
         if request.method == "POST":
             title = request.form.get("title", "").strip()
             is_active = request.form.get("is_active") == "on"
+            updated_at = request.form.get("updated_at", "").strip()
             if not title:
                 flash("Template questionnaire title is required.", "danger")
                 return redirect(url_for("master_questionnaire"))
             
             template = ensure_template_questionnaire()
-            update_template_questionnaire(title=title, is_active=is_active)
+            update_template_questionnaire(title=title, is_active=is_active, updated_at=updated_at if updated_at else None)
             flash("Questionnaire Saved Successfully", "success")
             return redirect(url_for("master_questionnaire"))
 
@@ -1234,7 +1245,7 @@ def create_app() -> Flask:
             # Get template
             cursor.execute(
                 """
-                SELECT id, title, is_active, version, created_at, logo_url
+                SELECT id, title, is_active, version, created_at, updated_at, logo_url
                 FROM questionnaires
                 WHERE is_template = TRUE
                 ORDER BY id ASC
