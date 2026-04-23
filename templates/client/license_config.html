@@ -19,30 +19,46 @@
             <i class="bi bi-key-fill" style="color:var(--primary-600) !important;opacity:1;"></i>
           </div>
           <div>
-            <h6 class="mb-0 fw-bold" style="font-size:1rem;">Enter Your License Key</h6>
-            <small class="text-muted" style="font-size:.75rem;">Configure the license key provided by your administrator</small>
+            <h6 class="mb-0 fw-bold" style="font-size:1rem;">Your License Key</h6>
+            <small class="text-muted" style="font-size:.75rem;">View and copy your license key</small>
           </div>
         </div>
 
+        {% if user.license_key %}
+        <div class="mb-4 p-3 bg-light rounded">
+          <h6 class="fw-bold mb-2"><i class="bi bi-info-circle me-2"></i>Your License Key</h6>
+          <div class="d-flex gap-2 align-items-center">
+            <code class="flex-grow-1 p-2 bg-white rounded" style="font-size:.85rem; word-break:break-all;">{{ user.license_key }}</code>
+            <button class="btn btn-sm btn-outline-secondary" onclick="copyLicenseKey('{{ user.license_key }}')">
+              <i class="bi bi-clipboard"></i>
+            </button>
+          </div>
+          <p class="small text-muted mt-2 mb-0">Max Stores: {{ user.max_stores if user.max_stores > 0 else 'Unlimited' }}</p>
+        </div>
+        {% else %}
         <form method="POST" action="{{ url_for('client_save_license_config') }}" class="vstack gap-3">
           <div>
             <label class="form-label fw-semibold" for="license_key">License Key</label>
-            <input class="form-control" id="license_key" name="license_key" required placeholder="Enter license key from administrator" value="{{ user.license_key if user.license_key else '' }}" />
+            <input class="form-control" id="license_key" name="license_key" required placeholder="Enter license key from administrator" />
             <small class="text-muted">Contact your administrator to get your license key</small>
           </div>
           <button class="btn btn-primary" type="submit">
             <i class="bi bi-check-lg me-2"></i>Save License Key
           </button>
         </form>
-
-        {% if user.license_key %}
-        <div class="mt-4 p-3 bg-light rounded">
-          <h6 class="fw-bold mb-2"><i class="bi bi-info-circle me-2"></i>Your Membership Details</h6>
-          <p class="small text-muted mb-0">Max Stores: {{ user.max_stores if user.max_stores > 0 else 'Unlimited' }}</p>
-        </div>
         {% endif %}
       </div>
     </div>
   </div>
 </div>
+
+<script>
+function copyLicenseKey(licenseKey) {
+  navigator.clipboard.writeText(licenseKey).then(() => {
+    alert('License key copied to clipboard!');
+  }).catch(err => {
+    console.error('Failed to copy: ', err);
+  });
+}
+</script>
 {% endblock %}

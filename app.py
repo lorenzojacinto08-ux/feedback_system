@@ -2201,7 +2201,7 @@ def create_app() -> Flask:
                 flash("Username or email already exists.", "danger")
                 return redirect(url_for("admin_users"))
             
-            # Create user (don't set license_key yet - client will configure it)
+            # Create user (license_key will be configured by client from portal)
             password_hash = hash_password(password)
             cursor.execute(
                 "INSERT INTO users (username, email, password_hash, role, max_stores, license_key) VALUES (%s, %s, %s, %s, %s, %s)",
@@ -2211,15 +2211,12 @@ def create_app() -> Flask:
             conn.close()
             
             if role == 'user':
-                # Generate license key for client account
-                import secrets
-                license_key = secrets.token_urlsafe(32)
-                flash(f"Client account created successfully. License Key: {license_key} - Give this to the client to configure their account.", "success")
+                flash(f"Client account created successfully. Please create a license in the licensing portal and give the license key to the client.", "success")
                 log_audit(
                     entity_type="user",
                     entity_id=0,
                     action="created",
-                    new_values=f"Client {username} created with max_stores={max_stores}, license_key={license_key} (pending configuration)"
+                    new_values=f"Client {username} created with max_stores={max_stores}"
                 )
             else:
                 flash("User created successfully.", "success")
@@ -2381,10 +2378,32 @@ def create_app() -> Flask:
             return redirect(url_for("client_license_config"))
         
         try:
+            # Validate license against the licensing portal
+            config = get_license_config()
+            if not config or not config.get("licensing_portal_url"):
+                flash("Licensing portal not configured. Please contact your administrator.", "danger")
+                return redirect(url_for("client_license_config"))
+            
+            # Call the licensing portal API to validate the license
+            import requests
+            try:
+                response = requests.post(
+                    f"{config['licensing_portal_url']}/api/validate/{license_key}",
+                    timeout=10
+                )
+                
+                if response.status_code != 200 or not response.json().get("valid"):
+                    flash("Invalid license key. Please check with your administrator.", "danger")
+                    return redirect(url_for("client_license_config"))
+            except Exception as e:
+                logger.error(f"Error validating license with portal: {e}")
+                flash("Unable to validate license. Please try again later.", "danger")
+                return redirect(url_for("client_license_config"))
+            
+            # If valid, save to user's account
             conn = get_db_connection()
             cursor = conn.cursor()
             
-            # Update user's license key
             cursor.execute(
                 "UPDATE users SET license_key = %s WHERE id = %s",
                 (license_key, session['user_id'])
@@ -3355,19 +3374,41 @@ def create_app() -> Flask:
                 flash("Please configure your license key first. Contact your administrator for your license key.", "danger")
                 return redirect(url_for("client_license_config"))
             
-            # Check their max_stores limit
-            max_stores = user.get('max_stores', 0)
-            if max_stores > 0:
-                conn = get_db_connection()
-                try:
-                    cursor = conn.cursor()
-                    cursor.execute("SELECT COUNT(*) FROM stores")
-                    current_count = cursor.fetchone()[0]
-                    if current_count >= max_stores:
-                        flash(f"Your membership limit reached. You can only create up to {max_stores} stores. Contact support to upgrade.", "danger")
-                        return redirect(url_for("stores_management"))
-                finally:
-                    conn.close()
+            # Validate license against portal and get max_stores
+            config = get_license_config()
+            if not config or not config.get("licensing_portal_url"):
+                flash("Licensing portal not configured. Please contact your administrator.", "danger")
+                return redirect(url_for("client_license_config"))
+            
+            try:
+                import requests
+                response = requests.post(
+                    f"{config['licensing_portal_url']}/api/validate/{user['license_key']}",
+                    timeout=10
+                )
+                
+                if response.status_code != 200 or not response.json().get("valid"):
+                    flash("Invalid license. Please contact your administrator.", "danger")
+                    return redirect(url_for("client_license_config"))
+                
+                license_data = response.json()
+                max_stores = license_data.get("max_stores", 0)
+                
+                if max_stores > 0:
+                    conn = get_db_connection()
+                    try:
+                        cursor = conn.cursor()
+                        cursor.execute("SELECT COUNT(*) FROM stores")
+                        current_count = cursor.fetchone()[0]
+                        if current_count >= max_stores:
+                            flash(f"Your license limit reached. You can only create up to {max_stores} stores. Contact support to upgrade.", "danger")
+                            return redirect(url_for("stores_management"))
+                    finally:
+                        conn.close()
+            except Exception as e:
+                logger.error(f"Error validating license: {e}")
+                flash("Unable to validate license. Please try again later.", "danger")
+                return redirect(url_for("stores_management"))
         else:
             # Admin/Dev/Superadmin - check global license
             config = get_license_config()
