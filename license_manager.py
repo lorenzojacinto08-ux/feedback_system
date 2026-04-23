@@ -5,7 +5,7 @@ Handles license validation, key verification, and expiry checks for the feedback
 
 import hashlib
 import secrets
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 from typing import Optional, Dict, Any
 import logging
 
@@ -37,7 +37,7 @@ class LicenseManager:
         if expiry_date is None:
             return False  # No expiry means perpetual
         # Convert expiry_date to datetime if it's a date object
-        if isinstance(expiry_date, datetime.date) and not isinstance(expiry_date, datetime.datetime):
+        if isinstance(expiry_date, date) and not isinstance(expiry_date, datetime):
             expiry_date = datetime.combine(expiry_date, datetime.time())
         return datetime.now() > expiry_date
     
