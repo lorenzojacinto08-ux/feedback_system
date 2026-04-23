@@ -2380,15 +2380,17 @@ def create_app() -> Flask:
         try:
             # Validate license against the licensing portal
             config = get_license_config()
-            if not config or not config.get("licensing_portal_url"):
-                flash("Licensing portal not configured. Please contact your administrator.", "danger")
-                return redirect(url_for("client_license_config"))
+            portal_url = config.get("licensing_portal_url") if config else None
+            
+            # Use default portal URL if not configured
+            if not portal_url:
+                portal_url = "http://feedbacklicensing-production.up.railway.app"
             
             # Call the licensing portal API to validate the license
             import requests
             try:
                 response = requests.post(
-                    f"{config['licensing_portal_url']}/api/validate/{license_key}",
+                    f"{portal_url}/api/validate/{license_key}",
                     timeout=10
                 )
                 
@@ -3376,14 +3378,16 @@ def create_app() -> Flask:
             
             # Validate license against portal and get max_stores
             config = get_license_config()
-            if not config or not config.get("licensing_portal_url"):
-                flash("Licensing portal not configured. Please contact your administrator.", "danger")
-                return redirect(url_for("client_license_config"))
+            portal_url = config.get("licensing_portal_url") if config else None
+            
+            # Use default portal URL if not configured
+            if not portal_url:
+                portal_url = "http://feedbacklicensing-production.up.railway.app"
             
             try:
                 import requests
                 response = requests.post(
-                    f"{config['licensing_portal_url']}/api/validate/{user['license_key']}",
+                    f"{portal_url}/api/validate/{user['license_key']}",
                     timeout=10
                 )
                 
