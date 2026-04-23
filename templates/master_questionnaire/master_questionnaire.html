@@ -35,8 +35,8 @@ PURPOSE: "Master Questionnaire" editor. Allows admins to build the global templa
       <div class="card border-0 shadow-lg mb-4 survey-panel-card" style="background: linear-gradient(135deg, #fff 0%, #fafafa 100%);">
         <div class="card-body p-4">
           <form method="POST" action="{{ url_for('master_publish') }}" onsubmit="return confirm('Are you sure you want to sync to all stores? This will overwrite their current questionnaires.');">
-            <button class="btn btn-lg btn-primary w-100 d-flex align-items-center justify-content-center mb-4" type="submit">
-              <i class="bi bi-cloud-upload me-2 fs-5"></i>
+            <button class="btn btn-primary w-100 d-flex align-items-center justify-content-center mb-4" type="submit">
+              <i class="bi bi-cloud-upload me-2"></i>
               <span class="fw-bold">Sync to All Stores</span>
             </button>
           </form>
