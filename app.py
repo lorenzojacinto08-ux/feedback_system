@@ -944,7 +944,7 @@ def create_app() -> Flask:
             cursor = conn.cursor(dictionary=True)
             cursor.execute(
                 """
-                SELECT id, title, is_active, version, created_at, logo_url
+                SELECT id, title, is_active, version, created_at, updated_at, logo_url
                 FROM questionnaires
                 WHERE is_template = TRUE
                 ORDER BY id ASC
