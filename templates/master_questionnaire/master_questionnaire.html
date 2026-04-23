@@ -409,6 +409,8 @@ PURPOSE: "Master Questionnaire" editor. Allows admins to build the global templa
 {% block scripts %}
 <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
 <script>
+console.log('Master questionnaire script loaded');
+
 // Initialize drag and drop for questions
 const questionsContainer = document.getElementById('questions-container');
 if (questionsContainer) {
@@ -481,6 +483,7 @@ function reorderQuestions() {
 
 // Edit question
 function editQuestion(btn) {
+    console.log('editQuestion function called');
     try {
         const questionId = btn.getAttribute('data-id');
         const questionText = btn.getAttribute('data-text');
