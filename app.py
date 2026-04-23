@@ -1305,7 +1305,10 @@ def create_app() -> Flask:
                     old_values=f"{', '.join(changes)}"
                 )
             
-            flash("Questionnaire Saved Successfully", "success")
+            # Auto-sync to all stores after saving
+            sync_count = publish_template_to_all_stores()
+            
+            flash(f"Questionnaire Saved Successfully and synced to {sync_count} store(s)", "success")
             return redirect(url_for("master_questionnaire"))
 
         # Single database connection for better performance
@@ -1324,6 +1327,10 @@ def create_app() -> Flask:
                 """
             )
             template = cursor.fetchone()
+            
+            # Initialize questions and options
+            questions = []
+            options_by_question_id = {}
             
             if template:
                 template_id = int(template["id"])
@@ -1344,8 +1351,6 @@ def create_app() -> Flask:
                 rows = cursor.fetchall()
                 
                 # Organize questions and options
-                questions = []
-                options_by_question_id = {}
                 current_question = None
                 
                 for row in rows:
@@ -1425,7 +1430,10 @@ def create_app() -> Flask:
             new_values=f"Text: {question_text}, Type: {question_type}, Required: {is_required}"
         )
         
-        flash("Question Added Successfully", "success")
+        # Auto-sync to all stores after adding question
+        sync_count = publish_template_to_all_stores()
+        
+        flash(f"Question Added Successfully and synced to {sync_count} store(s)", "success")
         return redirect(url_for("master_questionnaire"))
 
     @app.route("/admin/questionnaire/questions/<int:master_question_id>/delete", methods=["POST"])
@@ -1450,7 +1458,10 @@ def create_app() -> Flask:
             old_values=f"Text: {question_text}"
         )
         
-        flash("Question Deleted", "success")
+        # Auto-sync to all stores after deleting question
+        sync_count = publish_template_to_all_stores()
+        
+        flash(f"Question Deleted and synced to {sync_count} store(s)", "success")
         return redirect(url_for("master_questionnaire"))
 
     @app.route("/admin/questionnaire/questions/<int:master_question_id>/edit", methods=["POST"])
@@ -1467,7 +1478,11 @@ def create_app() -> Flask:
             return redirect(url_for("master_questionnaire"))
 
         update_template_question(master_question_id, question_text, question_type, is_required, min_label, max_label, allow_comment)
-        flash("Question Updated Successfully", "success")
+        
+        # Auto-sync to all stores after editing question
+        sync_count = publish_template_to_all_stores()
+        
+        flash(f"Question Updated Successfully and synced to {sync_count} store(s)", "success")
         return redirect(url_for("master_questionnaire"))
 
     @app.route("/admin/questionnaire/questions/<int:master_question_id>/options/add", methods=["POST"])
@@ -1477,13 +1492,21 @@ def create_app() -> Flask:
             flash("Option text is required.", "danger")
             return redirect(url_for("master_questionnaire"))
         add_template_option(template_question_id=master_question_id, option_text=option_text)
-        flash("Option added.", "success")
+        
+        # Auto-sync to all stores after adding option
+        sync_count = publish_template_to_all_stores()
+        
+        flash(f"Option added and synced to {sync_count} store(s)", "success")
         return redirect(url_for("master_questionnaire"))
 
     @app.route("/admin/questionnaire/options/<int:master_option_id>/delete", methods=["POST"])
     def master_delete_option(master_option_id: int):
         delete_template_option(template_option_id=master_option_id)
-        flash("Option deleted.", "success")
+        
+        # Auto-sync to all stores after deleting option
+        sync_count = publish_template_to_all_stores()
+        
+        flash(f"Option deleted and synced to {sync_count} store(s)", "success")
         return redirect(url_for("master_questionnaire"))
 
     @app.route("/admin/questionnaire/upload-logo", methods=["POST"])

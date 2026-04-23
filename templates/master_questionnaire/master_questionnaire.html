@@ -154,33 +154,20 @@ PURPOSE: "Master Questionnaire" editor. Allows admins to build the global templa
       <div class="card border-0 shadow-lg mb-4 survey-panel-card" style="background: linear-gradient(135deg, #fff 0%, #fafafa 100%);">
         <div class="card-body p-4">
           <div class="d-flex align-items-center gap-2 mb-3 pb-3" style="border-bottom:1px solid var(--neutral-200);">
-            <div class="survey-section-icon" style="background:linear-gradient(135deg, rgba(245,158,11,0.15) 0%, rgba(245,158,11,0.25) 100%);">
-              <i class="bi bi-send-fill" style="color:#d97706 !important;opacity:1;"></i>
+            <div class="survey-section-icon" style="background:linear-gradient(135deg, rgba(34,197,94,0.15) 0%, rgba(34,197,94,0.25) 100%);">
+              <i class="bi bi-check-circle-fill" style="color:#16a34a !important;opacity:1;"></i>
             </div>
             <div>
-              <h6 class="mb-0 fw-bold" style="font-size:1rem;">Publish to Stores</h6>
-              <small class="text-muted" style="font-size:.75rem;">Sync survey to all stores</small>
+              <h6 class="mb-0 fw-bold" style="font-size:1rem;">Auto-Sync</h6>
+              <small class="text-muted" style="font-size:.75rem;">Changes auto-sync to all stores</small>
             </div>
           </div>
-          <div class="alert alert-info d-flex align-items-start" role="alert">
-            <i class="bi bi-info-circle me-2 flex-shrink-0 mt-0.5"></i>
+          <div class="alert alert-success d-flex align-items-start" role="alert">
+            <i class="bi bi-check-circle me-2 flex-shrink-0 mt-0.5"></i>
             <small class="mb-0">
-              <strong>Sync Status:</strong> <span id="syncStatusText">Checking...</span>
+              <strong>All changes auto-sync:</strong> Saving any change automatically syncs to all stores immediately.
             </small>
           </div>
-          
-          <div class="alert alert-warning d-flex align-items-start" role="alert">
-            <i class="bi bi-exclamation-triangle me-2 flex-shrink-0 mt-0.5"></i>
-            <small class="mb-0">
-              This will overwrite each store's current questionnaire with the master template.
-            </small>
-          </div>
-          
-          <form method="POST" action="{{ url_for('master_publish') }}" onsubmit="return confirm('Are you sure you want to sync to all stores? This will overwrite their current questionnaires.');">
-            <button class="btn btn-primary w-100 d-flex align-items-center justify-content-center" type="submit">
-              <i class="bi bi-cloud-upload me-2"></i>Publish / Sync to All Stores
-            </button>
-          </form>
         </div>
       </div>
 
@@ -473,31 +460,7 @@ document.addEventListener('DOMContentLoaded', function() {
     if (questionTypeSelect) {
         toggleCommentVisibility(questionTypeSelect, 'allow_comment_container');
     }
-    
-    // Check sync status on load
-    checkSyncStatus();
 });
-
-// Check sync status
-async function checkSyncStatus() {
-    try {
-        const response = await fetch('/admin/questionnaire/sync-status');
-        const data = await response.json();
-        
-        const statusText = document.getElementById('syncStatusText');
-        if (data.synced) {
-            statusText.textContent = 'All stores synced';
-            statusText.className = 'text-success fw-medium';
-        } else {
-            const unsyncedCount = data.unsynced_count || 0;
-            statusText.textContent = `${unsyncedCount} store(s) need sync`;
-            statusText.className = 'text-warning fw-medium';
-        }
-    } catch (error) {
-        console.error('Error checking sync status:', error);
-        document.getElementById('syncStatusText').textContent = 'Unknown';
-    }
-}
 </script>
 
 <style>
