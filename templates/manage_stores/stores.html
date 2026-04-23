@@ -474,6 +474,9 @@ PURPOSE: "Store Management" page. Allows adding/editing stores, viewing
                       <li><a class="dropdown-item py-2" href="#" onclick="editStore({{ store.id }})">
                         <i class="bi bi-pencil me-2"></i>Edit Store
                       </a></li>
+                      <li><a class="dropdown-item py-2" href="#" onclick="copyDashboardLink({{ store.id }}, '{{ store.access_token }}')">
+                        <i class="bi bi-link-45deg me-2"></i>Copy Dashboard Link
+                      </a></li>
                       <li><a class="dropdown-item py-2 text-danger" href="#" onclick="deleteStore({{ store.id }})">
                         <i class="bi bi-trash me-2"></i>Delete Store
                       </a></li>
@@ -1029,6 +1032,20 @@ function deleteStore(storeId) {
     form.action = `/admin/stores/${storeId}/delete`;
     document.body.appendChild(form);
     form.submit();
+}
+
+function copyDashboardLink(storeId, accessToken) {
+    if (!accessToken) {
+        alert('No access token available for this store. Please contact support.');
+        return;
+    }
+    const dashboardUrl = window.location.origin + '/d/' + accessToken;
+    navigator.clipboard.writeText(dashboardUrl).then(() => {
+        showCustomAlert('Dashboard link copied to clipboard!', 'success');
+    }).catch(err => {
+        console.error('Failed to copy:', err);
+        showCustomAlert('Failed to copy link', 'danger');
+    });
 }
 
 function loadStoreDetails(storeId) {

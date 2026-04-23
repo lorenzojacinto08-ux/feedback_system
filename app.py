@@ -131,6 +131,7 @@ def create_app() -> Flask:
                         operating_hours VARCHAR(255),
                         status ENUM('active', 'inactive', 'pending') DEFAULT 'active',
                         logo_url VARCHAR(500),
+                        access_token VARCHAR(100) UNIQUE,
                         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                     )
                 """)
@@ -379,25 +380,32 @@ def create_app() -> Flask:
                 
                 # Check for stores table columns
                 store_columns = [
-                    ("address", "TEXT"),
-                    ("city", "VARCHAR(100)"),
-                    ("province", "VARCHAR(100)"),
-                    ("postal_code", "VARCHAR(20)"),
-                    ("contact_number", "VARCHAR(20)"),
-                    ("email", "VARCHAR(255)"),
                     ("store_manager_name", "VARCHAR(255)"),
                     ("manager_contact", "VARCHAR(20)"),
                     ("store_type", "VARCHAR(100)"),
                     ("operating_hours", "VARCHAR(255)"),
                     ("status", "ENUM('active', 'inactive', 'pending') DEFAULT 'active'"),
-                    ("logo_url", "VARCHAR(500)")
+                    ("logo_url", "VARCHAR(500)"),
+                    ("access_token", "VARCHAR(100) UNIQUE")
                 ]
                 
                 for column_name, column_type in store_columns:
                     cursor.execute(f"SHOW COLUMNS FROM stores LIKE '{column_name}'")
                     if not cursor.fetchone():
                         cursor.execute(f"ALTER TABLE stores ADD COLUMN {column_name} {column_type}")
-                
+
+                # Generate access tokens for existing stores that don't have them
+                import secrets
+                cursor.execute("SELECT id FROM stores WHERE access_token IS NULL OR access_token = ''")
+                stores_without_token = cursor.fetchall()
+                if stores_without_token:
+                    logger.info(f"Generating access tokens for {len(stores_without_token)} existing stores...")
+                    for store_row in stores_without_token:
+                        store_id = store_row[0]
+                        access_token = secrets.token_urlsafe(32)
+                        cursor.execute("UPDATE stores SET access_token = %s WHERE id = %s", (access_token, store_id))
+                    conn.commit()
+
                 # Check for responses table receipt_number column
                 cursor.execute("SHOW COLUMNS FROM responses LIKE 'receipt_number'")
                 if not cursor.fetchone():
@@ -466,9 +474,9 @@ def create_app() -> Flask:
             cursor = conn.cursor(dictionary=True)
             cursor.execute(
                 """
-                SELECT id, store_name, address, city, province, postal_code, 
-                       contact_number, email, store_manager_name, manager_contact, 
-                       store_type, status, created_at
+                SELECT id, store_name, address, city, province, postal_code,
+                       contact_number, email, store_manager_name, manager_contact,
+                       store_type, status, created_at, access_token
                 FROM stores
                 ORDER BY id ASC
                 """
@@ -487,7 +495,7 @@ def create_app() -> Flask:
                 """
                 SELECT id, store_name, address, city, province, postal_code,
                        contact_number, email, store_manager_name, manager_contact,
-                       store_type, status, created_at, logo_url
+                       store_type, status, created_at, logo_url, access_token
                 FROM stores
                 WHERE id = %s
                 LIMIT 1
@@ -514,6 +522,9 @@ def create_app() -> Flask:
         status: str = "active",
         logo_url: str | None = None
     ) -> int:
+        import secrets
+        access_token = secrets.token_urlsafe(32)
+        
         conn = get_db_connection()
         try:
             cursor = conn.cursor()
@@ -522,14 +533,14 @@ def create_app() -> Flask:
                 INSERT INTO stores (
                     store_name, address, city, province, postal_code,
                     contact_number, email, store_manager_name, manager_contact,
-                    store_type, status, logo_url
+                    store_type, status, logo_url, access_token
                 )
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 """,
                 (
                     store_name, address, city, province, postal_code,
                     contact_number, email, store_manager_name, manager_contact,
-                    store_type, status, logo_url
+                    store_type, status, logo_url, access_token
                 ),
             )
             conn.commit()
@@ -1946,6 +1957,100 @@ def create_app() -> Flask:
     # -------------------------
     # PUBLIC SURVEY
     # -------------------------
+    @app.route("/d/<access_token>", methods=["GET"])
+    def public_store_dashboard(access_token: str):
+        # Validate access token and fetch store
+        conn = get_db_connection()
+        try:
+            cursor = conn.cursor(dictionary=True)
+            cursor.execute(
+                """
+                SELECT id, store_name, address, city, province, postal_code,
+                       contact_number, email, store_manager_name, manager_contact,
+                       store_type, status, logo_url
+                FROM stores
+                WHERE access_token = %s
+                LIMIT 1
+                """,
+                (access_token,)
+            )
+            store = cursor.fetchone()
+        finally:
+            conn.close()
+
+        if not store:
+            return render_template("layout.html", error="Invalid access token or store not found"), 404
+
+        # Fetch store performance data
+        conn = get_db_connection()
+        try:
+            cursor = conn.cursor(dictionary=True)
+
+            # Total feedback count
+            cursor.execute("SELECT COUNT(*) as total FROM responses WHERE store_id = %s", (store['id'],))
+            total_feedback = cursor.fetchone()['total']
+
+            # Average rating
+            cursor.execute("SELECT AVG(rating) as avg_rating FROM responses WHERE store_id = %s", (store['id'],))
+            avg_rating = cursor.fetchone()['avg_rating']
+
+            # Total commendations
+            cursor.execute("SELECT COUNT(*) as total FROM staff_commendations sc JOIN responses r ON sc.response_id = r.id WHERE r.store_id = %s", (store['id'],))
+            total_commendations = cursor.fetchone()['total']
+
+            # Total staff
+            cursor.execute("SELECT COUNT(*) as total FROM staff WHERE store_id = %s", (store['id'],))
+            total_staff = cursor.fetchone()['total']
+
+            # Staff performance
+            cursor.execute(
+                """
+                SELECT s.id, s.first_name, s.last_name, s.position, s.role, s.status,
+                       AVG(sc.rating) as avg_rating,
+                       COUNT(sc.id) as commendation_count
+                FROM staff s
+                LEFT JOIN staff_commendations sc ON s.id = sc.staff_id
+                LEFT JOIN responses r ON sc.response_id = r.id
+                WHERE s.store_id = %s AND r.store_id = %s
+                GROUP BY s.id, s.first_name, s.last_name, s.position, s.role, s.status
+                ORDER BY avg_rating DESC
+                """,
+                (store['id'], store['id'])
+            )
+            staff_performance = cursor.fetchall()
+
+            # Recent feedback
+            cursor.execute(
+                """
+                SELECT rating, comment, created_at
+                FROM responses
+                WHERE store_id = %s
+                ORDER BY created_at DESC
+                LIMIT 10
+                """,
+                (store['id'],)
+            )
+            recent_feedback = cursor.fetchall()
+
+            # Fetch master questionnaire logo
+            cursor.execute("SELECT logo_url FROM questionnaires WHERE is_template = 1 LIMIT 1")
+            master_logo = cursor.fetchone()
+
+        finally:
+            conn.close()
+
+        return render_template(
+            "public/store_dashboard.html",
+            store=store,
+            master_logo=master_logo.get('logo_url') if master_logo else None,
+            total_feedback=total_feedback,
+            avg_rating=avg_rating,
+            total_commendations=total_commendations,
+            total_staff=total_staff,
+            staff_performance=staff_performance,
+            recent_feedback=recent_feedback
+        )
+
     @app.route("/s/<int:store_id>", methods=["GET"])
     def public_survey(store_id: int):
         store = fetch_store_by_id(store_id=store_id)
