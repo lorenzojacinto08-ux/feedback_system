@@ -22,6 +22,8 @@ from typing import List, Dict, Any
 from fpdf import FPDF
 from dotenv import load_dotenv
 from datetime import datetime, timedelta, timezone
+import bcrypt
+from functools import wraps
 
 
 load_dotenv()
@@ -198,6 +200,68 @@ def create_app() -> Flask:
             return True  # 0 means unlimited
         
         return current_count < limit
+
+    # Authentication helper functions
+    def get_user_by_username(username: str) -> Optional[Dict[str, Any]]:
+        """Get user by username"""
+        conn = get_db_connection()
+        try:
+            cursor = conn.cursor(dictionary=True)
+            cursor.execute("SELECT * FROM users WHERE username = %s", (username,))
+            return cursor.fetchone()
+        finally:
+            conn.close()
+
+    def get_user_by_id(user_id: int) -> Optional[Dict[str, Any]]:
+        """Get user by ID"""
+        conn = get_db_connection()
+        try:
+            cursor = conn.cursor(dictionary=True)
+            cursor.execute("SELECT * FROM users WHERE id = %s", (user_id,))
+            return cursor.fetchone()
+        finally:
+            conn.close()
+
+    def verify_password(password: str, password_hash: str) -> bool:
+        """Verify a password against its hash"""
+        return bcrypt.checkpw(password.encode('utf-8'), password_hash.encode('utf-8'))
+
+    def hash_password(password: str) -> str:
+        """Hash a password"""
+        return bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+
+    def login_required(f):
+        """Decorator to require login"""
+        @wraps(f)
+        def decorated_function(*args, **kwargs):
+            if 'user_id' not in session:
+                flash("Please log in to access this page.", "warning")
+                return redirect(url_for('login'))
+            return f(*args, **kwargs)
+        return decorated_function
+
+    def role_required(*allowed_roles):
+        """Decorator to require specific role"""
+        def decorator(f):
+            @wraps(f)
+            def decorated_function(*args, **kwargs):
+                if 'user_id' not in session:
+                    flash("Please log in to access this page.", "warning")
+                    return redirect(url_for('login'))
+                
+                user = get_user_by_id(session['user_id'])
+                if not user or not user['is_active']:
+                    session.clear()
+                    flash("Your account has been deactivated.", "danger")
+                    return redirect(url_for('login'))
+                
+                if user['role'] not in allowed_roles:
+                    flash("You don't have permission to access this page.", "danger")
+                    return redirect(url_for('admin_dashboard'))
+                
+                return f(*args, **kwargs)
+            return decorated_function
+        return decorator
 
     # Initialize SMTP email configuration
     email_config = EmailConfig()
@@ -450,6 +514,35 @@ def create_app() -> Flask:
                         )
                     """)
                     conn.commit()
+                
+                # Create users table
+                cursor.execute("SHOW TABLES LIKE 'users'")
+                if not cursor.fetchone():
+                    logger.info("Creating users table...")
+                    cursor.execute("""
+                        CREATE TABLE users (
+                            id INT AUTO_INCREMENT PRIMARY KEY,
+                            username VARCHAR(100) NOT NULL UNIQUE,
+                            email VARCHAR(255) NOT NULL UNIQUE,
+                            password_hash VARCHAR(255) NOT NULL,
+                            role ENUM('dev', 'superadmin', 'admin', 'user') DEFAULT 'user',
+                            is_active BOOLEAN DEFAULT TRUE,
+                            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+                        )
+                    """)
+                    conn.commit()
+                    
+                    # Create default dev user
+                    import bcrypt
+                    default_password = "dev123"
+                    password_hash = bcrypt.hashpw(default_password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+                    cursor.execute(
+                        "INSERT INTO users (username, email, password_hash, role) VALUES (%s, %s, %s, %s)",
+                        ("dev", "dev@tugon.com", password_hash, "dev")
+                    )
+                    conn.commit()
+                    logger.info("Created default dev user (username: dev, password: dev123)")
                 
                 # Check for questionnaires table columns
                 cursor.execute("SHOW COLUMNS FROM questionnaires LIKE 'is_template'")
@@ -1359,9 +1452,49 @@ def create_app() -> Flask:
 
     @app.route("/")
     def index():
-        return redirect(url_for("admin_dashboard"))
+        if 'user_id' in session:
+            return redirect(url_for("admin_dashboard"))
+        return redirect(url_for("login"))
+
+    @app.route("/login", methods=["GET", "POST"])
+    def login():
+        if request.method == "POST":
+            username = request.form.get("username", "").strip()
+            password = request.form.get("password", "")
+            
+            if not username or not password:
+                flash("Username and password are required.", "danger")
+                return redirect(url_for("login"))
+            
+            user = get_user_by_username(username)
+            if not user:
+                flash("Invalid username or password.", "danger")
+                return redirect(url_for("login"))
+            
+            if not user['is_active']:
+                flash("Your account has been deactivated.", "danger")
+                return redirect(url_for("login"))
+            
+            if verify_password(password, user['password_hash']):
+                session['user_id'] = user['id']
+                session['username'] = user['username']
+                session['role'] = user['role']
+                flash(f"Welcome back, {user['username']}!", "success")
+                return redirect(url_for("admin_dashboard"))
+            else:
+                flash("Invalid username or password.", "danger")
+                return redirect(url_for("login"))
+        
+        return render_template("auth/login.html")
+
+    @app.route("/logout")
+    def logout():
+        session.clear()
+        flash("You have been logged out.", "info")
+        return redirect(url_for("login"))
 
     @app.route("/admin/questionnaire", methods=["GET", "POST"])
+    @login_required
     def master_questionnaire():
         if request.method == "POST":
             title = request.form.get("title", "").strip()
@@ -2006,6 +2139,7 @@ def create_app() -> Flask:
             conn.close()
 
     @app.route("/admin/dashboard")
+    @login_required
     def admin_dashboard():
         try:
             logger.info("Accessing admin dashboard...")
@@ -2018,6 +2152,7 @@ def create_app() -> Flask:
             return f"Dashboard Error: {e}<br><pre>{error_details}</pre>", 500
 
     @app.route("/admin/license")
+    @role_required('dev', 'superadmin')
     def admin_license():
         """License management page"""
         license_data = get_active_license()
@@ -2025,6 +2160,7 @@ def create_app() -> Flask:
         return render_template("admin/license.html", license=license_data, license_status=license_status)
 
     @app.route("/admin/license/save", methods=["POST"])
+    @role_required('dev', 'superadmin')
     def admin_save_license():
         """Save or update a license"""
         license_key = request.form.get("license_key", "").strip()
@@ -2081,6 +2217,7 @@ def create_app() -> Flask:
         return redirect(url_for("admin_license"))
 
     @app.route("/admin/license/deactivate", methods=["POST"])
+    @role_required('dev', 'superadmin')
     def admin_deactivate_license():
         """Deactivate the current license"""
         try:
@@ -2101,6 +2238,126 @@ def create_app() -> Flask:
             flash("Failed to deactivate license.", "danger")
         
         return redirect(url_for("admin_license"))
+
+    @app.route("/admin/users")
+    @role_required('dev', 'superadmin')
+    def admin_users():
+        """User management page"""
+        conn = get_db_connection()
+        try:
+            cursor = conn.cursor(dictionary=True)
+            cursor.execute("SELECT * FROM users ORDER BY created_at DESC")
+            users = cursor.fetchall()
+            return render_template("admin/users.html", users=users)
+        finally:
+            conn.close()
+
+    @app.route("/admin/users/add", methods=["POST"])
+    @role_required('dev', 'superadmin')
+    def admin_add_user():
+        """Add a new user"""
+        username = request.form.get("username", "").strip()
+        email = request.form.get("email", "").strip()
+        password = request.form.get("password", "")
+        role = request.form.get("role", "user")
+        
+        if not username or not email or not password:
+            flash("Username, email, and password are required.", "danger")
+            return redirect(url_for("admin_users"))
+        
+        if role not in ['dev', 'superadmin', 'admin', 'user']:
+            flash("Invalid role.", "danger")
+            return redirect(url_for("admin_users"))
+        
+        try:
+            conn = get_db_connection()
+            cursor = conn.cursor()
+            
+            # Check if username or email already exists
+            cursor.execute("SELECT id FROM users WHERE username = %s OR email = %s", (username, email))
+            if cursor.fetchone():
+                flash("Username or email already exists.", "danger")
+                return redirect(url_for("admin_users"))
+            
+            # Create user
+            password_hash = hash_password(password)
+            cursor.execute(
+                "INSERT INTO users (username, email, password_hash, role) VALUES (%s, %s, %s, %s)",
+                (username, email, password_hash, role)
+            )
+            conn.commit()
+            conn.close()
+            
+            flash("User created successfully.", "success")
+            log_audit(
+                entity_type="user",
+                entity_id=0,
+                action="created",
+                new_values=f"User {username} created with role {role}"
+            )
+        except Exception as e:
+            logger.error(f"Error creating user: {e}")
+            flash("Failed to create user.", "danger")
+        
+        return redirect(url_for("admin_users"))
+
+    @app.route("/admin/users/<int:user_id>/toggle", methods=["POST"])
+    @role_required('dev', 'superadmin')
+    def admin_toggle_user(user_id: int):
+        """Toggle user active status"""
+        try:
+            conn = get_db_connection()
+            cursor = conn.cursor()
+            
+            # Don't allow deactivating yourself
+            if user_id == session.get('user_id'):
+                flash("You cannot deactivate your own account.", "danger")
+                return redirect(url_for("admin_users"))
+            
+            cursor.execute("UPDATE users SET is_active = NOT is_active WHERE id = %s", (user_id,))
+            conn.commit()
+            conn.close()
+            flash("User status updated successfully.", "success")
+            log_audit(
+                entity_type="user",
+                entity_id=user_id,
+                action="toggled",
+                old_values="User status toggled"
+            )
+        except Exception as e:
+            logger.error(f"Error toggling user: {e}")
+            flash("Failed to update user status.", "danger")
+        
+        return redirect(url_for("admin_users"))
+
+    @app.route("/admin/users/<int:user_id>/delete", methods=["POST"])
+    @role_required('dev')
+    def admin_delete_user(user_id: int):
+        """Delete a user"""
+        try:
+            conn = get_db_connection()
+            cursor = conn.cursor()
+            
+            # Don't allow deleting yourself
+            if user_id == session.get('user_id'):
+                flash("You cannot delete your own account.", "danger")
+                return redirect(url_for("admin_users"))
+            
+            cursor.execute("DELETE FROM users WHERE id = %s", (user_id,))
+            conn.commit()
+            conn.close()
+            flash("User deleted successfully.", "success")
+            log_audit(
+                entity_type="user",
+                entity_id=user_id,
+                action="deleted",
+                old_values="User deleted"
+            )
+        except Exception as e:
+            logger.error(f"Error deleting user: {e}")
+            flash("Failed to delete user.", "danger")
+        
+        return redirect(url_for("admin_users"))
 
     @app.route("/dashboard/staff-overall")
     def staff_overall():
@@ -2205,7 +2462,8 @@ def create_app() -> Flask:
             overall_stats=analytics.get("overall_stats", {}),
         )
 
-    @app.route("/admin/stores")
+    @app.route("/admin/stores", methods=["GET"])
+    @login_required
     def stores_management():
         stores = fetch_stores()
 
