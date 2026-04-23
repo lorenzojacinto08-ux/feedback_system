@@ -1991,7 +1991,7 @@ def create_app() -> Flask:
             total_feedback = cursor.fetchone()['total']
 
             # Average rating
-            cursor.execute("SELECT AVG(rating) as avg_rating FROM responses WHERE store_id = %s", (store['id'],))
+            cursor.execute("SELECT AVG(a.rating_value) as avg_rating FROM answers a JOIN responses r ON a.response_id = r.id WHERE r.store_id = %s AND a.rating_value IS NOT NULL", (store['id'],))
             avg_rating = cursor.fetchone()['avg_rating']
 
             # Total commendations
