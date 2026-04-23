@@ -8,18 +8,19 @@ import sys
 import time
 import traceback
 import socket
-import re
-import random
-from typing import List, Dict, Any
-from fpdf import FPDF
-
-from flask import Flask, render_template, redirect, url_for, request, flash, jsonify, send_file
-from dotenv import load_dotenv
+import json
 import mysql.connector
+from mysql.connector import MySQLConnection, Error
+from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, session
+from flask_mail import Mail, Message
+from license_manager import license_manager
 from mysql.connector.connection import MySQLConnection
 import qrcode
 from email_config import EmailConfig
 from collections import defaultdict
+from typing import List, Dict, Any
+from fpdf import FPDF
+from dotenv import load_dotenv
 from datetime import datetime, timedelta, timezone
 
 
@@ -133,6 +134,70 @@ def create_app() -> Flask:
             return deleted_count
         finally:
             conn.close()
+
+    def get_active_license() -> Dict[str, Any]:
+        """Get the active license from database"""
+        conn = get_db_connection()
+        try:
+            cursor = conn.cursor(dictionary=True)
+            cursor.execute(
+                "SELECT * FROM licenses WHERE is_active = TRUE ORDER BY id DESC LIMIT 1"
+            )
+            license_data = cursor.fetchone()
+            return license_data
+        finally:
+            conn.close()
+
+    def validate_license() -> Dict[str, Any]:
+        """Validate the current license and return status"""
+        license_data = get_active_license()
+        return license_manager.get_license_status(license_data)
+
+    def save_license(license_key: str, company_name: str = None, contact_email: str = None, 
+                    expiry_date: datetime = None, max_stores: int = 0, max_questionnaires: int = 0,
+                    features: Dict[str, bool] = None) -> bool:
+        """Save or update a license in the database"""
+        try:
+            conn = get_db_connection()
+            cursor = conn.cursor()
+            
+            # Deactivate existing licenses
+            cursor.execute("UPDATE licenses SET is_active = FALSE WHERE is_active = TRUE")
+            
+            # Hash the license key
+            license_key_hash = license_manager.hash_license_key(license_key)
+            
+            # Insert new license
+            cursor.execute(
+                """
+                INSERT INTO licenses (license_key, license_key_hash, is_active, expiry_date, 
+                                    max_stores, max_questionnaires, features, company_name, contact_email)
+                VALUES (%s, %s, TRUE, %s, %s, %s, %s, %s, %s)
+                """,
+                (license_key, license_key_hash, expiry_date, max_stores, max_questionnaires,
+                 json.dumps(features) if features else None, company_name, contact_email)
+            )
+            
+            conn.commit()
+            return True
+        except Exception as e:
+            logger.error(f"Error saving license: {e}")
+            return False
+        finally:
+            if 'conn' in locals():
+                conn.close()
+
+    def check_license_limit(limit_type: str, current_count: int) -> bool:
+        """Check if the current count exceeds the license limit"""
+        license_status = validate_license()
+        if not license_status["valid"]:
+            return False
+        
+        limit = license_status.get(limit_type, 0)
+        if limit == 0:
+            return True  # 0 means unlimited
+        
+        return current_count < limit
 
     # Initialize SMTP email configuration
     email_config = EmailConfig()
@@ -360,6 +425,28 @@ def create_app() -> Flask:
                             new_values TEXT,
                             user_id VARCHAR(255),
                             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                        )
+                    """)
+                    conn.commit()
+                
+                # Create licenses table
+                cursor.execute("SHOW TABLES LIKE 'licenses'")
+                if not cursor.fetchone():
+                    logger.info("Creating licenses table...")
+                    cursor.execute("""
+                        CREATE TABLE licenses (
+                            id INT AUTO_INCREMENT PRIMARY KEY,
+                            license_key_hash VARCHAR(255) NOT NULL UNIQUE,
+                            license_key VARCHAR(255) NOT NULL,
+                            is_active BOOLEAN DEFAULT TRUE,
+                            expiry_date DATE NULL,
+                            max_stores INT DEFAULT 0,
+                            max_questionnaires INT DEFAULT 0,
+                            features JSON NULL,
+                            company_name VARCHAR(255),
+                            contact_email VARCHAR(255),
+                            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
                         )
                     """)
                     conn.commit()
@@ -1923,11 +2010,97 @@ def create_app() -> Flask:
         try:
             logger.info("Accessing admin dashboard...")
             analytics = fetch_dashboard_analytics()
-            return render_template("dashboard/dashboard.html", **analytics)
+            license_status = validate_license()
+            return render_template("dashboard/dashboard.html", license_status=license_status, **analytics)
         except Exception as e:
             error_details = traceback.format_exc()
             logger.error(f"Dashboard Crash: {e}\n{error_details}")
             return f"Dashboard Error: {e}<br><pre>{error_details}</pre>", 500
+
+    @app.route("/admin/license")
+    def admin_license():
+        """License management page"""
+        license_data = get_active_license()
+        license_status = validate_license()
+        return render_template("admin/license.html", license=license_data, license_status=license_status)
+
+    @app.route("/admin/license/save", methods=["POST"])
+    def admin_save_license():
+        """Save or update a license"""
+        license_key = request.form.get("license_key", "").strip()
+        company_name = request.form.get("company_name", "").strip() or None
+        contact_email = request.form.get("contact_email", "").strip() or None
+        expiry_date_str = request.form.get("expiry_date", "").strip()
+        max_stores = request.form.get("max_stores", "0")
+        max_questionnaires = request.form.get("max_questionnaires", "0")
+        
+        if not license_key:
+            flash("License key is required.", "danger")
+            return redirect(url_for("admin_license"))
+        
+        if not license_manager.validate_license_key_format(license_key):
+            flash("Invalid license key format.", "danger")
+            return redirect(url_for("admin_license"))
+        
+        # Parse expiry date
+        expiry_date = None
+        if expiry_date_str:
+            try:
+                expiry_date = datetime.strptime(expiry_date_str, "%Y-%m-%d")
+            except ValueError:
+                flash("Invalid expiry date format.", "danger")
+                return redirect(url_for("admin_license"))
+        
+        # Parse limits
+        try:
+            max_stores = int(max_stores)
+            max_questionnaires = int(max_questionnaires)
+        except ValueError:
+            flash("Invalid limit values.", "danger")
+            return redirect(url_for("admin_license"))
+        
+        # Parse features
+        features = {
+            "analytics": request.form.get("feature_analytics") == "on",
+            "reports": request.form.get("feature_reports") == "on",
+            "email_notifications": request.form.get("feature_email_notifications") == "on",
+            "custom_branding": request.form.get("feature_custom_branding") == "on",
+        }
+        
+        if save_license(license_key, company_name, contact_email, expiry_date, max_stores, max_questionnaires, features):
+            flash("License saved successfully.", "success")
+            log_audit(
+                entity_type="license",
+                entity_id=0,
+                action="updated",
+                new_values=f"License activated for {company_name or 'Unknown'}"
+            )
+        else:
+            flash("Failed to save license.", "danger")
+        
+        return redirect(url_for("admin_license"))
+
+    @app.route("/admin/license/deactivate", methods=["POST"])
+    def admin_deactivate_license():
+        """Deactivate the current license"""
+        try:
+            conn = get_db_connection()
+            cursor = conn.cursor()
+            cursor.execute("UPDATE licenses SET is_active = FALSE WHERE is_active = TRUE")
+            conn.commit()
+            conn.close()
+            flash("License deactivated successfully.", "success")
+            log_audit(
+                entity_type="license",
+                entity_id=0,
+                action="deactivated",
+                old_values="License deactivated"
+            )
+        except Exception as e:
+            logger.error(f"Error deactivating license: {e}")
+            flash("Failed to deactivate license.", "danger")
+        
+        return redirect(url_for("admin_license"))
 
     @app.route("/dashboard/staff-overall")
     def staff_overall():

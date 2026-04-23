@@ -1,0 +1,199 @@
+{% extends "layout.html" %}
+
+{% block title %}License Management · Feedback Admin{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <div>
+    <h2 class="page-title mb-1">License Management</h2>
+    <p class="page-subtitle mb-0">Manage your application license and features</p>
+  </div>
+</div>
+
+<div class="row g-4">
+  <div class="col-12 col-lg-6">
+    <div class="card border-0 shadow-lg mb-4">
+      <div class="card-body p-4">
+        <div class="d-flex align-items-center gap-2 mb-3 pb-3" style="border-bottom:1px solid var(--neutral-200);">
+          <div class="survey-section-icon" style="background:linear-gradient(135deg, rgba(59,130,246,0.15) 0%, rgba(59,130,246,0.25) 100%);">
+            <i class="bi bi-key-fill" style="color:#2563eb !important;opacity:1;"></i>
+          </div>
+          <div>
+            <h6 class="mb-0 fw-bold" style="font-size:1rem;">Current License Status</h6>
+            <small class="text-muted" style="font-size:.75rem;">View and manage your license</small>
+          </div>
+        </div>
+
+        {% if license_status.valid %}
+          <div class="alert alert-success d-flex align-items-start" role="alert">
+            <i class="bi bi-check-circle-fill me-2 flex-shrink-0 mt-0.5"></i>
+            <div>
+              <strong>License Active</strong>
+              <p class="mb-0 small">{{ license_status.message }}</p>
+            </div>
+          </div>
+        {% elif license_status.expired %}
+          <div class="alert alert-warning d-flex align-items-start" role="alert">
+            <i class="bi bi-exclamation-triangle-fill me-2 flex-shrink-0 mt-0.5"></i>
+            <div>
+              <strong>License Expired</strong>
+              <p class="mb-0 small">{{ license_status.message }}</p>
+            </div>
+          </div>
+        {% else %}
+          <div class="alert alert-danger d-flex align-items-start" role="alert">
+            <i class="bi bi-x-circle-fill me-2 flex-shrink-0 mt-0.5"></i>
+            <div>
+              <strong>License Inactive</strong>
+              <p class="mb-0 small">{{ license_status.message }}</p>
+            </div>
+          </div>
+        {% endif %}
+
+        {% if license %}
+        <div class="vstack gap-3 mt-4">
+          <div>
+            <small class="text-muted d-block mb-1">Company</small>
+            <div class="fw-bold">{{ license.company_name or 'Not specified' }}</div>
+          </div>
+          <div>
+            <small class="text-muted d-block mb-1">Contact Email</small>
+            <div>{{ license.contact_email or 'Not specified' }}</div>
+          </div>
+          <div>
+            <small class="text-muted d-block mb-1">Expiry Date</small>
+            <div>{{ license.expiry_date.strftime('%B %d, %Y') if license.expiry_date else 'No expiry (perpetual)' }}</div>
+          </div>
+          <div class="row g-3">
+            <div class="col-6">
+              <small class="text-muted d-block mb-1">Max Stores</small>
+              <div class="fw-bold">{{ license.max_stores if license.max_stores > 0 else 'Unlimited' }}</div>
+            </div>
+            <div class="col-6">
+              <small class="text-muted d-block mb-1">Max Questionnaires</small>
+              <div class="fw-bold">{{ license.max_questionnaires if license.max_questionnaires > 0 else 'Unlimited' }}</div>
+            </div>
+          </div>
+          {% if license.features %}
+          <div>
+            <small class="text-muted d-block mb-2">Enabled Features</small>
+            <div class="vstack gap-2">
+              {% if license.features.analytics %}
+              <div class="d-flex align-items-center gap-2">
+                <i class="bi bi-check-circle-fill text-success"></i>
+                <small>Analytics</small>
+              </div>
+              {% endif %}
+              {% if license.features.reports %}
+              <div class="d-flex align-items-center gap-2">
+                <i class="bi bi-check-circle-fill text-success"></i>
+                <small>Reports</small>
+              </div>
+              {% endif %}
+              {% if license.features.email_notifications %}
+              <div class="d-flex align-items-center gap-2">
+                <i class="bi bi-check-circle-fill text-success"></i>
+                <small>Email Notifications</small>
+              </div>
+              {% endif %}
+              {% if license.features.custom_branding %}
+              <div class="d-flex align-items-center gap-2">
+                <i class="bi bi-check-circle-fill text-success"></i>
+                <small>Custom Branding</small>
+              </div>
+              {% endif %}
+            </div>
+          </div>
+          {% endif %}
+          
+          <form method="POST" action="{{ url_for('admin_deactivate_license') }}" onsubmit="return confirm('Are you sure you want to deactivate the license? This will disable all licensed features.');">
+            <button class="btn btn-outline-danger w-100" type="submit">
+              <i class="bi bi-x-circle me-2"></i>Deactivate License
+            </button>
+          </form>
+        </div>
+        {% else %}
+        <div class="text-center py-4">
+          <i class="bi bi-key text-muted" style="font-size: 3rem;"></i>
+          <p class="text-muted mt-3">No license configured</p>
+          <small class="text-muted">Add a license to enable all features</small>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <div class="col-12 col-lg-6">
+    <div class="card border-0 shadow-lg mb-4">
+      <div class="card-body p-4">
+        <div class="d-flex align-items-center gap-2 mb-3 pb-3" style="border-bottom:1px solid var(--neutral-200);">
+          <div class="survey-section-icon" style="background:linear-gradient(135deg, rgba(34,197,94,0.15) 0%, rgba(34,197,94,0.25) 100%);">
+            <i class="bi bi-plus-circle-fill" style="color:#16a34a !important;opacity:1;"></i>
+          </div>
+          <div>
+            <h6 class="mb-0 fw-bold" style="font-size:1rem;">Add New License</h6>
+            <small class="text-muted" style="font-size:.75rem;">Enter your license key to activate</small>
+          </div>
+        </div>
+
+        <form method="POST" action="{{ url_for('admin_save_license') }}" class="vstack gap-3">
+          <div>
+            <label class="form-label fw-medium" for="license_key">License Key</label>
+            <input class="form-control" id="license_key" name="license_key" required placeholder="Enter your license key" />
+            <small class="text-muted">The license key provided to you</small>
+          </div>
+          <div>
+            <label class="form-label fw-medium" for="company_name">Company Name</label>
+            <input class="form-control" id="company_name" name="company_name" placeholder="Your company name" />
+          </div>
+          <div>
+            <label class="form-label fw-medium" for="contact_email">Contact Email</label>
+            <input class="form-control" type="email" id="contact_email" name="contact_email" placeholder="contact@company.com" />
+          </div>
+          <div>
+            <label class="form-label fw-medium" for="expiry_date">Expiry Date (Optional)</label>
+            <input class="form-control" type="date" id="expiry_date" name="expiry_date" />
+            <small class="text-muted">Leave blank for perpetual license</small>
+          </div>
+          <div class="row g-3">
+            <div class="col-6">
+              <label class="form-label fw-medium" for="max_stores">Max Stores</label>
+              <input class="form-control" type="number" id="max_stores" name="max_stores" value="0" min="0" />
+              <small class="text-muted">0 = unlimited</small>
+            </div>
+            <div class="col-6">
+              <label class="form-label fw-medium" for="max_questionnaires">Max Questionnaires</label>
+              <input class="form-control" type="number" id="max_questionnaires" name="max_questionnaires" value="0" min="0" />
+              <small class="text-muted">0 = unlimited</small>
+            </div>
+          </div>
+          <div>
+            <label class="fw-medium mb-2 d-block">Features</label>
+            <div class="vstack gap-2">
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="feature_analytics" name="feature_analytics" checked>
+                <label class="form-check-label" for="feature_analytics">Analytics Dashboard</label>
+              </div>
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="feature_reports" name="feature_reports" checked>
+                <label class="form-check-label" for="feature_reports">Reports Generation</label>
+              </div>
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="feature_email_notifications" name="feature_email_notifications">
+                <label class="form-check-label" for="feature_email_notifications">Email Notifications</label>
+              </div>
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="feature_custom_branding" name="feature_custom_branding">
+                <label class="form-check-label" for="feature_custom_branding">Custom Branding</label>
+              </div>
+            </div>
+          </div>
+          <button class="btn btn-primary w-100" type="submit">
+            <i class="bi bi-check-lg me-2"></i>Activate License
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

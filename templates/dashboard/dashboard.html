@@ -52,6 +52,29 @@ PURPOSE: The main "Analytics Dashboard" showing store counts, total responses,
     </div>
   </div>
 
+  <!-- ── License Status Banner ── -->
+  {% if license_status %}
+  <div class="mb-3">
+    {% if not license_status.valid %}
+    <div class="alert alert-{{ 'warning' if license_status.expired else 'danger' }} d-flex align-items-center" role="alert">
+      <i class="bi bi-{{ 'exclamation-triangle-fill' if license_status.expired else 'x-circle-fill' }} me-2"></i>
+      <div>
+        <strong>{{ 'License Expired' if license_status.expired else 'License Inactive' }}</strong>
+        <p class="mb-0 small">{{ license_status.message }}. <a href="{{ url_for('admin_license') }}" class="alert-link">Manage license</a></p>
+      </div>
+    </div>
+    {% else %}
+    <div class="alert alert-success d-flex align-items-center" role="alert">
+      <i class="bi bi-check-circle-fill me-2"></i>
+      <div>
+        <strong>License Active</strong>
+        <p class="mb-0 small">{{ license_status.message }}. <a href="{{ url_for('admin_license') }}" class="alert-link">View details</a></p>
+      </div>
+    </div>
+    {% endif %}
+  </div>
+  {% endif %}
+
   <!-- ── Dynamic Dashboard Content ── -->
   <div id="dashboardContent" class="dashboard-content">
 
