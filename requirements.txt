@@ -8,3 +8,4 @@ sendgrid==6.11.0
 gunicorn==21.2.0
 requests==2.31.0
 fpdf2==2.7.9
+bcrypt==4.1.3
