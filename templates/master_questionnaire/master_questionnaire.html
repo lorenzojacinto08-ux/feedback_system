@@ -74,7 +74,7 @@ PURPOSE: "Master Questionnaire" editor. Allows admins to build the global templa
             </div>
           </div>
           <form method="POST" action="{{ url_for('master_publish') }}" onsubmit="return confirm('Are you sure you want to sync to all stores? This will overwrite their current questionnaires.');">
-            <button class="btn btn-primary w-100 d-flex align-items-center justify-content-center" type="submit">
+            <button class="btn btn-warning w-100 d-flex align-items-center justify-content-center" type="submit">
               <i class="bi bi-cloud-upload me-2"></i>
               <span class="fw-bold">Publish / Sync to all stores</span>
             </button>
