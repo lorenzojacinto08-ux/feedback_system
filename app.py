@@ -116,6 +116,24 @@ def create_app() -> Flask:
         finally:
             conn.close()
 
+    def prune_audit_logs(days: int = 90) -> int:
+        """Delete audit logs older than specified days"""
+        conn = get_db_connection()
+        try:
+            cursor = conn.cursor()
+            cursor.execute(
+                """
+                DELETE FROM audit_logs
+                WHERE created_at < DATE_SUB(NOW(), INTERVAL %s DAY)
+                """,
+                (days,),
+            )
+            deleted_count = cursor.rowcount
+            conn.commit()
+            return deleted_count
+        finally:
+            conn.close()
+
     # Initialize SMTP email configuration
     email_config = EmailConfig()
     email_config.init_app(app)
@@ -2907,6 +2925,12 @@ def create_app() -> Flask:
 
     @app.route("/admin/history")
     def history():
+        # Run automatic pruning of old logs (90 days retention)
+        try:
+            prune_audit_logs(days=90)
+        except Exception as e:
+            logger.error(f"Error pruning audit logs: {e}")
+        
         conn = get_db_connection()
         try:
             cursor = conn.cursor(dictionary=True)
@@ -2921,6 +2945,12 @@ def create_app() -> Flask:
             conn.close()
         
         return render_template("history.html", logs=logs)
+
+    @app.route("/admin/history/clear", methods=["POST"])
+    def clear_history():
+        deleted_count = prune_audit_logs(days=0)  # Delete all logs
+        flash(f"Cleared {deleted_count} history entries", "success")
+        return redirect(url_for("history"))
 
     @app.route("/admin/clear-feedback", methods=["POST"])
     def clear_feedback_route():
