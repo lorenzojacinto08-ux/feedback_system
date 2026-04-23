@@ -2207,6 +2207,55 @@ def create_app() -> Flask:
         finally:
             conn.close()
 
+    @app.route("/admin/stores/<int:store_id>/upload-logo", methods=["POST"])
+    def upload_store_logo(store_id: int):
+        # Handle logo upload only
+        logo_url = None
+        if 'logo' in request.files:
+            logo_file = request.files['logo']
+            if logo_file and logo_file.filename:
+                # Validate file type
+                allowed_extensions = {'png', 'jpg', 'jpeg'}
+                if logo_file.filename.rsplit('.', 1)[1].lower() not in allowed_extensions:
+                    flash("Invalid file type. Only PNG, JPG, and JPEG files are allowed.", "danger")
+                    return redirect(url_for("store_details", store_id=store_id))
+                
+                # Validate file size (5MB max)
+                logo_file.seek(0, os.SEEK_END)
+                file_size = logo_file.tell()
+                logo_file.seek(0)
+                if file_size > 5 * 1024 * 1024:
+                    flash("File size exceeds 5MB limit.", "danger")
+                    return redirect(url_for("store_details", store_id=store_id))
+                
+                # Save the file
+                from werkzeug.utils import secure_filename
+                import uuid
+                filename = secure_filename(logo_file.filename)
+                unique_filename = f"{uuid.uuid4()}_{filename}"
+                upload_path = os.path.join('static', 'uploads', 'logos')
+                os.makedirs(upload_path, exist_ok=True)
+                logo_file.save(os.path.join(upload_path, unique_filename))
+                logo_url = f"/static/uploads/logos/{unique_filename}"
+
+        # Update only the logo_url in the database
+        if logo_url:
+            conn = get_db_connection()
+            try:
+                cursor = conn.cursor()
+                cursor.execute("UPDATE stores SET logo_url = %s WHERE id = %s", (logo_url, store_id))
+                conn.commit()
+                flash("Logo uploaded successfully", "success")
+            except Exception as e:
+                logger.error(f"Error uploading logo: {e}")
+                flash(f"Error uploading logo: {e}", "danger")
+            finally:
+                conn.close()
+        else:
+            flash("No file selected", "warning")
+
+        return redirect(url_for("store_details", store_id=store_id))
+
     @app.route("/admin/stores/<int:store_id>/edit", methods=["POST"])
     def edit_store(store_id: int):
         store_name = request.form.get("store_name", "").strip()
