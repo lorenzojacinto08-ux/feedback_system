@@ -481,55 +481,59 @@ function reorderQuestions() {
 
 // Edit question
 function editQuestion(btn) {
-    const questionId = btn.getAttribute('data-id');
-    const questionText = btn.getAttribute('data-text');
-    const questionType = btn.getAttribute('data-type');
-    const isRequired = btn.getAttribute('data-req') === 'true';
-    const allowComment = btn.getAttribute('data-allow-comment') === 'true';
-    const minLabel = btn.getAttribute('data-min-label') || 'Poor';
-    const maxLabel = btn.getAttribute('data-max-label') || 'Excellent';
+    try {
+        const questionId = btn.getAttribute('data-id');
+        const questionText = btn.getAttribute('data-text');
+        const questionType = btn.getAttribute('data-type');
+        const isRequired = btn.getAttribute('data-req') === 'true';
+        const allowComment = btn.getAttribute('data-allow-comment') === 'true';
+        const minLabel = btn.getAttribute('data-min-label') || 'Poor';
+        const maxLabel = btn.getAttribute('data-max-label') || 'Excellent';
 
-    console.log('Edit question:', questionId, questionText, questionType, isRequired, allowComment, minLabel, maxLabel);
+        console.log('Edit question:', questionId, questionText, questionType, isRequired, allowComment, minLabel, maxLabel);
 
-    // Set form target action
-    const form = document.getElementById('editQuestionForm');
-    if (!form) {
-        console.error('editQuestionForm not found');
-        return;
+        // Set form target action
+        const form = document.getElementById('editQuestionForm');
+        if (!form) {
+            console.error('editQuestionForm not found');
+            return;
+        }
+        form.action = '/admin/questionnaire/questions/' + questionId + '/edit';
+        console.log('Form action set to:', form.action);
+
+        // Populate fields
+        const questionTextEl = document.getElementById('edit_question_text');
+        const questionTypeEl = document.getElementById('edit_question_type');
+        const isRequiredEl = document.getElementById('edit_is_required');
+        const allowCommentEl = document.getElementById('edit_allow_comment');
+        const minLabelEl = document.getElementById('edit_min_label');
+        const maxLabelEl = document.getElementById('edit_max_label');
+
+        if (questionTextEl) questionTextEl.value = questionText;
+        if (questionTypeEl) questionTypeEl.value = questionType;
+        if (isRequiredEl) isRequiredEl.checked = isRequired;
+        if (allowCommentEl) allowCommentEl.checked = allowComment;
+        if (minLabelEl) minLabelEl.value = minLabel;
+        if (maxLabelEl) maxLabelEl.value = maxLabel;
+
+        console.log('Fields populated');
+
+        // Show/hide rating-specific fields
+        toggleRatingLabels(document.getElementById('edit_question_type'), 'rating-labels-edit');
+        toggleCommentVisibility(document.getElementById('edit_question_type'), 'edit_allow_comment_container');
+
+        // Show modal
+        const modalEl = document.getElementById('editQuestionModal');
+        if (!modalEl) {
+            console.error('editQuestionModal not found');
+            return;
+        }
+        const modal = new bootstrap.Modal(modalEl);
+        modal.show();
+        console.log('Modal shown');
+    } catch (error) {
+        console.error('Error in editQuestion:', error);
     }
-    form.action = '/admin/questionnaire/questions/' + questionId + '/edit';
-    console.log('Form action set to:', form.action);
-
-    // Populate fields
-    const questionTextEl = document.getElementById('edit_question_text');
-    const questionTypeEl = document.getElementById('edit_question_type');
-    const isRequiredEl = document.getElementById('edit_is_required');
-    const allowCommentEl = document.getElementById('edit_allow_comment');
-    const minLabelEl = document.getElementById('edit_min_label');
-    const maxLabelEl = document.getElementById('edit_max_label');
-
-    if (questionTextEl) questionTextEl.value = questionText;
-    if (questionTypeEl) questionTypeEl.value = questionType;
-    if (isRequiredEl) isRequiredEl.checked = isRequired;
-    if (allowCommentEl) allowCommentEl.checked = allowComment;
-    if (minLabelEl) minLabelEl.value = minLabel;
-    if (maxLabelEl) maxLabelEl.value = maxLabel;
-
-    console.log('Fields populated');
-
-    // Show/hide rating-specific fields
-    toggleRatingLabels(document.getElementById('edit_question_type'), 'rating-labels-edit');
-    toggleCommentVisibility(document.getElementById('edit_question_type'), 'edit_allow_comment_container');
-
-    // Show modal
-    const modalEl = document.getElementById('editQuestionModal');
-    if (!modalEl) {
-        console.error('editQuestionModal not found');
-        return;
-    }
-    const modal = new bootstrap.Modal(modalEl);
-    modal.show();
-    console.log('Modal shown');
 }
 
 // Toggle comment visibility based on question type
