@@ -2706,7 +2706,7 @@ def create_app() -> Flask:
             
             if not staff:
                 flash("Staff member not found", "danger")
-                return redirect(url_for("staff_management", store_id=store_id))
+                return redirect(url_for("store_details", store_id=store_id))
             
             # Delete staff member
             cursor.execute("DELETE FROM staff WHERE id = %s AND store_id = %s", (staff_id, store_id))
@@ -2719,7 +2719,7 @@ def create_app() -> Flask:
         finally:
             conn.close()
             
-        return redirect(url_for("staff_management", store_id=store_id))
+        return redirect(url_for("store_details", store_id=store_id))
 
     @app.route("/admin/responses/<int:response_id>/delete", methods=["POST"])
     def delete_response_route(response_id: int):
