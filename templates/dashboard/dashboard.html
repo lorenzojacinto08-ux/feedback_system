@@ -31,6 +31,10 @@ PURPOSE: The main "Analytics Dashboard" showing store counts, total responses,
             <div class="store-filter-item active" data-store-id="all" onclick="selectStore('all', 'All Stores (Overall)')">
               <i class="bi bi-grid-3x3-gap me-2"></i>All Stores (Overall)
             </div>
+            <div class="store-filter-item" onclick="window.location.href='/dashboard/staff-overall'">
+              <i class="bi bi-people me-2"></i>Staff Overall
+              <span class="store-filter-meta">All Staff</span>
+            </div>
             {% for store in stores_data %}
             <div class="store-filter-item" data-store-id="{{ store.id }}" onclick="selectStore({{ store.id }}, '{{ store.store_name }}')">
               <i class="bi bi-shop me-2"></i>{{ store.store_name }}

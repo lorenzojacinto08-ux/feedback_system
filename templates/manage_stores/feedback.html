@@ -1395,6 +1395,13 @@ PURPOSE: "Feedback Management" page. Displays all customer responses/submissions
         loadStaffData();
       });
     }
+
+    // Activate staff tab if URL has tab=staff parameter
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('tab') === 'staff' && staffTab) {
+      const staffTabInstance = new bootstrap.Tab(staffTab);
+      staffTabInstance.show();
+    }
   });
 
   // Function to load analytics data
