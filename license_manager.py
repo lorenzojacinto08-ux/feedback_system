@@ -36,6 +36,9 @@ class LicenseManager:
         """Check if a license has expired."""
         if expiry_date is None:
             return False  # No expiry means perpetual
+        # Convert expiry_date to datetime if it's a date object
+        if isinstance(expiry_date, datetime.date) and not isinstance(expiry_date, datetime.datetime):
+            expiry_date = datetime.combine(expiry_date, datetime.time())
         return datetime.now() > expiry_date
     
     def check_feature_enabled(self, features: Dict[str, bool], feature_name: str) -> bool:
