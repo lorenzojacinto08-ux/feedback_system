@@ -5,7 +5,7 @@ Handles license validation, key verification, and expiry checks for the feedback
 
 import hashlib
 import secrets
-from datetime import datetime, timedelta, date
+from datetime import datetime, timedelta, date, time
 from typing import Optional, Dict, Any
 import logging
 
@@ -38,7 +38,7 @@ class LicenseManager:
             return False  # No expiry means perpetual
         # Convert expiry_date to datetime if it's a date object
         if isinstance(expiry_date, date) and not isinstance(expiry_date, datetime):
-            expiry_date = datetime.combine(expiry_date, datetime.time())
+            expiry_date = datetime.combine(expiry_date, time())
         return datetime.now() > expiry_date
     
     def check_feature_enabled(self, features: Dict[str, bool], feature_name: str) -> bool:
