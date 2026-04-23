@@ -18,10 +18,11 @@ PURPOSE: "Master Questionnaire" editor. Allows admins to build the global templa
         Create a uniform questionnaire and publish it to all stores.
       </p>
     </div>
-    <div class="d-flex gap-2 align-items-center">
+    <div class="d-flex gap-3 align-items-center">
       <form method="POST" action="{{ url_for('master_publish') }}" onsubmit="return confirm('Are you sure you want to sync to all stores? This will overwrite their current questionnaires.');">
-        <button class="btn btn-success d-flex align-items-center" type="submit">
-          <i class="bi bi-cloud-upload me-2"></i>Sync to All Stores
+        <button class="btn btn-lg btn-success d-flex align-items-center px-4" type="submit">
+          <i class="bi bi-cloud-upload me-2 fs-5"></i>
+          <span class="fw-bold">Sync to All Stores</span>
         </button>
       </form>
       <a href="{{ url_for('master_preview') }}" class="btn btn-outline-primary d-flex align-items-center" target="_blank">
