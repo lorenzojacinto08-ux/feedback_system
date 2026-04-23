@@ -156,13 +156,26 @@
                                                             </div>
                                                             <small class="text-muted d-block">{{ license.contact_email or 'No email' }}</small>
                                                             <div class="mt-2">
-                                                                <small class="text-muted">
-                                                                    <i class="bi bi-key me-1"></i>{{ license.license_key[:20] }}...
-                                                                </small>
+                                                                <small class="text-muted fw-semibold">License Key:</small>
+                                                                <div class="d-flex gap-2 align-items-center mt-1">
+                                                                    <code class="flex-grow-1 p-2 bg-white rounded" style="font-size:.75rem; word-break:break-all;">{{ license.license_key }}</code>
+                                                                    <button class="btn btn-sm btn-outline-secondary" onclick="copyToClipboard('{{ license.license_key }}')" style="flex-shrink:0;">
+                                                                        <i class="bi bi-clipboard"></i>
+                                                                    </button>
+                                                                </div>
                                                             </div>
-                                                            <div class="mt-1">
+                                                            <div class="mt-2">
+                                                                <small class="text-muted fw-semibold">API Key:</small>
+                                                                <div class="d-flex gap-2 align-items-center mt-1">
+                                                                    <code class="flex-grow-1 p-2 bg-white rounded" style="font-size:.75rem; word-break:break-all;">{{ license.api_key }}</code>
+                                                                    <button class="btn btn-sm btn-outline-secondary" onclick="copyToClipboard('{{ license.api_key }}')" style="flex-shrink:0;">
+                                                                        <i class="bi bi-clipboard"></i>
+                                                                    </button>
+                                                                </div>
+                                                            </div>
+                                                            <div class="mt-2">
                                                                 <small class="text-muted">
-                                                                    <i class="bi bi-api me-1"></i>{{ license.api_key[:20] }}...
+                                                                    <i class="bi bi-shop me-1"></i>Max Stores: {{ license.max_stores if license.max_stores > 0 else 'Unlimited' }}
                                                                 </small>
                                                             </div>
                                                         </div>
@@ -200,5 +213,14 @@
     </div>
     
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+    function copyToClipboard(text) {
+        navigator.clipboard.writeText(text).then(() => {
+            alert('Copied to clipboard!');
+        }).catch(err => {
+            console.error('Failed to copy: ', err);
+        });
+    }
+    </script>
 </body>
 </html>
