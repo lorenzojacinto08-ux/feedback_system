@@ -3233,7 +3233,17 @@ def create_app() -> Flask:
                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
             """, (store_id, first_name, last_name, email, phone, position, role, hire_date))
             
+            new_staff_id = cursor.lastrowid
             conn.commit()
+            
+            # Log the staff addition
+            log_audit(
+                entity_type="staff",
+                entity_id=new_staff_id,
+                action="created",
+                new_values=f"Name: {first_name} {last_name}, Position: {position}, Role: {role}, Store ID: {store_id}"
+            )
+            
             flash(f"Staff member \"{first_name} {last_name}\" added successfully", "success")
         except Exception as e:
             logger.error(f"Error adding staff: {e}")
@@ -3270,6 +3280,15 @@ def create_app() -> Flask:
                 flash("Staff member not found", "danger")
             else:
                 conn.commit()
+                
+                # Log the staff edit
+                log_audit(
+                    entity_type="staff",
+                    entity_id=staff_id,
+                    action="updated",
+                    new_values=f"Name: {first_name} {last_name}, Position: {position}, Role: {role}, Status: {status}, Store ID: {store_id}"
+                )
+                
                 flash(f"Staff member \"{first_name} {last_name}\" updated successfully", "success")
         except Exception as e:
             logger.error(f"Error updating staff: {e}")
@@ -3296,6 +3315,14 @@ def create_app() -> Flask:
             # Delete staff member
             cursor.execute("DELETE FROM staff WHERE id = %s AND store_id = %s", (staff_id, store_id))
             conn.commit()
+            
+            # Log the staff deletion
+            log_audit(
+                entity_type="staff",
+                entity_id=staff_id,
+                action="deleted",
+                old_values=f"Name: {staff[0]} {staff[1]}, Store ID: {store_id}"
+            )
             
             flash(f"Staff member \"{staff[0]} {staff[1]}\" deleted successfully", "success")
         except Exception as e:
