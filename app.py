@@ -1278,7 +1278,6 @@ def create_app() -> Flask:
     def master_questionnaire():
         if request.method == "POST":
             title = request.form.get("title", "").strip()
-            is_active = request.form.get("is_active") == "on"
             updated_at = request.form.get("updated_at", "").strip()
             if not title:
                 flash("Template questionnaire title is required.", "danger")
@@ -1286,16 +1285,13 @@ def create_app() -> Flask:
             
             template = ensure_template_questionnaire()
             old_title = template.get("title", "")
-            old_active = template.get("is_active", False)
             
-            update_template_questionnaire(title=title, is_active=is_active, updated_at=updated_at if updated_at else None)
+            update_template_questionnaire(title=title, updated_at=updated_at if updated_at else None)
             
             # Log questionnaire changes
             changes = []
             if old_title != title:
                 changes.append(f"Title: {old_title} → {title}")
-            if old_active != is_active:
-                changes.append(f"Active: {old_active} → {is_active}")
             
             if changes:
                 log_audit(
@@ -1305,10 +1301,7 @@ def create_app() -> Flask:
                     old_values=f"{', '.join(changes)}"
                 )
             
-            # Auto-sync to all stores after saving
-            sync_count = publish_template_to_all_stores()
-            
-            flash(f"Questionnaire Saved Successfully and synced to {sync_count} store(s)", "success")
+            flash("Questionnaire Saved Successfully", "success")
             return redirect(url_for("master_questionnaire"))
 
         # Single database connection for better performance
@@ -1430,10 +1423,7 @@ def create_app() -> Flask:
             new_values=f"Text: {question_text}, Type: {question_type}, Required: {is_required}"
         )
         
-        # Auto-sync to all stores after adding question
-        sync_count = publish_template_to_all_stores()
-        
-        flash(f"Question Added Successfully and synced to {sync_count} store(s)", "success")
+        flash("Question Added Successfully", "success")
         return redirect(url_for("master_questionnaire"))
 
     @app.route("/admin/questionnaire/questions/<int:master_question_id>/delete", methods=["POST"])
@@ -1458,10 +1448,7 @@ def create_app() -> Flask:
             old_values=f"Text: {question_text}"
         )
         
-        # Auto-sync to all stores after deleting question
-        sync_count = publish_template_to_all_stores()
-        
-        flash(f"Question Deleted and synced to {sync_count} store(s)", "success")
+        flash("Question Deleted", "success")
         return redirect(url_for("master_questionnaire"))
 
     @app.route("/admin/questionnaire/questions/<int:master_question_id>/edit", methods=["POST"])
@@ -1478,11 +1465,7 @@ def create_app() -> Flask:
             return redirect(url_for("master_questionnaire"))
 
         update_template_question(master_question_id, question_text, question_type, is_required, min_label, max_label, allow_comment)
-        
-        # Auto-sync to all stores after editing question
-        sync_count = publish_template_to_all_stores()
-        
-        flash(f"Question Updated Successfully and synced to {sync_count} store(s)", "success")
+        flash("Question Updated Successfully", "success")
         return redirect(url_for("master_questionnaire"))
 
     @app.route("/admin/questionnaire/questions/<int:master_question_id>/options/add", methods=["POST"])
@@ -1492,21 +1475,13 @@ def create_app() -> Flask:
             flash("Option text is required.", "danger")
             return redirect(url_for("master_questionnaire"))
         add_template_option(template_question_id=master_question_id, option_text=option_text)
-        
-        # Auto-sync to all stores after adding option
-        sync_count = publish_template_to_all_stores()
-        
-        flash(f"Option added and synced to {sync_count} store(s)", "success")
+        flash("Option added.", "success")
         return redirect(url_for("master_questionnaire"))
 
     @app.route("/admin/questionnaire/options/<int:master_option_id>/delete", methods=["POST"])
     def master_delete_option(master_option_id: int):
         delete_template_option(template_option_id=master_option_id)
-        
-        # Auto-sync to all stores after deleting option
-        sync_count = publish_template_to_all_stores()
-        
-        flash(f"Option deleted and synced to {sync_count} store(s)", "success")
+        flash("Option deleted.", "success")
         return redirect(url_for("master_questionnaire"))
 
     @app.route("/admin/questionnaire/upload-logo", methods=["POST"])
