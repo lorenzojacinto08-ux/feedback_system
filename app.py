@@ -100,6 +100,22 @@ def create_app() -> Flask:
             logger.error(f"Failed to connect to database: {e}")
             raise
 
+    def log_audit(entity_type: str, entity_id: int, action: str, old_values: str = None, new_values: str = None, user_id: str = None) -> None:
+        """Log an audit entry for tracking changes"""
+        conn = get_db_connection()
+        try:
+            cursor = conn.cursor()
+            cursor.execute(
+                """
+                INSERT INTO audit_logs (entity_type, entity_id, action, old_values, new_values, user_id)
+                VALUES (%s, %s, %s, %s, %s, %s)
+                """,
+                (entity_type, entity_id, action, old_values, new_values, user_id),
+            )
+            conn.commit()
+        finally:
+            conn.close()
+
     # Initialize SMTP email configuration
     email_config = EmailConfig()
     email_config.init_app(app)
@@ -308,6 +324,24 @@ def create_app() -> Flask:
                             type VARCHAR(50) DEFAULT 'info',
                             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                             is_read BOOLEAN DEFAULT FALSE
+                        )
+                    """)
+                    conn.commit()
+                
+                # Create audit log table
+                cursor.execute("SHOW TABLES LIKE 'audit_logs'")
+                if not cursor.fetchone():
+                    logger.info("Creating audit_logs table...")
+                    cursor.execute("""
+                        CREATE TABLE audit_logs (
+                            id INT AUTO_INCREMENT PRIMARY KEY,
+                            entity_type VARCHAR(50) NOT NULL,
+                            entity_id INT NOT NULL,
+                            action VARCHAR(50) NOT NULL,
+                            old_values TEXT,
+                            new_values TEXT,
+                            user_id VARCHAR(255),
+                            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                         )
                     """)
                     conn.commit()
@@ -2548,6 +2582,14 @@ def create_app() -> Flask:
             subdomain=subdomain if subdomain else None
         )
         
+        # Log the store addition
+        log_audit(
+            entity_type="store",
+            entity_id=new_store_id,
+            action="created",
+            new_values=f"Store Name: {store_name}, Address: {address}, City: {city}, Status: {status}"
+        )
+        
         flash(f"Store \"{store_name}\" added Successfully", "success")
         return redirect(url_for("stores_management"))
 
@@ -2716,6 +2758,13 @@ def create_app() -> Flask:
         )
 
         if success:
+            # Log the store edit
+            log_audit(
+                entity_type="store",
+                entity_id=store_id,
+                action="updated",
+                new_values=f"Store Name: {store_name}, Address: {address}, City: {city}, Status: {status}"
+            )
             flash(f"Store \"{store_name}\" Edited", "success")
         else:
             flash("Store not found or update failed.", "danger")
@@ -2774,6 +2823,15 @@ def create_app() -> Flask:
             cursor.execute("DELETE FROM stores WHERE id = %s", (store_id,))
             
             conn.commit()
+            
+            # Log the store deletion
+            log_audit(
+                entity_type="store",
+                entity_id=store_id,
+                action="deleted",
+                old_values=f"Store Name: {store_name}"
+            )
+            
             flash(f"Store \"{store_name}\" Deleted", "success")
         except Exception as e:
             logger.error(f"Error deleting store: {e}")
@@ -2782,6 +2840,23 @@ def create_app() -> Flask:
             conn.close()
             
         return redirect(url_for("stores_management"))
+
+    @app.route("/admin/history")
+    def history():
+        conn = get_db_connection()
+        try:
+            cursor = conn.cursor(dictionary=True)
+            cursor.execute("""
+                SELECT id, entity_type, entity_id, action, old_values, new_values, user_id, created_at
+                FROM audit_logs
+                ORDER BY created_at DESC
+                LIMIT 100
+            """)
+            logs = cursor.fetchall()
+        finally:
+            conn.close()
+        
+        return render_template("history.html", logs=logs)
 
     @app.route("/admin/clear-feedback", methods=["POST"])
     def clear_feedback_route():

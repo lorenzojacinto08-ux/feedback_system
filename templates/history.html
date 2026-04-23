@@ -1,0 +1,78 @@
+{% extends "layout.html" %}
+
+{% block title %}History · Feedback Admin{% endblock %}
+
+{% block content %}
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+      <h2 class="page-title">History</h2>
+      <p class="page-subtitle">
+        Track store operations and changes
+      </p>
+    </div>
+  </div>
+
+  <div class="card border-0 shadow-sm">
+    <div class="card-body p-4">
+      {% if logs|length == 0 %}
+        <div class="text-center py-5">
+          <div class="rounded-circle bg-light mx-auto mb-3 d-flex align-items-center justify-content-center" style="width: 108px; height: 108px;">
+            <i class="bi bi-clock-history text-muted fs-1"></i>
+          </div>
+          <h4 class="text-muted mb-2">No History Yet</h4>
+          <p class="text-muted fs-5 mb-0">History of store operations will appear here.</p>
+        </div>
+      {% else %}
+        <div class="table-responsive">
+          <table class="table table-hover">
+            <thead>
+              <tr>
+                <th>Date & Time</th>
+                <th>Entity Type</th>
+                <th>Action</th>
+                <th>Details</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for log in logs %}
+              <tr>
+                <td>
+                  <div class="fw-medium">{{ log.created_at.strftime('%b %d, %Y') }}</div>
+                  <small class="text-muted">{{ log.created_at.strftime('%I:%M %p') }}</small>
+                </td>
+                <td>
+                  <span class="badge bg-primary bg-opacity-10 text-primary">
+                    {{ log.entity_type|title }}
+                  </span>
+                </td>
+                <td>
+                  {% if log.action == 'created' %}
+                    <span class="badge bg-success">Added</span>
+                  {% elif log.action == 'updated' %}
+                    <span class="badge bg-info">Edited</span>
+                  {% elif log.action == 'deleted' %}
+                    <span class="badge bg-danger">Deleted</span>
+                  {% else %}
+                    <span class="badge bg-secondary">{{ log.action|title }}</span>
+                  {% endif %}
+                </td>
+                <td>
+                  <small class="text-muted">
+                    {% if log.new_values %}
+                      {{ log.new_values }}
+                    {% elif log.old_values %}
+                      {{ log.old_values }}
+                    {% else %}
+                      ID: {{ log.entity_id }}
+                    {% endif %}
+                  </small>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+{% endblock %}
