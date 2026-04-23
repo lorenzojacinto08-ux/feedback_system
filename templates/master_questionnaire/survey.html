@@ -319,7 +319,6 @@ PURPOSE: The actual "Feedback Form". This is the page the customer sees when
               type="submit"
               class="btn btn-primary btn-lg px-5 d-flex align-items-center mx-auto"
               id="submitBtn"
-              onclick="disableSubmitButton(this)"
             >
               <i class="bi bi-send me-2"></i>
               <span id="submitBtnText">Submit Feedback</span>
@@ -382,11 +381,24 @@ PURPOSE: The actual "Feedback Form". This is the page the customer sees when
 
 <script>
   // Prevent double submission
-  function disableSubmitButton(button) {
-    button.disabled = true;
-    const buttonText = document.getElementById('submitBtnText');
-    buttonText.textContent = 'Submitting...';
-  }
+  document.addEventListener("DOMContentLoaded", function () {
+    const form = document.querySelector('form');
+    const submitBtn = document.getElementById('submitBtn');
+    const submitBtnText = document.getElementById('submitBtnText');
+    let isSubmitting = false;
+
+    if (form && submitBtn) {
+      form.addEventListener('submit', function(e) {
+        if (isSubmitting) {
+          e.preventDefault();
+          return false;
+        }
+        isSubmitting = true;
+        submitBtn.disabled = true;
+        submitBtnText.textContent = 'Submitting...';
+      });
+    }
+  });
 
   // Simple star rating implementation
   document.addEventListener("DOMContentLoaded", function () {
