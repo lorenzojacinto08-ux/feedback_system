@@ -178,10 +178,17 @@ def create_app() -> Flask:
 
     def check_store_limit() -> bool:
         """Check if the current store count is within the license limit"""
+        config = get_license_config()
+        
+        # If no license is configured, allow unlimited stores (for initial setup)
+        if not config or not config.get("license_key"):
+            return True
+        
         license_status = validate_license_from_portal()
         
+        # If license validation fails (invalid key, etc.), block store creation
         if not license_status.get("valid"):
-            return True  # Allow if license is not valid (for dev purposes)
+            return False
         
         max_stores = license_status.get("max_stores", 0)
         if max_stores == 0:
