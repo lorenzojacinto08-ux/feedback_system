@@ -142,6 +142,8 @@ def create_app() -> Flask:
         conn = get_db_connection()
         try:
             cursor = conn.cursor(dictionary=True)
+            # Create table if it doesn't exist
+            cursor.execute("CREATE TABLE IF NOT EXISTS license_config (id INT AUTO_INCREMENT PRIMARY KEY, license_key VARCHAR(255) NOT NULL, api_key VARCHAR(255) NOT NULL, licensing_portal_url VARCHAR(255) DEFAULT 'http://feedbacklicensing-production.up.railway.app', created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP)")
             cursor.execute("SELECT * FROM license_config ORDER BY id DESC LIMIT 1")
             return cursor.fetchone()
         finally:
@@ -2265,6 +2267,8 @@ def create_app() -> Flask:
         conn = get_db_connection()
         try:
             cursor = conn.cursor(dictionary=True)
+            # Create table if it doesn't exist
+            cursor.execute("CREATE TABLE IF NOT EXISTS license_config (id INT AUTO_INCREMENT PRIMARY KEY, license_key VARCHAR(255) NOT NULL, api_key VARCHAR(255) NOT NULL, licensing_portal_url VARCHAR(255) DEFAULT 'http://feedbacklicensing-production.up.railway.app', created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP)")
             cursor.execute("SELECT * FROM license_config ORDER BY id DESC LIMIT 1")
             config = cursor.fetchone()
             return render_template("admin/license_config.html", config=config)
