@@ -1,5 +1,5 @@
 {% extends "layout.html" %} {% set hide_header = True %}
-<!-- 
+<!--
 ================================================================================
 FILE: public/survey.html
 URL ROUTE: /s/<store_id>
@@ -14,11 +14,15 @@ PURPOSE: The actual "Feedback Form". This is the page the customer sees when
     <div class="card border-0 shadow-lg">
       <div class="card-body p-4 p-md-5">
         <div class="text-center mb-4">
+          {% if store.logo_url %}
+          <img src="{{ store.logo_url }}" alt="{{ store.store_name }} Logo" class="mb-3" style="max-height: 80px; max-width: 200px; object-fit: contain;">
+          {% else %}
           <div
             class="rounded-circle bg-light p-3 mx-auto mb-3 d-inline-flex align-items-center justify-content-center"
           >
             <i class="bi bi-chat-left-text text-primary fs-3"></i>
           </div>
+          {% endif %}
           <h1 class="h3 mb-2 fw-bold">{{ questionnaire.title }}</h1>
           {% if store.location %}
           <p class="text-muted mb-0">

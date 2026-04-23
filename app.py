@@ -130,6 +130,7 @@ def create_app() -> Flask:
                         store_type VARCHAR(100),
                         operating_hours VARCHAR(255),
                         status ENUM('active', 'inactive', 'pending') DEFAULT 'active',
+                        logo_url VARCHAR(500),
                         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                     )
                 """)
@@ -381,7 +382,8 @@ def create_app() -> Flask:
                     ("manager_contact", "VARCHAR(20)"),
                     ("store_type", "VARCHAR(100)"),
                     ("operating_hours", "VARCHAR(255)"),
-                    ("status", "ENUM('active', 'inactive', 'pending') DEFAULT 'active'")
+                    ("status", "ENUM('active', 'inactive', 'pending') DEFAULT 'active'"),
+                    ("logo_url", "VARCHAR(500)")
                 ]
                 
                 for column_name, column_type in store_columns:
@@ -476,9 +478,9 @@ def create_app() -> Flask:
             cursor = conn.cursor(dictionary=True)
             cursor.execute(
                 """
-                SELECT id, store_name, address, city, province, postal_code, 
-                       contact_number, email, store_manager_name, manager_contact, 
-                       store_type, status, created_at
+                SELECT id, store_name, address, city, province, postal_code,
+                       contact_number, email, store_manager_name, manager_contact,
+                       store_type, status, created_at, logo_url
                 FROM stores
                 WHERE id = %s
                 LIMIT 1
@@ -492,7 +494,7 @@ def create_app() -> Flask:
         return store
 
     def create_store(
-        store_name: str, 
+        store_name: str,
         address: str | None = None,
         city: str | None = None,
         province: str | None = None,
@@ -502,7 +504,8 @@ def create_app() -> Flask:
         store_manager_name: str | None = None,
         manager_contact: str | None = None,
         store_type: str | None = None,
-        status: str = "active"
+        status: str = "active",
+        logo_url: str | None = None
     ) -> int:
         conn = get_db_connection()
         try:
@@ -512,14 +515,14 @@ def create_app() -> Flask:
                 INSERT INTO stores (
                     store_name, address, city, province, postal_code,
                     contact_number, email, store_manager_name, manager_contact,
-                    store_type, status
+                    store_type, status, logo_url
                 )
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 """,
                 (
                     store_name, address, city, province, postal_code,
                     contact_number, email, store_manager_name, manager_contact,
-                    store_type, status
+                    store_type, status, logo_url
                 ),
             )
             conn.commit()
@@ -2109,6 +2112,35 @@ def create_app() -> Flask:
             flash("Please enter a valid email address.", "danger")
             return redirect(url_for("stores_management"))
 
+        # Handle logo upload
+        logo_url = None
+        if 'logo' in request.files:
+            logo_file = request.files['logo']
+            if logo_file and logo_file.filename:
+                # Validate file type
+                allowed_extensions = {'png', 'jpg', 'jpeg'}
+                if logo_file.filename.rsplit('.', 1)[1].lower() not in allowed_extensions:
+                    flash("Invalid file type. Only PNG, JPG, and JPEG files are allowed.", "danger")
+                    return redirect(url_for("stores_management"))
+                
+                # Validate file size (5MB max)
+                logo_file.seek(0, os.SEEK_END)
+                file_size = logo_file.tell()
+                logo_file.seek(0)
+                if file_size > 5 * 1024 * 1024:
+                    flash("File size exceeds 5MB limit.", "danger")
+                    return redirect(url_for("stores_management"))
+                
+                # Save the file
+                from werkzeug.utils import secure_filename
+                import uuid
+                filename = secure_filename(logo_file.filename)
+                unique_filename = f"{uuid.uuid4()}_{filename}"
+                upload_path = os.path.join('static', 'uploads', 'logos')
+                os.makedirs(upload_path, exist_ok=True)
+                logo_file.save(os.path.join(upload_path, unique_filename))
+                logo_url = f"/static/uploads/logos/{unique_filename}"
+
         new_store_id = create_store(
             store_name=store_name,
             address=address if address else None,
@@ -2120,11 +2152,12 @@ def create_app() -> Flask:
             store_manager_name=store_manager_name if store_manager_name else None,
             manager_contact=manager_contact if manager_contact else None,
             store_type=store_type if store_type else None,
-            status=status
+            status=status,
+            logo_url=logo_url
         )
         
         flash(f"Store \"{store_name}\" added Successfully", "success")
-        return redirect(url_for("stores_management", store_id=new_store_id))
+        return redirect(url_for("stores_management"))
 
     def update_store(
         store_id: int,
@@ -2139,17 +2172,18 @@ def create_app() -> Flask:
         store_manager_name: str | None,
         manager_contact: str | None,
         status: str,
+        logo_url: str | None = None
     ) -> bool:
         conn = get_db_connection()
         try:
             cursor = conn.cursor()
             cursor.execute(
                 """
-                UPDATE stores 
-                SET store_name = %s, store_type = %s, address = %s, city = %s, 
-                    province = %s, postal_code = %s, contact_number = %s, 
-                    email = %s, store_manager_name = %s, manager_contact = %s, 
-                    status = %s
+                UPDATE stores
+                SET store_name = %s, store_type = %s, address = %s, city = %s,
+                    province = %s, postal_code = %s, contact_number = %s,
+                    email = %s, store_manager_name = %s, manager_contact = %s,
+                    status = %s, logo_url = %s
                 WHERE id = %s
                 """,
                 (
@@ -2164,6 +2198,7 @@ def create_app() -> Flask:
                     store_manager_name,
                     manager_contact,
                     status,
+                    logo_url,
                     store_id,
                 ),
             )
@@ -2190,6 +2225,35 @@ def create_app() -> Flask:
             flash("Store name is required.", "danger")
             return redirect(url_for("stores_management"))
 
+        # Handle logo upload
+        logo_url = None
+        if 'logo' in request.files:
+            logo_file = request.files['logo']
+            if logo_file and logo_file.filename:
+                # Validate file type
+                allowed_extensions = {'png', 'jpg', 'jpeg'}
+                if logo_file.filename.rsplit('.', 1)[1].lower() not in allowed_extensions:
+                    flash("Invalid file type. Only PNG, JPG, and JPEG files are allowed.", "danger")
+                    return redirect(url_for("stores_management"))
+                
+                # Validate file size (5MB max)
+                logo_file.seek(0, os.SEEK_END)
+                file_size = logo_file.tell()
+                logo_file.seek(0)
+                if file_size > 5 * 1024 * 1024:
+                    flash("File size exceeds 5MB limit.", "danger")
+                    return redirect(url_for("stores_management"))
+                
+                # Save the file
+                from werkzeug.utils import secure_filename
+                import uuid
+                filename = secure_filename(logo_file.filename)
+                unique_filename = f"{uuid.uuid4()}_{filename}"
+                upload_path = os.path.join('static', 'uploads', 'logos')
+                os.makedirs(upload_path, exist_ok=True)
+                logo_file.save(os.path.join(upload_path, unique_filename))
+                logo_url = f"/static/uploads/logos/{unique_filename}"
+
         success = update_store(
             store_id=store_id,
             store_name=store_name,
@@ -2203,6 +2267,7 @@ def create_app() -> Flask:
             store_manager_name=store_manager_name,
             manager_contact=manager_contact,
             status=status,
+            logo_url=logo_url
         )
 
         if success:
