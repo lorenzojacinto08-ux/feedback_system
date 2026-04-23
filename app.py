@@ -1267,7 +1267,26 @@ def create_app() -> Flask:
                 return redirect(url_for("master_questionnaire"))
             
             template = ensure_template_questionnaire()
+            old_title = template.get("title", "")
+            old_active = template.get("is_active", False)
+            
             update_template_questionnaire(title=title, is_active=is_active, updated_at=updated_at if updated_at else None)
+            
+            # Log questionnaire changes
+            changes = []
+            if old_title != title:
+                changes.append(f"Title: {old_title} → {title}")
+            if old_active != is_active:
+                changes.append(f"Active: {old_active} → {is_active}")
+            
+            if changes:
+                log_audit(
+                    entity_type="questionnaire",
+                    entity_id=int(template["id"]),
+                    action="updated",
+                    old_values=f"{', '.join(changes)}"
+                )
+            
             flash("Questionnaire Saved Successfully", "success")
             return redirect(url_for("master_questionnaire"))
 
@@ -1369,7 +1388,7 @@ def create_app() -> Flask:
             flash("Invalid question type.", "danger")
             return redirect(url_for("master_questionnaire"))
 
-        add_template_question(
+        new_question_id = add_template_question(
             template_questionnaire_id=template_id,
             question_text=question_text,
             question_type=question_type,
@@ -1379,12 +1398,40 @@ def create_app() -> Flask:
             max_label=max_label,
             allow_comment=allow_comment,
         )
+        
+        # Log the question addition
+        log_audit(
+            entity_type="question",
+            entity_id=new_question_id,
+            action="created",
+            new_values=f"Text: {question_text}, Type: {question_type}, Required: {is_required}"
+        )
+        
         flash("Question Added Successfully", "success")
         return redirect(url_for("master_questionnaire"))
 
     @app.route("/admin/questionnaire/questions/<int:master_question_id>/delete", methods=["POST"])
     def master_delete_question(master_question_id: int):
+        # Get question text before deletion for logging
+        conn = get_db_connection()
+        try:
+            cursor = conn.cursor()
+            cursor.execute("SELECT question_text FROM questions WHERE id = %s", (master_question_id,))
+            question = cursor.fetchone()
+            question_text = question[0] if question else "Unknown"
+        finally:
+            conn.close()
+        
         delete_template_question(template_question_id=master_question_id)
+        
+        # Log the question deletion
+        log_audit(
+            entity_type="question",
+            entity_id=master_question_id,
+            action="deleted",
+            old_values=f"Text: {question_text}"
+        )
+        
         flash("Question Deleted", "success")
         return redirect(url_for("master_questionnaire"))
 
@@ -1494,6 +1541,15 @@ def create_app() -> Flask:
             return redirect(url_for("master_questionnaire"))
 
         count = publish_template_to_all_stores()
+        
+        # Log the publish action
+        log_audit(
+            entity_type="questionnaire",
+            entity_id=template_id,
+            action="published",
+            new_values=f"Published to {count} store(s)"
+        )
+        
         flash(f"Published to {count} store(s) Successfully", "success")
         return redirect(url_for("master_questionnaire"))
 
@@ -1517,6 +1573,14 @@ def create_app() -> Flask:
             conn.commit()
         finally:
             conn.close()
+        
+        # Log the toggle action
+        log_audit(
+            entity_type="questionnaire",
+            entity_id=int(template["id"]),
+            action="toggled",
+            old_values=f"Active: {current_active} → {new_active}"
+        )
         
         if new_active:
             flash("Survey enabled successfully. Stores can now accept feedback.", "success")
