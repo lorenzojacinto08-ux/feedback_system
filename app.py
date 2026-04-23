@@ -1571,6 +1571,160 @@ def create_app() -> Flask:
         flash(f"Published to {count} store(s) Successfully", "success")
         return redirect(url_for("master_questionnaire"))
 
+    @app.route("/admin/api/stores", methods=["GET"])
+    def api_stores():
+        """API endpoint to get all stores for sync wizard"""
+        stores = fetch_stores()
+        return jsonify(stores)
+
+    @app.route("/admin/questionnaire/sync", methods=["POST"])
+    def sync_to_selected_stores():
+        """Sync master questionnaire to selected stores"""
+        try:
+            data = request.get_json()
+            store_ids = data.get('store_ids', [])
+            
+            if not store_ids:
+                return {"success": False, "error": "No stores selected"}, 400
+            
+            template = ensure_template_questionnaire()
+            template_id = int(template["id"])
+            template_questions = fetch_template_questions(template_questionnaire_id=template_id)
+            template_options_by_question_id = fetch_template_options_by_question([int(q["id"]) for q in template_questions])
+            
+            conn = get_db_connection()
+            try:
+                cursor = conn.cursor(dictionary=True)
+                synced_count = 0
+                
+                for store_id in store_ids:
+                    store_id = int(store_id)
+                    
+                    # Check if store exists
+                    cursor.execute("SELECT id FROM stores WHERE id = %s", (store_id,))
+                    if not cursor.fetchone():
+                        continue
+                    
+                    # Check if store already has a questionnaire
+                    cursor.execute("SELECT id FROM questionnaires WHERE store_id = %s AND is_template = FALSE ORDER BY id ASC LIMIT 1", (store_id,))
+                    existing = cursor.fetchone()
+                    
+                    if existing:
+                        # Update existing questionnaire metadata
+                        cursor.execute(
+                            """
+                            UPDATE questionnaires
+                            SET title = %s, is_active = %s, template_id = %s
+                            WHERE id = %s
+                            """,
+                            (template["title"], bool(template["is_active"]), template_id, int(existing["id"])),
+                        )
+                        questionnaire_id = int(existing["id"])
+                        
+                        # Deactivate existing questions
+                        cursor.execute(
+                            """
+                            UPDATE questions
+                            SET is_active = FALSE
+                            WHERE questionnaire_id = %s AND is_template = FALSE
+                            """,
+                            (questionnaire_id,),
+                        )
+                    else:
+                        # Create new store questionnaire
+                        cursor.execute(
+                            """
+                            INSERT INTO questionnaires (store_id, title, is_active, is_template, template_id)
+                            VALUES (%s, %s, %s, %s, %s)
+                            """,
+                            (store_id, template["title"], bool(template["is_active"]), False, template_id),
+                        )
+                        questionnaire_id = int(cursor.lastrowid)
+                    
+                    # Copy questions from template
+                    for template_question in template_questions:
+                        cursor.execute(
+                            """
+                            INSERT INTO questions (questionnaire_id, question_text, question_type, min_label, max_label, allow_comment, is_required, question_order, is_template, template_id)
+                            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                            """,
+                            (questionnaire_id, template_question["question_text"], template_question["question_type"],
+                             template_question["min_label"], template_question["max_label"], template_question["allow_comment"],
+                             template_question["is_required"], template_question["question_order"], False, int(template_question["id"])),
+                        )
+                        new_question_id = int(cursor.lastrowid)
+                        
+                        # Copy options for this question
+                        template_options = template_options_by_question_id.get(int(template_question["id"]), [])
+                        for option in template_options:
+                            cursor.execute(
+                                """
+                                INSERT INTO question_options (question_id, option_text, is_template)
+                                VALUES (%s, %s, %s)
+                                """,
+                                (new_question_id, option["option_text"], False),
+                            )
+                    
+                    synced_count += 1
+                
+                conn.commit()
+                
+                # Log the sync action
+                log_audit(
+                    entity_type="questionnaire",
+                    entity_id=template_id,
+                    action="synced",
+                    new_values=f"Synced to {synced_count} store(s)"
+                )
+                
+                return {"success": True, "count": synced_count}
+                
+            finally:
+                conn.close()
+                
+        except Exception as e:
+            logger.error(f"Error syncing to stores: {e}")
+            return {"success": False, "error": str(e)}, 500
+
+    @app.route("/admin/questionnaire/sync-status", methods=["GET"])
+    def sync_status():
+        """Check sync status of stores"""
+        try:
+            template = ensure_template_questionnaire()
+            template_id = int(template["id"])
+            
+            conn = get_db_connection()
+            cursor = conn.cursor(dictionary=True)
+            
+            # Get total stores
+            cursor.execute("SELECT COUNT(*) as total FROM stores")
+            total_stores = cursor.fetchone()['total']
+            
+            # Get stores with synced questionnaire
+            cursor.execute("""
+                SELECT COUNT(DISTINCT s.id) as synced
+                FROM stores s
+                JOIN questionnaires q ON s.id = q.store_id
+                WHERE q.is_template = FALSE AND q.template_id = %s
+            """, (template_id,))
+            synced_stores = cursor.fetchone()['synced']
+            
+            cursor.close()
+            conn.close()
+            
+            unsynced_count = total_stores - synced_stores
+            
+            return jsonify({
+                "synced": unsynced_count == 0,
+                "synced_count": synced_stores,
+                "unsynced_count": unsynced_count,
+                "total_stores": total_stores
+            })
+            
+        except Exception as e:
+            logger.error(f"Error checking sync status: {e}")
+            return jsonify({"synced": False, "error": str(e)}), 500
+
     @app.route("/admin/questionnaire/toggle-active", methods=["POST"])
     def master_toggle_active():
         template = ensure_template_questionnaire()
