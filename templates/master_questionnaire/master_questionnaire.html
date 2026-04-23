@@ -72,6 +72,24 @@ PURPOSE: "Master Questionnaire" editor. Allows admins to build the global templa
           </form>
           <hr class="my-3">
           <div class="text-center">
+            <div class="mb-3 p-3 rounded-3 {% if master.is_active %}bg-success bg-opacity-10{% else %}bg-secondary bg-opacity-10{% endif %}">
+              <div class="d-flex align-items-center justify-content-center gap-2 mb-2">
+                {% if master.is_active %}
+                  <i class="bi bi-check-circle-fill text-success fs-4"></i>
+                  <span class="fw-bold text-success">Survey is Active</span>
+                {% else %}
+                  <i class="bi bi-x-circle-fill text-secondary fs-4"></i>
+                  <span class="fw-bold text-secondary">Survey is Inactive</span>
+                {% endif %}
+              </div>
+              <small class="text-muted">
+                {% if master.is_active %}
+                  Stores can currently accept feedback
+                {% else %}
+                  Stores cannot accept feedback
+                {% endif %}
+              </small>
+            </div>
             {% if master.is_active %}
             <form method="POST" action="{{ url_for('master_toggle_active') }}" onsubmit="return confirm('Are you sure you want to disable the survey? This will prevent all stores from accepting feedback.');">
               <button class="btn btn-danger w-100 d-flex align-items-center justify-content-center" type="submit">
@@ -81,7 +99,7 @@ PURPOSE: "Master Questionnaire" editor. Allows admins to build the global templa
             {% else %}
             <form method="POST" action="{{ url_for('master_toggle_active') }}" onsubmit="return confirm('Are you sure you want to enable the survey? This will allow all stores to accept feedback.');">
               <button class="btn btn-success w-100 d-flex align-items-center justify-content-center" type="submit">
-                <i class="bi bi-check-circle me-2"></i>Enable Survey
+                <i class="bi bi-play-circle me-2"></i>Enable Survey
               </button>
             </form>
             {% endif %}
