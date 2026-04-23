@@ -2656,7 +2656,7 @@ def create_app() -> Flask:
         finally:
             conn.close()
             
-        return redirect(url_for("staff_management", store_id=store_id))
+        return redirect(url_for("store_feedback", store_id=store_id, tab='staff'))
 
     @app.route("/admin/stores/<int:store_id>/staff/<int:staff_id>/edit", methods=["POST"])
     def edit_staff(store_id: int, staff_id: int):
@@ -2692,7 +2692,7 @@ def create_app() -> Flask:
         finally:
             conn.close()
             
-        return redirect(url_for("staff_management", store_id=store_id))
+        return redirect(url_for("store_feedback", store_id=store_id, tab='staff'))
 
     @app.route("/admin/stores/<int:store_id>/staff/<int:staff_id>/delete", methods=["POST"])
     def delete_staff(store_id: int, staff_id: int):
