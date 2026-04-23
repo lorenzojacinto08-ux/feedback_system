@@ -28,11 +28,7 @@ PURPOSE: "Store Management" page. Allows adding/editing stores, viewing
         <i class="bi bi-download me-2"></i>
         Backup CSV
       </a>
-      <form method="POST" action="{{ url_for('seed_feedback_route') }}" onsubmit="return confirm('This will generate sample feedback data for each store with answers and staff commendations. Continue?');" class="d-inline">
-        <button type="submit" class="btn btn-info text-white d-flex align-items-center">
-          <i class="bi bi-magic me-2"></i>
-          Seed Feedback
-        </button>
+      
       </form>
       <form method="POST" action="{{ url_for('clear_feedback_route') }}" onsubmit="return confirm('WARNING: Make sure to BACKUP your data before proceeding.\n\nAre you sure you want to clear ALL feedback data? This will delete all responses, answers, and staff commendations. Stores and their configurations will be preserved. This action cannot be undone.');" class="d-inline">
         <button type="submit" class="btn btn-outline-danger d-flex align-items-center">

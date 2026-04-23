@@ -31,10 +31,6 @@
             <i class="bi bi-clock-history me-2"></i>History
           </a>
           <div class="border-start border-2 mx-2 flex-shrink-0" style="border-color: var(--neutral-300); height: 20px; align-self: center;"></div>
-          <a href="{{ url_for('admin_license') }}" class="text-decoration-none topnav-link px-3 py-2 rounded-2 text-nowrap {% if request.endpoint == 'admin_license' %}active{% endif %}">
-            <i class="bi bi-key me-2"></i>License
-          </a>
-          <div class="border-start border-2 mx-2 flex-shrink-0" style="border-color: var(--neutral-300); height: 20px; align-self: center;"></div>
           <a href="{{ url_for('admin_users') }}" class="text-decoration-none topnav-link px-3 py-2 rounded-2 text-nowrap {% if request.endpoint == 'admin_users' %}active{% endif %}">
             <i class="bi bi-people me-2"></i>Users
           </a>
