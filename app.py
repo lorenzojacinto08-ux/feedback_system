@@ -2191,6 +2191,9 @@ def create_app() -> Flask:
             conn = get_db_connection()
             cursor = conn.cursor()
             
+            # Disable foreign key checks temporarily
+            cursor.execute("SET FOREIGN_KEY_CHECKS = 0")
+            
             # Delete all data from tables (keeping users and schema)
             tables_to_clear = [
                 "feedback",
@@ -2202,7 +2205,14 @@ def create_app() -> Flask:
             ]
             
             for table in tables_to_clear:
-                cursor.execute(f"DELETE FROM {table}")
+                try:
+                    cursor.execute(f"DELETE FROM {table}")
+                    logger.info(f"Cleared table: {table}")
+                except Exception as e:
+                    logger.warning(f"Could not clear table {table}: {e}")
+            
+            # Re-enable foreign key checks
+            cursor.execute("SET FOREIGN_KEY_CHECKS = 1")
             
             conn.commit()
             conn.close()
@@ -2216,7 +2226,7 @@ def create_app() -> Flask:
             )
         except Exception as e:
             logger.error(f"Error resetting database: {e}")
-            flash("Failed to reset database.", "danger")
+            flash(f"Failed to reset database: {e}", "danger")
         
         return redirect(url_for("admin_users"))
 
