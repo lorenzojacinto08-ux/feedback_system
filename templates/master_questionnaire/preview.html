@@ -36,6 +36,112 @@
                 <h5 class="fw-bold mb-2">{{ master.title }}</h5>
                 <p class="text-muted small mb-0">Preview Mode</p>
               </div>
+
+              <!-- Transaction Information Section -->
+              <div class="mb-4 p-4 bg-light rounded-3">
+                <div class="d-flex align-items-center mb-3">
+                  <div class="rounded-circle bg-white shadow-sm p-2 me-3">
+                    <i class="bi bi-receipt text-primary"></i>
+                  </div>
+                  <div>
+                    <h6 class="mb-1 fw-semibold">Transaction Information</h6>
+                    <p class="text-muted small mb-0">
+                      Please provide your receipt details for feedback verification
+                    </p>
+                  </div>
+                </div>
+                <div class="row g-3">
+                  <div class="col-md-6">
+                    <div class="form-group">
+                      <label for="receipt_number" class="form-label fw-medium">
+                        Receipt/Transaction Number <span class="text-danger">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        id="receipt_number"
+                        name="receipt_number"
+                        class="form-control bg-white"
+                        placeholder="e.g. RCP-2024-12345"
+                        disabled
+                      />
+                      <div class="form-text">
+                        <i class="bi bi-info-circle me-1"></i>
+                        Found on your receipt. Required for feedback submission.
+                      </div>
+                    </div>
+                  </div>
+                  <div class="col-md-6">
+                    <div class="form-group">
+                      <label for="user_email" class="form-label fw-medium">
+                        Email Address <span class="text-danger">*</span>
+                      </label>
+                      <input
+                        type="email"
+                        id="user_email"
+                        name="user_email"
+                        class="form-control bg-white"
+                        placeholder="your.email@example.com"
+                        disabled
+                      />
+                      <div class="form-text">
+                        <i class="bi bi-info-circle me-1"></i>
+                        For feedback tracking and follow-up if needed.
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Staff Commendation Section (Preview) -->
+              <div class="mb-4 p-4 bg-light rounded-3">
+                <div class="d-flex align-items-center mb-3">
+                  <div class="rounded-circle bg-white shadow-sm p-2 me-3">
+                    <i class="bi bi-award text-primary"></i>
+                  </div>
+                  <div>
+                    <h6 class="mb-1 fw-semibold">Staff Commendation (Optional)</h6>
+                    <p class="text-muted small mb-0">
+                      Would you like to rate a staff member who served you?
+                    </p>
+                  </div>
+                </div>
+                
+                <div class="form-group mb-3">
+                  <label for="staff_commendation" class="form-label fw-medium">
+                    Select Staff Member
+                  </label>
+                  <select
+                    id="staff_commendation"
+                    name="staff_commendation"
+                    class="form-select bg-white"
+                    disabled
+                  >
+                    <option value="">No staff commendation</option>
+                    <option value="1">John Doe - Manager</option>
+                    <option value="2">Jane Smith - Cashier</option>
+                  </select>
+                  <div class="form-text">
+                    <i class="bi bi-info-circle me-1"></i>
+                    Choose a staff member to rate their service.
+                  </div>
+                </div>
+
+                <!-- Staff Star Rating (Preview) -->
+                <div class="mb-3">
+                  <label class="form-label fw-medium">Rate this staff member</label>
+                  <div class="commendation-stars d-flex gap-1">
+                    {% for i in range(1, 6) %}
+                    <i class="bi bi-star" style="font-size:1.75rem; color:#d1d5db;"></i>
+                    {% endfor %}
+                  </div>
+                  <div class="form-text mt-1">
+                    <i class="bi bi-info-circle me-1"></i>
+                    Tap a star to rate
+                  </div>
+                </div>
+              </div>
+
+              <!-- Questions Section -->
               <div class="vstack gap-4">
                 {% for q in questions %}
                   <div class="mb-3 p-4 bg-light rounded-3">
