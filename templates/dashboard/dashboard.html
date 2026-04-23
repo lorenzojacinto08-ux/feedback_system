@@ -52,56 +52,6 @@ PURPOSE: The main "Analytics Dashboard" showing store counts, total responses,
     </div>
   </div>
 
-  <!-- Search and Filter Section -->
-  <div class="card mb-4 border-0 shadow-sm">
-    <div class="card-body p-4">
-      <div class="row g-3">
-        <div class="col-md-4">
-          <div class="input-group">
-            <span class="input-group-text bg-light border-0">
-              <i class="bi bi-search text-muted"></i>
-            </span>
-            <input type="text" class="form-control border-start-0" id="dashboardSearch" placeholder="Search stores by name...">
-          </div>
-        </div>
-        <div class="col-md-2">
-          <select class="form-select" id="statusFilter">
-            <option value="">All Status</option>
-            <option value="active">Active</option>
-            <option value="inactive">Inactive</option>
-          </select>
-        </div>
-        <div class="col-md-2">
-          <select class="form-select" id="typeFilter">
-            <option value="">All Types</option>
-            <option value="retail">Retail</option>
-            <option value="restaurant">Restaurant</option>
-            <option value="service">Service</option>
-            <option value="office">Office</option>
-          </select>
-        </div>
-        <div class="col-md-2">
-          <select class="form-select" id="sortBy">
-            <option value="name">Sort by Name</option>
-            <option value="date">Sort by Date</option>
-            <option value="status">Sort by Status</option>
-            <option value="type">Sort by Type</option>
-          </select>
-        </div>
-        <div class="col-md-2">
-          <div class="btn-group w-100" role="group">
-            <button type="button" class="btn btn-outline-secondary" id="clearFilters">
-              <i class="bi bi-x-circle me-1"></i>Clear
-            </button>
-            <button type="button" class="btn btn-primary" id="applyFilters">
-              <i class="bi bi-funnel me-1"></i>Apply
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-
   <!-- ── Dynamic Dashboard Content ── -->
   <div id="dashboardContent" class="dashboard-content">
 
