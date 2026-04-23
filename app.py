@@ -2276,11 +2276,11 @@ def create_app() -> Flask:
         # Check if master questionnaire is active
         master_template = fetch_template_questionnaire()
         if not master_template or not master_template.get("is_active"):
-            return render_template("layout.html", store=store, error="Questionnaire is currently inactive"), 404
+            return render_template("layout.html", store=store, error="Sorry, the system is not accepting any feedbacks right now"), 404
 
         questionnaire = fetch_questionnaire_by_store(store_id=store_id)
         if not questionnaire or not questionnaire.get("is_active"):
-            return render_template("layout.html", store=store, error="Questionnaire is currently inactive"), 404
+            return render_template("layout.html", store=store, error="Sorry, the system is not accepting any feedbacks right now"), 404
 
         questions = fetch_questions_for_questionnaire(questionnaire_id=int(questionnaire["id"]))
         options_by_question_id = fetch_options_for_questions([int(q["id"]) for q in questions])
