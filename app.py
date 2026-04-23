@@ -136,6 +136,65 @@ def create_app() -> Flask:
         finally:
             conn.close()
 
+    # License validation functions
+    def get_license_config() -> Optional[Dict[str, Any]]:
+        """Get license configuration from database"""
+        conn = get_db_connection()
+        try:
+            cursor = conn.cursor(dictionary=True)
+            cursor.execute("SELECT * FROM license_config ORDER BY id DESC LIMIT 1")
+            return cursor.fetchone()
+        finally:
+            conn.close()
+
+    def validate_license_from_portal() -> Dict[str, Any]:
+        """Validate license by calling the licensing portal API"""
+        import requests
+        
+        config = get_license_config()
+        if not config:
+            return {"valid": False, "error": "No license configured"}
+        
+        try:
+            response = requests.post(
+                f"{config['licensing_portal_url']}/api/validate",
+                json={
+                    "license_key": config["license_key"],
+                    "api_key": config["api_key"]
+                },
+                timeout=10
+            )
+            
+            if response.status_code == 200:
+                return response.json()
+            else:
+                logger.error(f"License validation failed: {response.status_code}")
+                return {"valid": False, "error": "License validation failed"}
+        except Exception as e:
+            logger.error(f"Error validating license: {e}")
+            return {"valid": False, "error": str(e)}
+
+    def check_store_limit() -> bool:
+        """Check if the current store count is within the license limit"""
+        license_status = validate_license_from_portal()
+        
+        if not license_status.get("valid"):
+            return True  # Allow if license is not valid (for dev purposes)
+        
+        max_stores = license_status.get("max_stores", 0)
+        if max_stores == 0:
+            return True  # 0 means unlimited
+        
+        # Count current stores
+        conn = get_db_connection()
+        try:
+            cursor = conn.cursor()
+            cursor.execute("SELECT COUNT(*) FROM stores")
+            current_count = cursor.fetchone()[0]
+            return current_count < max_stores
+        finally:
+            conn.close()
+
     # Authentication helper functions
     def get_user_by_username(username: str) -> Optional[Dict[str, Any]]:
         """Get user by username"""
@@ -445,6 +504,22 @@ def create_app() -> Flask:
                         )
                     """)
                     conn.commit()
+                    
+                    # Create license_config table
+                    cursor.execute("SHOW TABLES LIKE 'license_config'")
+                    if not cursor.fetchone():
+                        logger.info("Creating license_config table...")
+                        cursor.execute("""
+                            CREATE TABLE license_config (
+                                id INT AUTO_INCREMENT PRIMARY KEY,
+                                license_key VARCHAR(255) NOT NULL,
+                                api_key VARCHAR(255) NOT NULL,
+                                licensing_portal_url VARCHAR(255) DEFAULT 'http://feedbacklicensing-production.up.railway.app',
+                                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+                            )
+                        """)
+                        conn.commit()
                     
                     # Create default dev user
                     import bcrypt
@@ -2183,6 +2258,68 @@ def create_app() -> Flask:
         
         return redirect(url_for("admin_users"))
 
+    @app.route("/admin/license-config")
+    @role_required('dev', 'superadmin')
+    def admin_license_config():
+        """License configuration page"""
+        conn = get_db_connection()
+        try:
+            cursor = conn.cursor(dictionary=True)
+            cursor.execute("SELECT * FROM license_config ORDER BY id DESC LIMIT 1")
+            config = cursor.fetchone()
+            return render_template("admin/license_config.html", config=config)
+        finally:
+            conn.close()
+
+    @app.route("/admin/license-config/save", methods=["POST"])
+    @role_required('dev', 'superadmin')
+    def admin_save_license_config():
+        """Save license configuration"""
+        license_key = request.form.get("license_key", "").strip()
+        api_key = request.form.get("api_key", "").strip()
+        licensing_portal_url = request.form.get("licensing_portal_url", "").strip()
+        
+        if not license_key or not api_key:
+            flash("License key and API key are required.", "danger")
+            return redirect(url_for("admin_license_config"))
+        
+        try:
+            conn = get_db_connection()
+            cursor = conn.cursor()
+            
+            # Check if config exists
+            cursor.execute("SELECT id FROM license_config")
+            existing = cursor.fetchone()
+            
+            if existing:
+                # Update existing config
+                cursor.execute(
+                    """
+                    UPDATE license_config 
+                    SET license_key = %s, api_key = %s, licensing_portal_url = %s
+                    WHERE id = %s
+                    """,
+                    (license_key, api_key, licensing_portal_url or 'http://feedbacklicensing-production.up.railway.app', existing[0])
+                )
+            else:
+                # Insert new config
+                cursor.execute(
+                    """
+                    INSERT INTO license_config (license_key, api_key, licensing_portal_url)
+                    VALUES (%s, %s, %s)
+                    """,
+                    (license_key, api_key, licensing_portal_url or 'http://feedbacklicensing-production.up.railway.app')
+                )
+            
+            conn.commit()
+            conn.close()
+            flash("License configuration saved successfully.", "success")
+        except Exception as e:
+            logger.error(f"Error saving license config: {e}")
+            flash("Failed to save license configuration.", "danger")
+        
+        return redirect(url_for("admin_license_config"))
+
     @app.route("/admin/reset-database", methods=["POST"])
     @role_required('dev')
     def admin_reset_database():
@@ -3121,6 +3258,13 @@ def create_app() -> Flask:
         # Basic email validation if provided
         if email and ("@" not in email or "." not in email.split("@")[1]):
             flash("Please enter a valid email address.", "danger")
+            return redirect(url_for("stores_management"))
+
+        # Check license store limit
+        if not check_store_limit():
+            license_status = validate_license_from_portal()
+            max_stores = license_status.get("max_stores", 0)
+            flash(f"License limit reached. You can only create up to {max_stores} stores.", "danger")
             return redirect(url_for("stores_management"))
 
         # Handle logo upload
