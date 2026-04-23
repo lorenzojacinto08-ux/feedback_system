@@ -75,38 +75,6 @@ PURPOSE: Comprehensive store details page showing feedback, analytics, and staff
         </div>
       </div>
 
-      <!-- Logo Upload Section -->
-      <div class="card bg-light border-0 mb-4">
-        <div class="card-body p-4">
-          <div class="d-flex align-items-start gap-4">
-            <div class="text-center">
-              {% if store.logo_url %}
-              <img src="{{ store.logo_url }}" alt="{{ store.store_name }} Logo" class="img-fluid rounded shadow-sm" style="max-height: 120px; max-width: 200px; object-fit: contain;" id="logoPreview">
-              {% else %}
-              <div class="rounded bg-white border border-dashed border-gray-300 d-flex align-items-center justify-content-center" style="height: 120px; width: 200px;" id="logoPreview">
-                <div class="text-muted text-center">
-                  <i class="bi bi-image fs-3 d-block mb-1"></i>
-                  <small>No logo</small>
-                </div>
-              </div>
-              {% endif %}
-            </div>
-            <div class="flex-grow-1">
-              <h5 class="fw-bold mb-2">Store Logo</h5>
-              <p class="text-muted small mb-3">Upload a logo to display at the top of your feedback form. Supported formats: PNG, JPG, JPEG (max 5MB).</p>
-              <form method="POST" action="/admin/stores/{{ store.id }}/upload-logo" enctype="multipart/form-data" id="logoUploadForm">
-                <div class="d-flex gap-2">
-                  <input type="file" id="logoInput" name="logo" class="form-control" accept="image/png,image/jpeg,image/jpg" style="max-width: 300px;">
-                  <button type="submit" class="btn btn-primary">
-                    <i class="bi bi-upload me-2"></i>Upload Image
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        </div>
-      </div>
-
       <div class="d-flex align-items-start justify-content-between">
         <div class="d-flex align-items-center">
           <div class="rounded-circle bg-primary bg-opacity-10 p-4 me-4">

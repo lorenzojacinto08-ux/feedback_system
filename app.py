@@ -178,6 +178,7 @@ def create_app() -> Flask:
                         is_template BOOLEAN DEFAULT FALSE,
                         template_id INT NULL,
                         version INT DEFAULT 1,
+                        logo_url VARCHAR(500),
                         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                     )
                 """)
@@ -327,7 +328,13 @@ def create_app() -> Flask:
                     logger.info("Adding 'version' column to questionnaires table...")
                     cursor.execute("ALTER TABLE questionnaires ADD COLUMN version INT DEFAULT 1 AFTER template_id")
                     conn.commit()
-                
+
+                cursor.execute("SHOW COLUMNS FROM questionnaires LIKE 'logo_url'")
+                if not cursor.fetchone():
+                    logger.info("Adding 'logo_url' column to questionnaires table...")
+                    cursor.execute("ALTER TABLE questionnaires ADD COLUMN logo_url VARCHAR(500) AFTER version")
+                    conn.commit()
+
                 # Ensure Master Template exists
                 cursor.execute("SELECT id FROM questionnaires WHERE is_template = 1 LIMIT 1")
                 if not cursor.fetchone():
@@ -1321,6 +1328,55 @@ def create_app() -> Flask:
         flash("Option deleted.", "success")
         return redirect(url_for("master_questionnaire"))
 
+    @app.route("/admin/questionnaire/upload-logo", methods=["POST"])
+    def master_upload_logo():
+        # Handle logo upload for master questionnaire
+        logo_url = None
+        if 'logo' in request.files:
+            logo_file = request.files['logo']
+            if logo_file and logo_file.filename:
+                # Validate file type
+                allowed_extensions = {'png', 'jpg', 'jpeg'}
+                if logo_file.filename.rsplit('.', 1)[1].lower() not in allowed_extensions:
+                    flash("Invalid file type. Only PNG, JPG, and JPEG files are allowed.", "danger")
+                    return redirect(url_for("master_questionnaire"))
+                
+                # Validate file size (5MB max)
+                logo_file.seek(0, os.SEEK_END)
+                file_size = logo_file.tell()
+                logo_file.seek(0)
+                if file_size > 5 * 1024 * 1024:
+                    flash("File size exceeds 5MB limit.", "danger")
+                    return redirect(url_for("master_questionnaire"))
+                
+                # Save the file
+                from werkzeug.utils import secure_filename
+                import uuid
+                filename = secure_filename(logo_file.filename)
+                unique_filename = f"{uuid.uuid4()}_{filename}"
+                upload_path = os.path.join('static', 'uploads', 'logos')
+                os.makedirs(upload_path, exist_ok=True)
+                logo_file.save(os.path.join(upload_path, unique_filename))
+                logo_url = f"/static/uploads/logos/{unique_filename}"
+
+        # Update the master template questionnaire with the logo_url
+        if logo_url:
+            conn = get_db_connection()
+            try:
+                cursor = conn.cursor()
+                cursor.execute("UPDATE questionnaires SET logo_url = %s WHERE is_template = 1", (logo_url,))
+                conn.commit()
+                flash("Brand logo uploaded successfully", "success")
+            except Exception as e:
+                logger.error(f"Error uploading logo: {e}")
+                flash(f"Error uploading logo: {e}", "danger")
+            finally:
+                conn.close()
+        else:
+            flash("No file selected", "warning")
+
+        return redirect(url_for("master_questionnaire"))
+
     @app.route("/admin/questionnaire/publish", methods=["POST"])
     def master_publish():
         template = ensure_template_questionnaire()
@@ -1904,12 +1960,20 @@ def create_app() -> Flask:
         question_ids = [int(q["id"]) for q in questions]
         options_by_question_id = fetch_options_for_questions(question_ids=question_ids)
 
+        # Fetch master questionnaire logo (brand logo)
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute("SELECT logo_url FROM questionnaires WHERE is_template = 1 LIMIT 1")
+        master_logo = cursor.fetchone()
+        cursor.close()
+        conn.close()
+
         # Fetch active staff for this store
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
         cursor.execute("""
-            SELECT id, first_name, last_name, position, role 
-            FROM staff 
+            SELECT id, first_name, last_name, position, role
+            FROM staff
             WHERE store_id = %s AND status = 'active'
             ORDER BY role DESC, last_name, first_name
         """, (store_id,))
@@ -1920,6 +1984,7 @@ def create_app() -> Flask:
         return render_template(
             "master_questionnaire/survey.html",
             store=store,
+            master_logo=master_logo.get('logo_url') if master_logo else None,
             questionnaire=questionnaire,
             questions=questions,
             options_by_question_id=options_by_question_id,

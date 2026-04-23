@@ -16,6 +16,8 @@ PURPOSE: The actual "Feedback Form". This is the page the customer sees when
         <div class="text-center mb-4">
           {% if store.logo_url %}
           <img src="{{ store.logo_url }}" alt="{{ store.store_name }} Logo" class="mb-3" style="max-height: 80px; max-width: 200px; object-fit: contain;">
+          {% elif master_logo %}
+          <img src="{{ master_logo }}" alt="Brand Logo" class="mb-3" style="max-height: 80px; max-width: 200px; object-fit: contain;">
           {% else %}
           <div
             class="rounded-circle bg-light p-3 mx-auto mb-3 d-inline-flex align-items-center justify-content-center"
