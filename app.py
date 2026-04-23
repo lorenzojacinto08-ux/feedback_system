@@ -2273,6 +2273,11 @@ def create_app() -> Flask:
         if not store:
             return render_template("layout.html", store=None, error="Page not found"), 404
 
+        # Check if master questionnaire is active
+        master_template = fetch_template_questionnaire()
+        if not master_template or not master_template.get("is_active"):
+            return render_template("layout.html", store=store, error="Questionnaire is currently inactive"), 404
+
         questionnaire = fetch_questionnaire_by_store(store_id=store_id)
         if not questionnaire or not questionnaire.get("is_active"):
             return render_template("layout.html", store=store, error="Questionnaire is currently inactive"), 404
