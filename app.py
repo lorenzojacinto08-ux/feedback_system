@@ -1429,6 +1429,21 @@ def create_app() -> Flask:
         flash(f"Published to {count} store(s) Successfully", "success")
         return redirect(url_for("master_questionnaire"))
 
+    @app.route("/admin/questionnaire/preview")
+    def master_preview():
+        template = ensure_template_questionnaire()
+        template_id = int(template["id"])
+        questions = fetch_template_questions(template_questionnaire_id=template_id)
+        question_ids = [q["id"] for q in questions]
+        options_by_question_id = fetch_options_for_questions(question_ids)
+
+        return render_template(
+            "master_questionnaire/preview.html",
+            master=template,
+            questions=questions,
+            options_by_question_id=options_by_question_id,
+        )
+
     # -------------------------
     # DASHBOARD ANALYTICS
     # -------------------------
