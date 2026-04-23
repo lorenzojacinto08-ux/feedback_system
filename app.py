@@ -2022,10 +2022,11 @@ def create_app() -> Flask:
             # Recent feedback
             cursor.execute(
                 """
-                SELECT rating, comment, created_at
-                FROM responses
-                WHERE store_id = %s
-                ORDER BY created_at DESC
+                SELECT a.rating_value as rating, a.answer_text as comment, r.created_at
+                FROM responses r
+                LEFT JOIN answers a ON r.id = a.response_id
+                WHERE r.store_id = %s
+                ORDER BY r.created_at DESC
                 LIMIT 10
                 """,
                 (store['id'],)
