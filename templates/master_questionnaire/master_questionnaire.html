@@ -34,12 +34,6 @@ PURPOSE: "Master Questionnaire" editor. Allows admins to build the global templa
     <div class="col-12 col-lg-4">
       <div class="card border-0 shadow-lg mb-4 survey-panel-card" style="background: linear-gradient(135deg, #fff 0%, #fafafa 100%);">
         <div class="card-body p-4">
-          <form method="POST" action="{{ url_for('master_publish') }}" onsubmit="return confirm('Are you sure you want to sync to all stores? This will overwrite their current questionnaires.');">
-            <button class="btn btn-primary w-100 d-flex align-items-center justify-content-center mb-4" type="submit">
-              <i class="bi bi-cloud-upload me-2"></i>
-              <span class="fw-bold">Sync to All Stores</span>
-            </button>
-          </form>
           <div class="d-flex align-items-center gap-2 mb-3 pb-3" style="border-bottom:1px solid var(--neutral-200);">
             <div class="survey-section-icon" style="background:linear-gradient(135deg, rgba(59,130,246,0.15) 0%, rgba(59,130,246,0.25) 100%);">
               <i class="bi bi-gear-fill" style="color:#2563eb !important;opacity:1;"></i>
@@ -64,6 +58,26 @@ PURPOSE: "Master Questionnaire" editor. Allows admins to build the global templa
                 <i class="bi bi-check-lg me-2"></i>Save Changes
               </button>
             </div>
+          </form>
+        </div>
+      </div>
+
+      <div class="card border-0 shadow-lg mb-4 survey-panel-card" style="background: linear-gradient(135deg, #fff 0%, #fafafa 100%);">
+        <div class="card-body p-4">
+          <div class="d-flex align-items-center gap-2 mb-3 pb-3" style="border-bottom:1px solid var(--neutral-200);">
+            <div class="survey-section-icon" style="background:linear-gradient(135deg, rgba(59,130,246,0.15) 0%, rgba(59,130,246,0.25) 100%);">
+              <i class="bi bi-cloud-upload-fill" style="color:#2563eb !important;opacity:1;"></i>
+            </div>
+            <div>
+              <h6 class="mb-0 fw-bold" style="font-size:1rem;">Publish</h6>
+              <small class="text-muted" style="font-size:.75rem;">Sync questionnaire to stores</small>
+            </div>
+          </div>
+          <form method="POST" action="{{ url_for('master_publish') }}" onsubmit="return confirm('Are you sure you want to sync to all stores? This will overwrite their current questionnaires.');">
+            <button class="btn btn-primary w-100 d-flex align-items-center justify-content-center" type="submit">
+              <i class="bi bi-cloud-upload me-2"></i>
+              <span class="fw-bold">Publish / Sync to all stores</span>
+            </button>
           </form>
         </div>
       </div>
