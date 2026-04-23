@@ -334,15 +334,15 @@ def create_app() -> Flask:
                 cursor.execute("SHOW COLUMNS FROM questionnaires LIKE 'logo_url'")
                 if not cursor.fetchone():
                     logger.info("Adding 'logo_url' column to questionnaires table...")
-                    cursor.execute("ALTER TABLE questionnaires ADD COLUMN logo_url TEXT AFTER version")
+                    cursor.execute("ALTER TABLE questionnaires ADD COLUMN logo_url LONGTEXT AFTER version")
                     conn.commit()
                 else:
-                    # Check if logo_url is VARCHAR and change to TEXT for base64 storage
+                    # Check if logo_url is VARCHAR or TEXT and change to LONGTEXT for base64 storage
                     cursor.execute("SHOW COLUMNS FROM questionnaires LIKE 'logo_url'")
                     column_info = cursor.fetchone()
-                    if column_info and column_info['Type'].startswith('VARCHAR'):
-                        logger.info("Changing 'logo_url' from VARCHAR to TEXT for base64 storage...")
-                        cursor.execute("ALTER TABLE questionnaires MODIFY COLUMN logo_url TEXT")
+                    if column_info and (column_info['Type'].startswith('VARCHAR') or column_info['Type'] == 'text'):
+                        logger.info("Changing 'logo_url' to LONGTEXT for base64 storage...")
+                        cursor.execute("ALTER TABLE questionnaires MODIFY COLUMN logo_url LONGTEXT")
                         conn.commit()
 
                 # Ensure Master Template exists
