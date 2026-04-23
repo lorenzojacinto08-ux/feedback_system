@@ -115,6 +115,13 @@ PURPOSE: "Master Questionnaire" editor. Allows admins to build the global templa
               <i class="bi bi-upload me-1"></i>Upload Logo
             </button>
           </form>
+          {% if master.logo_url %}
+          <form method="POST" action="/admin/questionnaire/delete-logo" class="mt-2">
+            <button type="submit" class="btn btn-outline-danger btn-sm w-100" onclick="return confirm('Are you sure you want to delete the logo?');">
+              <i class="bi bi-trash me-1"></i>Delete Logo
+            </button>
+          </form>
+          {% endif %}
           <p class="text-muted small mb-0 mt-2">PNG, JPG, JPEG (max 5MB). This logo will appear on all store feedback forms.</p>
         </div>
       </div>

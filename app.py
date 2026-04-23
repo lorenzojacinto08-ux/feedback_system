@@ -334,8 +334,16 @@ def create_app() -> Flask:
                 cursor.execute("SHOW COLUMNS FROM questionnaires LIKE 'logo_url'")
                 if not cursor.fetchone():
                     logger.info("Adding 'logo_url' column to questionnaires table...")
-                    cursor.execute("ALTER TABLE questionnaires ADD COLUMN logo_url VARCHAR(500) AFTER version")
+                    cursor.execute("ALTER TABLE questionnaires ADD COLUMN logo_url TEXT AFTER version")
                     conn.commit()
+                else:
+                    # Check if logo_url is VARCHAR and change to TEXT for base64 storage
+                    cursor.execute("SHOW COLUMNS FROM questionnaires LIKE 'logo_url'")
+                    column_info = cursor.fetchone()
+                    if column_info and column_info['Type'].startswith('VARCHAR'):
+                        logger.info("Changing 'logo_url' from VARCHAR to TEXT for base64 storage...")
+                        cursor.execute("ALTER TABLE questionnaires MODIFY COLUMN logo_url TEXT")
+                        conn.commit()
 
                 # Ensure Master Template exists
                 cursor.execute("SELECT id FROM questionnaires WHERE is_template = 1 LIMIT 1")
@@ -1369,8 +1377,8 @@ def create_app() -> Flask:
 
     @app.route("/admin/questionnaire/upload-logo", methods=["POST"])
     def master_upload_logo():
-        # Handle logo upload for master questionnaire
-        logo_url = None
+        # Handle logo upload for master questionnaire - store as base64 in database
+        logo_data = None
         if 'logo' in request.files:
             logo_file = request.files['logo']
             if logo_file and logo_file.filename:
@@ -1388,22 +1396,19 @@ def create_app() -> Flask:
                     flash("File size exceeds 5MB limit.", "danger")
                     return redirect(url_for("master_questionnaire"))
                 
-                # Save the file
-                from werkzeug.utils import secure_filename
-                import uuid
-                filename = secure_filename(logo_file.filename)
-                unique_filename = f"{uuid.uuid4()}_{filename}"
-                upload_path = os.path.join('static', 'uploads', 'logos')
-                os.makedirs(upload_path, exist_ok=True)
-                logo_file.save(os.path.join(upload_path, unique_filename))
-                logo_url = f"/static/uploads/logos/{unique_filename}"
+                # Convert image to base64 with data URI prefix
+                import base64
+                logo_bytes = logo_file.read()
+                file_ext = logo_file.filename.rsplit('.', 1)[1].lower()
+                mime_type = f"image/{file_ext}"
+                logo_data = f"data:{mime_type};base64,{base64.b64encode(logo_bytes).decode('utf-8')}"
 
-        # Update the master template questionnaire with the logo_url
-        if logo_url:
+        # Update the master template questionnaire with the base64 logo data
+        if logo_data:
             conn = get_db_connection()
             try:
                 cursor = conn.cursor()
-                cursor.execute("UPDATE questionnaires SET logo_url = %s WHERE is_template = 1", (logo_url,))
+                cursor.execute("UPDATE questionnaires SET logo_url = %s WHERE is_template = 1", (logo_data,))
                 conn.commit()
                 flash("Brand logo uploaded successfully", "success")
             except Exception as e:
@@ -1413,6 +1418,23 @@ def create_app() -> Flask:
                 conn.close()
         else:
             flash("No file selected", "warning")
+
+        return redirect(url_for("master_questionnaire"))
+
+    @app.route("/admin/questionnaire/delete-logo", methods=["POST"])
+    def master_delete_logo():
+        # Delete the logo from the master questionnaire
+        conn = get_db_connection()
+        try:
+            cursor = conn.cursor()
+            cursor.execute("UPDATE questionnaires SET logo_url = NULL WHERE is_template = 1")
+            conn.commit()
+            flash("Brand logo deleted successfully", "success")
+        except Exception as e:
+            logger.error(f"Error deleting logo: {e}")
+            flash(f"Error deleting logo: {e}", "danger")
+        finally:
+            conn.close()
 
         return redirect(url_for("master_questionnaire"))
 
