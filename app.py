@@ -1186,7 +1186,7 @@ def create_app() -> Flask:
             # Get template
             cursor.execute(
                 """
-                SELECT id, title, is_active, version, created_at
+                SELECT id, title, is_active, version, created_at, logo_url
                 FROM questionnaires
                 WHERE is_template = TRUE
                 ORDER BY id ASC
