@@ -1452,6 +1452,34 @@ def create_app() -> Flask:
         flash(f"Published to {count} store(s) Successfully", "success")
         return redirect(url_for("master_questionnaire"))
 
+    @app.route("/admin/questionnaire/toggle-active", methods=["POST"])
+    def master_toggle_active():
+        template = ensure_template_questionnaire()
+        current_active = template.get("is_active", False)
+        new_active = not current_active
+        
+        conn = get_db_connection()
+        try:
+            cursor = conn.cursor()
+            cursor.execute(
+                """
+                UPDATE questionnaires
+                SET is_active = %s
+                WHERE id = %s AND is_template = TRUE
+                """,
+                (new_active, int(template["id"])),
+            )
+            conn.commit()
+        finally:
+            conn.close()
+        
+        if new_active:
+            flash("Survey enabled successfully. Stores can now accept feedback.", "success")
+        else:
+            flash("Survey disabled successfully. Stores can no longer accept feedback.", "warning")
+        
+        return redirect(url_for("master_questionnaire"))
+
     @app.route("/admin/questionnaire/preview")
     def master_preview():
         template = ensure_template_questionnaire()

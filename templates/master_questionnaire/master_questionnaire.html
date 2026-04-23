@@ -59,21 +59,6 @@ PURPOSE: "Master Questionnaire" editor. Allows admins to build the global templa
               <label class="form-label fw-medium" for="title">Questionnaire Title</label>
               <input class="form-control" id="title" name="title" value="{{ master.title }}" required />
             </div>
-            <div class="form-check form-switch">
-              <input
-                class="form-check-input"
-                type="checkbox"
-                value="on"
-                id="is_active"
-                name="is_active"
-                {% if master.is_active %}checked{% endif %}
-                style="width: 3em; height: 1.5em;"
-              />
-              <label class="form-check-label" for="is_active">
-                <span class="fw-medium">Active</span>
-                <small class="text-muted d-block">Stores will accept responses when active</small>
-              </label>
-            </div>
             <div class="d-flex gap-2 align-items-center">
               <button class="btn btn-primary d-flex align-items-center flex-grow-1" type="submit">
                 <i class="bi bi-check-lg me-2"></i>Save Changes
@@ -85,6 +70,22 @@ PURPOSE: "Master Questionnaire" editor. Allows admins to build the global templa
               </span>
             </div>
           </form>
+          <hr class="my-3">
+          <div class="text-center">
+            {% if master.is_active %}
+            <form method="POST" action="{{ url_for('master_toggle_active') }}" onsubmit="return confirm('Are you sure you want to disable the survey? This will prevent all stores from accepting feedback.');">
+              <button class="btn btn-danger w-100 d-flex align-items-center justify-content-center" type="submit">
+                <i class="bi bi-slash-circle me-2"></i>Disable Survey
+              </button>
+            </form>
+            {% else %}
+            <form method="POST" action="{{ url_for('master_toggle_active') }}" onsubmit="return confirm('Are you sure you want to enable the survey? This will allow all stores to accept feedback.');">
+              <button class="btn btn-success w-100 d-flex align-items-center justify-content-center" type="submit">
+                <i class="bi bi-check-circle me-2"></i>Enable Survey
+              </button>
+            </form>
+            {% endif %}
+          </div>
         </div>
       </div>
 
