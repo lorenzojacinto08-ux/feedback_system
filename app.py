@@ -2183,6 +2183,43 @@ def create_app() -> Flask:
         
         return redirect(url_for("admin_users"))
 
+    @app.route("/admin/reset-database", methods=["POST"])
+    @role_required('dev')
+    def admin_reset_database():
+        """Reset all data in the database (keeps users)"""
+        try:
+            conn = get_db_connection()
+            cursor = conn.cursor()
+            
+            # Delete all data from tables (keeping users and schema)
+            tables_to_clear = [
+                "feedback",
+                "stores",
+                "questionnaires",
+                "questions",
+                "audit_logs",
+                "notifications"
+            ]
+            
+            for table in tables_to_clear:
+                cursor.execute(f"DELETE FROM {table}")
+            
+            conn.commit()
+            conn.close()
+            
+            flash("Database reset successfully. All data cleared except users.", "success")
+            log_audit(
+                entity_type="database",
+                entity_id=0,
+                action="reset",
+                old_values="Database reset"
+            )
+        except Exception as e:
+            logger.error(f"Error resetting database: {e}")
+            flash("Failed to reset database.", "danger")
+        
+        return redirect(url_for("admin_users"))
+
     @app.route("/dashboard/staff-overall")
     def staff_overall():
         """Staff overall page showing all staff with ratings and performance metrics."""
