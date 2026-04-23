@@ -1486,40 +1486,6 @@ def create_app() -> Flask:
             logger.error(f"Dashboard Crash: {e}\n{error_details}")
             return f"Dashboard Error: {e}<br><pre>{error_details}</pre>", 500
 
-    @app.route("/dashboard/staff-overall")
-    def staff_overall():
-        """Staff overall page showing all staff with ratings and performance metrics."""
-        try:
-            conn = get_db_connection()
-            cursor = conn.cursor(dictionary=True)
-            
-            # Fetch all staff with their commendation ratings and metrics
-            cursor.execute("""
-                SELECT s.id, s.first_name, s.last_name, s.email, s.phone, s.position, s.role, s.status, st.store_name,
-                       AVG(sc.rating) as avg_rating,
-                       COUNT(sc.id) as commendation_count,
-                       AVG(sc.rating) * SQRT(COUNT(sc.id)) as weighted_score
-                FROM staff s
-                LEFT JOIN staff_commendations sc ON s.id = sc.staff_id
-                LEFT JOIN stores st ON s.store_id = st.id
-                GROUP BY s.id, s.first_name, s.last_name, s.email, s.phone, s.position, s.role, s.status, st.store_name
-                ORDER BY weighted_score DESC, s.last_name, s.first_name
-            """)
-            staff_data = cursor.fetchall()
-            
-            # Format the data
-            for staff in staff_data:
-                staff['avg_rating'] = float(staff['avg_rating']) if staff['avg_rating'] else 0.0
-                staff['commendation_count'] = int(staff['commendation_count']) if staff['commendation_count'] else 0
-                staff['weighted_score'] = float(staff['weighted_score']) if staff['weighted_score'] else 0.0
-            
-            conn.close()
-            return render_template("dashboard/staff_overall.html", staff_data=staff_data)
-        except Exception as e:
-            error_details = traceback.format_exc()
-            logger.error(f"Staff Overall Error: {e}\n{error_details}")
-            return f"Staff Overall Error: {e}<br><pre>{error_details}</pre>", 500
-
     @app.route("/api/dashboard/analytics")
     def api_dashboard_analytics():
         """JSON endpoint for overall dashboard analytics (used by store filter)."""
@@ -2706,7 +2672,7 @@ def create_app() -> Flask:
             
             if not staff:
                 flash("Staff member not found", "danger")
-                return redirect(url_for("store_details", store_id=store_id))
+                return redirect(url_for("staff_management", store_id=store_id))
             
             # Delete staff member
             cursor.execute("DELETE FROM staff WHERE id = %s AND store_id = %s", (staff_id, store_id))
@@ -2719,7 +2685,7 @@ def create_app() -> Flask:
         finally:
             conn.close()
             
-        return redirect(url_for("store_details", store_id=store_id))
+        return redirect(url_for("staff_management", store_id=store_id))
 
     @app.route("/admin/responses/<int:response_id>/delete", methods=["POST"])
     def delete_response_route(response_id: int):
