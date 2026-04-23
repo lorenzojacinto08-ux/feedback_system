@@ -132,6 +132,7 @@ def create_app() -> Flask:
                         status ENUM('active', 'inactive', 'pending') DEFAULT 'active',
                         logo_url VARCHAR(500),
                         access_token VARCHAR(100) UNIQUE,
+                        subdomain VARCHAR(100) UNIQUE,
                         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                     )
                 """)
@@ -386,7 +387,8 @@ def create_app() -> Flask:
                     ("operating_hours", "VARCHAR(255)"),
                     ("status", "ENUM('active', 'inactive', 'pending') DEFAULT 'active'"),
                     ("logo_url", "VARCHAR(500)"),
-                    ("access_token", "VARCHAR(100) UNIQUE")
+                    ("access_token", "VARCHAR(100) UNIQUE"),
+                    ("subdomain", "VARCHAR(100) UNIQUE")
                 ]
                 
                 for column_name, column_type in store_columns:
@@ -404,6 +406,25 @@ def create_app() -> Flask:
                         store_id = store_row[0]
                         access_token = secrets.token_urlsafe(32)
                         cursor.execute("UPDATE stores SET access_token = %s WHERE id = %s", (access_token, store_id))
+                    conn.commit()
+
+                # Generate subdomains for existing stores that don't have them
+                cursor.execute("SELECT id, store_name FROM stores WHERE subdomain IS NULL OR subdomain = ''")
+                stores_without_subdomain = cursor.fetchall()
+                if stores_without_subdomain:
+                    logger.info(f"Generating subdomains for {len(stores_without_subdomain)} existing stores...")
+                    for store_row in stores_without_subdomain:
+                        store_id = store_row[0]
+                        store_name = store_row[1]
+                        # Generate subdomain from store name (lowercase, alphanumeric, hyphens)
+                        import re
+                        subdomain = re.sub(r'[^a-zA-Z0-9\s]', '', store_name).lower().replace(' ', '-')
+                        subdomain = re.sub(r'-+', '-', subdomain).strip('-')
+                        # Ensure uniqueness by adding random suffix if needed
+                        cursor.execute("SELECT id FROM stores WHERE subdomain = %s", (subdomain,))
+                        if cursor.fetchone():
+                            subdomain = f"{subdomain}-{secrets.token_hex(3)}"
+                        cursor.execute("UPDATE stores SET subdomain = %s WHERE id = %s", (subdomain, store_id))
                     conn.commit()
 
                 # Check for responses table receipt_number column
@@ -476,7 +497,7 @@ def create_app() -> Flask:
                 """
                 SELECT id, store_name, address, city, province, postal_code,
                        contact_number, email, store_manager_name, manager_contact,
-                       store_type, status, created_at, access_token
+                       store_type, status, created_at, access_token, subdomain
                 FROM stores
                 ORDER BY id ASC
                 """
@@ -495,7 +516,7 @@ def create_app() -> Flask:
                 """
                 SELECT id, store_name, address, city, province, postal_code,
                        contact_number, email, store_manager_name, manager_contact,
-                       store_type, status, created_at, logo_url, access_token
+                       store_type, status, created_at, logo_url, access_token, subdomain
                 FROM stores
                 WHERE id = %s
                 LIMIT 1
@@ -520,10 +541,17 @@ def create_app() -> Flask:
         manager_contact: str | None = None,
         store_type: str | None = None,
         status: str = "active",
-        logo_url: str | None = None
+        logo_url: str | None = None,
+        subdomain: str | None = None
     ) -> int:
         import secrets
         access_token = secrets.token_urlsafe(32)
+        
+        # Generate subdomain from store name if not provided
+        if not subdomain:
+            import re
+            subdomain = re.sub(r'[^a-zA-Z0-9\s]', '', store_name).lower().replace(' ', '-')
+            subdomain = re.sub(r'-+', '-', subdomain).strip('-')
         
         conn = get_db_connection()
         try:
@@ -533,14 +561,14 @@ def create_app() -> Flask:
                 INSERT INTO stores (
                     store_name, address, city, province, postal_code,
                     contact_number, email, store_manager_name, manager_contact,
-                    store_type, status, logo_url, access_token
+                    store_type, status, logo_url, access_token, subdomain
                 )
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 """,
                 (
                     store_name, address, city, province, postal_code,
                     contact_number, email, store_manager_name, manager_contact,
-                    store_type, status, logo_url, access_token
+                    store_type, status, logo_url, access_token, subdomain
                 ),
             )
             conn.commit()
@@ -1957,6 +1985,110 @@ def create_app() -> Flask:
     # -------------------------
     # PUBLIC SURVEY
     # -------------------------
+    @app.route("/dashboard", methods=["GET"])
+    def public_store_dashboard_subdomain():
+        # Extract subdomain from request host
+        host = request.host.split(':')[0]  # Remove port if present
+        parts = host.split('.')
+        
+        # Check if accessing via subdomain
+        if len(parts) >= 3:
+            subdomain = parts[0]
+            
+            # Validate subdomain and fetch store
+            conn = get_db_connection()
+            try:
+                cursor = conn.cursor(dictionary=True)
+                cursor.execute(
+                    """
+                    SELECT id, store_name, address, city, province, postal_code,
+                           contact_number, email, store_manager_name, manager_contact,
+                           store_type, status, logo_url
+                    FROM stores
+                    WHERE subdomain = %s
+                    LIMIT 1
+                    """,
+                    (subdomain,)
+                )
+                store = cursor.fetchone()
+            finally:
+                conn.close()
+
+            if store:
+                # Fetch store performance data
+                conn = get_db_connection()
+                try:
+                    cursor = conn.cursor(dictionary=True)
+
+                    # Total feedback count
+                    cursor.execute("SELECT COUNT(*) as total FROM responses WHERE store_id = %s", (store['id'],))
+                    total_feedback = cursor.fetchone()['total']
+
+                    # Average rating
+                    cursor.execute("SELECT AVG(a.rating_value) as avg_rating FROM answers a JOIN responses r ON a.response_id = r.id WHERE r.store_id = %s AND a.rating_value IS NOT NULL", (store['id'],))
+                    avg_rating = cursor.fetchone()['avg_rating']
+
+                    # Total commendations
+                    cursor.execute("SELECT COUNT(*) as total FROM staff_commendations sc JOIN responses r ON sc.response_id = r.id WHERE r.store_id = %s", (store['id'],))
+                    total_commendations = cursor.fetchone()['total']
+
+                    # Total staff
+                    cursor.execute("SELECT COUNT(*) as total FROM staff WHERE store_id = %s", (store['id'],))
+                    total_staff = cursor.fetchone()['total']
+
+                    # Staff performance
+                    cursor.execute(
+                        """
+                        SELECT s.id, s.first_name, s.last_name, s.position, s.role, s.status,
+                               AVG(sc.rating) as avg_rating,
+                               COUNT(sc.id) as commendation_count
+                        FROM staff s
+                        LEFT JOIN staff_commendations sc ON s.id = sc.staff_id
+                        LEFT JOIN responses r ON sc.response_id = r.id
+                        WHERE s.store_id = %s AND r.store_id = %s
+                        GROUP BY s.id, s.first_name, s.last_name, s.position, s.role, s.status
+                        ORDER BY avg_rating DESC
+                        """,
+                        (store['id'], store['id'])
+                    )
+                    staff_performance = cursor.fetchall()
+
+                    # Recent feedback
+                    cursor.execute(
+                        """
+                        SELECT a.rating_value as rating, a.answer_text as comment, r.created_at
+                        FROM responses r
+                        LEFT JOIN answers a ON r.id = a.response_id
+                        WHERE r.store_id = %s
+                        ORDER BY r.created_at DESC
+                        LIMIT 10
+                        """,
+                        (store['id'],)
+                    )
+                    recent_feedback = cursor.fetchall()
+
+                    # Fetch master questionnaire logo
+                    cursor.execute("SELECT logo_url FROM questionnaires WHERE is_template = 1 LIMIT 1")
+                    master_logo = cursor.fetchone()
+
+                finally:
+                    conn.close()
+
+                return render_template(
+                    "public/store_dashboard.html",
+                    store=store,
+                    master_logo=master_logo.get('logo_url') if master_logo else None,
+                    total_feedback=total_feedback,
+                    avg_rating=avg_rating,
+                    total_commendations=total_commendations,
+                    total_staff=total_staff,
+                    staff_performance=staff_performance,
+                    recent_feedback=recent_feedback
+                )
+        
+        # If no subdomain match, redirect to main domain or show error
+        return render_template("layout.html", error="Store not found or invalid subdomain"), 404
+
     @app.route("/d/<access_token>", methods=["GET"])
     def public_store_dashboard(access_token: str):
         # Validate access token and fetch store
@@ -2273,6 +2405,7 @@ def create_app() -> Flask:
         manager_contact = request.form.get("manager_contact", "").strip()
         store_type = request.form.get("store_type", "").strip()
         status = request.form.get("status", "active")
+        subdomain = request.form.get("subdomain", "").strip()
 
         if not store_name:
             flash("Store name is required.", "danger")
@@ -2324,7 +2457,8 @@ def create_app() -> Flask:
             manager_contact=manager_contact if manager_contact else None,
             store_type=store_type if store_type else None,
             status=status,
-            logo_url=logo_url
+            logo_url=logo_url,
+            subdomain=subdomain if subdomain else None
         )
         
         flash(f"Store \"{store_name}\" added Successfully", "success")
@@ -2343,7 +2477,8 @@ def create_app() -> Flask:
         store_manager_name: str | None,
         manager_contact: str | None,
         status: str,
-        logo_url: str | None = None
+        logo_url: str | None = None,
+        subdomain: str | None = None
     ) -> bool:
         conn = get_db_connection()
         try:
@@ -2354,7 +2489,7 @@ def create_app() -> Flask:
                 SET store_name = %s, store_type = %s, address = %s, city = %s,
                     province = %s, postal_code = %s, contact_number = %s,
                     email = %s, store_manager_name = %s, manager_contact = %s,
-                    status = %s, logo_url = %s
+                    status = %s, logo_url = %s, subdomain = %s
                 WHERE id = %s
                 """,
                 (
@@ -2370,6 +2505,7 @@ def create_app() -> Flask:
                     manager_contact,
                     status,
                     logo_url,
+                    subdomain,
                     store_id,
                 ),
             )
@@ -2440,6 +2576,7 @@ def create_app() -> Flask:
         store_manager_name = request.form.get("store_manager_name", "").strip() or None
         manager_contact = request.form.get("manager_contact", "").strip() or None
         status = request.form.get("status", "active")
+        subdomain = request.form.get("subdomain", "").strip()
 
         if not store_name:
             flash("Store name is required.", "danger")
@@ -2487,7 +2624,8 @@ def create_app() -> Flask:
             store_manager_name=store_manager_name,
             manager_contact=manager_contact,
             status=status,
-            logo_url=logo_url
+            logo_url=logo_url,
+            subdomain=subdomain if subdomain else None
         )
 
         if success:

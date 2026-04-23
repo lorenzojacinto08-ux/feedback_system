@@ -207,6 +207,23 @@ PURPOSE: "Store Management" page. Allows adding/editing stores, viewing
                 </select>
               </div>
               
+              <div class="col-12">
+                <label for="subdomain" class="form-label fw-medium">Subdomain (for store dashboard)</label>
+                <input
+                  type="text"
+                  id="subdomain"
+                  name="subdomain"
+                  class="form-control"
+                  placeholder="e.g. downtown-branch"
+                  pattern="[a-z0-9-]+"
+                  title="Only lowercase letters, numbers, and hyphens allowed"
+                />
+                <div class="form-text">
+                  <i class="bi bi-info-circle me-1"></i>
+                  Dashboard URL: <span id="subdomainPreview">yourdomain.com</span>
+                </div>
+              </div>
+              
               <div class="col-md-6">
                 <label for="store_manager_name" class="form-label fw-medium">Store Manager Name</label>
                 <input
@@ -361,6 +378,23 @@ PURPOSE: "Store Management" page. Allows adding/editing stores, viewing
                 </select>
               </div>
               
+              <div class="col-12">
+                <label for="edit_subdomain" class="form-label fw-medium">Subdomain (for store dashboard)</label>
+                <input
+                  type="text"
+                  id="edit_subdomain"
+                  name="subdomain"
+                  class="form-control"
+                  placeholder="e.g. downtown-branch"
+                  pattern="[a-z0-9-]+"
+                  title="Only lowercase letters, numbers, and hyphens allowed"
+                />
+                <div class="form-text">
+                  <i class="bi bi-info-circle me-1"></i>
+                  Dashboard URL: <span id="editSubdomainPreview">yourdomain.com</span>
+                </div>
+              </div>
+              
               <div class="col-md-6">
                 <label for="edit_store_manager_name" class="form-label fw-medium">Store Manager Name</label>
                 <input
@@ -474,7 +508,7 @@ PURPOSE: "Store Management" page. Allows adding/editing stores, viewing
                       <li><a class="dropdown-item py-2" href="#" onclick="editStore({{ store.id }})">
                         <i class="bi bi-pencil me-2"></i>Edit Store
                       </a></li>
-                      <li><a class="dropdown-item py-2" href="#" onclick="copyDashboardLink({{ store.id }}, '{{ store.access_token }}')">
+                      <li><a class="dropdown-item py-2" href="#" onclick="copyDashboardLink({{ store.id }}, '{{ store.access_token }}', '{{ store.subdomain }}')">
                         <i class="bi bi-link-45deg me-2"></i>Copy Dashboard Link
                       </a></li>
                       <li><a class="dropdown-item py-2 text-danger" href="#" onclick="deleteStore({{ store.id }})">
@@ -1034,18 +1068,28 @@ function deleteStore(storeId) {
     form.submit();
 }
 
-function copyDashboardLink(storeId, accessToken) {
-    if (!accessToken) {
-        alert('No access token available for this store. Please contact support.');
-        return;
+function copyDashboardLink(storeId, accessToken, subdomain) {
+    if (subdomain) {
+        // Use subdomain URL if available
+        const dashboardUrl = window.location.protocol + '//' + subdomain + '.' + window.location.host.replace(/^www\./, '') + '/dashboard';
+        navigator.clipboard.writeText(dashboardUrl).then(() => {
+            showCustomAlert('Dashboard link copied to clipboard!', 'success');
+        }).catch(err => {
+            console.error('Failed to copy:', err);
+            showCustomAlert('Failed to copy link', 'danger');
+        });
+    } else if (accessToken) {
+        // Fall back to token URL
+        const dashboardUrl = window.location.origin + '/d/' + accessToken;
+        navigator.clipboard.writeText(dashboardUrl).then(() => {
+            showCustomAlert('Dashboard link copied to clipboard!', 'success');
+        }).catch(err => {
+            console.error('Failed to copy:', err);
+            showCustomAlert('Failed to copy link', 'danger');
+        });
+    } else {
+        alert('No access token or subdomain available for this store. Please contact support.');
     }
-    const dashboardUrl = window.location.origin + '/d/' + accessToken;
-    navigator.clipboard.writeText(dashboardUrl).then(() => {
-        showCustomAlert('Dashboard link copied to clipboard!', 'success');
-    }).catch(err => {
-        console.error('Failed to copy:', err);
-        showCustomAlert('Failed to copy link', 'danger');
-    });
 }
 
 function loadStoreDetails(storeId) {
