@@ -337,13 +337,14 @@ def create_app() -> Flask:
                     cursor.execute("ALTER TABLE questionnaires ADD COLUMN logo_url LONGTEXT AFTER version")
                     conn.commit()
                 else:
-                    # Check if logo_url is VARCHAR or TEXT and change to LONGTEXT for base64 storage
-                    cursor.execute("SHOW COLUMNS FROM questionnaires LIKE 'logo_url'")
-                    column_info = cursor.fetchone()
-                    if column_info and (column_info['Type'].startswith('VARCHAR') or column_info['Type'] == 'text'):
-                        logger.info("Changing 'logo_url' to LONGTEXT for base64 storage...")
+                    # Always try to update to LONGTEXT to ensure it can handle base64 data
+                    try:
+                        logger.info("Ensuring 'logo_url' column is LONGTEXT for base64 storage...")
                         cursor.execute("ALTER TABLE questionnaires MODIFY COLUMN logo_url LONGTEXT")
                         conn.commit()
+                        logger.info("'logo_url' column updated to LONGTEXT")
+                    except Exception as e:
+                        logger.info(f"Column may already be LONGTEXT: {e}")
 
                 # Ensure Master Template exists
                 cursor.execute("SELECT id FROM questionnaires WHERE is_template = 1 LIMIT 1")
