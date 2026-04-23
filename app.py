@@ -2389,6 +2389,56 @@ def create_app() -> Flask:
             return render_template("survey_error.html", store=store, error="Sorry, the system is not accepting any feedbacks right now"), 404
 
         questionnaire = fetch_questionnaire_by_store(store_id=store_id)
+        
+        # If store doesn't have a questionnaire, create one from the master template
+        if not questionnaire:
+            template_id = int(master_template["id"])
+            template_questions = fetch_template_questions(template_questionnaire_id=template_id)
+            template_options_by_question_id = fetch_template_options_by_question([int(q["id"]) for q in template_questions])
+            
+            conn = get_db_connection()
+            try:
+                cursor = conn.cursor(dictionary=True)
+                
+                # Create new store questionnaire
+                cursor.execute(
+                    """
+                    INSERT INTO questionnaires (store_id, title, is_active, is_template, template_id)
+                    VALUES (%s, %s, %s, %s, %s)
+                    """,
+                    (store_id, master_template["title"], bool(master_template["is_active"]), False, template_id),
+                )
+                questionnaire_id = int(cursor.lastrowid)
+                
+                # Copy questions from template
+                for template_question in template_questions:
+                    cursor.execute(
+                        """
+                        INSERT INTO questions (questionnaire_id, question_text, question_type, min_label, max_label, allow_comment, is_required, question_order, is_template)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                        """,
+                        (questionnaire_id, template_question["question_text"], template_question["question_type"],
+                         template_question["min_label"], template_question["max_label"], template_question["allow_comment"],
+                         template_question["is_required"], template_question["question_order"], False),
+                    )
+                    new_question_id = int(cursor.lastrowid)
+                    
+                    # Copy options for this question
+                    template_options = template_options_by_question_id.get(int(template_question["id"]), [])
+                    for option in template_options:
+                        cursor.execute(
+                            """
+                            INSERT INTO question_options (question_id, option_text, is_template)
+                            VALUES (%s, %s, %s)
+                            """,
+                            (new_question_id, option["option_text"], False),
+                        )
+                
+                conn.commit()
+                questionnaire = fetch_questionnaire_by_store(store_id=store_id)
+            finally:
+                conn.close()
+        
         if not questionnaire or not questionnaire.get("is_active"):
             return render_template("survey_error.html", store=store, error="Sorry, the system is not accepting any feedbacks right now"), 404
 
