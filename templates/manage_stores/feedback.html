@@ -520,13 +520,13 @@ PURPOSE: "Feedback Management" page. Displays all customer responses/submissions
 
 <!-- Store Dashboard Header -->
 <div class="card border-0 shadow-sm mb-3" style="border-radius: 1rem; overflow: hidden;">
-  <div style="height: 4px; background: linear-gradient(90deg, #f97316, #fb923c, #fdba74);"></div>
+  <div style="height: 4px; background: linear-gradient(90deg, #4A90E2, #7ba8ff, #a3c2ff);"></div>
   <div class="card-body py-3 px-4">
     <div class="row g-3 align-items-center">
       <!-- Store Info -->
       <div class="col-lg-5">
         <div class="d-flex align-items-start gap-3">
-          <div class="d-flex align-items-center justify-content-center rounded-circle" style="width: 48px; height: 48px; min-width: 48px; background: linear-gradient(135deg, #f97316, #fb923c); color: white; font-size: 1.2rem; font-weight: 700;">
+          <div class="d-flex align-items-center justify-content-center rounded-circle" style="width: 48px; height: 48px; min-width: 48px; background: linear-gradient(135deg, #4A90E2, #7ba8ff); color: white; font-size: 1.2rem; font-weight: 700;">
             {{ store.store_name[0] | upper }}
           </div>
           <div>
@@ -539,11 +539,11 @@ PURPOSE: "Feedback Management" page. Displays all customer responses/submissions
             </div>
             <div class="mt-1 d-flex flex-column gap-1">
               <div class="small text-muted">
-                <i class="bi bi-geo-alt-fill me-1" style="color: #f97316;"></i>{{ store.address or 'No address' }}{% if store.city %}, {{ store.city }}{% endif %}
+                <i class="bi bi-geo-alt-fill me-1" style="color: #4A90E2;"></i>{{ store.address or 'No address' }}{% if store.city %}, {{ store.city }}{% endif %}
               </div>
               {% if store.contact_number %}
               <div class="small text-muted">
-                <i class="bi bi-telephone-fill me-1" style="color: #f97316;"></i>{{ store.contact_number }}
+                <i class="bi bi-telephone-fill me-1" style="color: #4A90E2;"></i>{{ store.contact_number }}
               </div>
               {% endif %}
             </div>
@@ -554,8 +554,8 @@ PURPOSE: "Feedback Management" page. Displays all customer responses/submissions
       <!-- Key Metrics -->
       <div class="col-lg-4">
         <div class="d-flex gap-2 justify-content-center">
-          <div class="text-center px-3 py-2 rounded-3" style="background: #fff7ed; min-width: 80px;">
-            <div class="fw-bold" style="font-size: 1.25rem; color: #f97316;">{{ responses|length }}</div>
+          <div class="text-center px-3 py-2 rounded-3" style="background: rgba(74, 144, 226, 0.1); min-width: 80px;">
+            <div class="fw-bold" style="font-size: 1.25rem; color: #4A90E2;">{{ responses|length }}</div>
             <div class="text-muted" style="font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.5px;">Feedback</div>
           </div>
           <div class="text-center px-3 py-2 rounded-3" style="background: #eff6ff; min-width: 80px;">
@@ -576,10 +576,10 @@ PURPOSE: "Feedback Management" page. Displays all customer responses/submissions
                alt="QR Code" class="rounded-2" style="width: 60px; height: 60px; border: 2px solid #f3f4f6;">
           <div class="d-flex flex-column gap-1">
             <div class="text-muted" style="font-size: 0.7rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">Feedback Link</div>
-            <a href="{{ request.url_root }}s/{{ store.id }}" target="_blank" class="btn btn-sm py-1 px-2" style="font-size: 0.75rem; background: #fff7ed; color: #f97316; border: 1px solid #fed7aa;">
+            <a href="{{ request.url_root }}s/{{ store.id }}" target="_blank" class="btn btn-sm py-1 px-2" style="font-size: 0.75rem; background: rgba(74, 144, 226, 0.1); color: #4A90E2; border: 1px solid rgba(74, 144, 226, 0.3);">
               <i class="bi bi-box-arrow-up-right me-1"></i>Preview
             </a>
-            <a href="{{ url_for('download_qr', store_id=store.id) }}" class="btn btn-sm py-1 px-2" style="font-size: 0.75rem; background: #f97316; color: white; border: none;">
+            <a href="{{ url_for('download_qr', store_id=store.id) }}" class="btn btn-sm py-1 px-2" style="font-size: 0.75rem; background: #4A90E2; color: white; border: none;">
               <i class="bi bi-download me-1"></i>Download QR
             </a>
           </div>
@@ -1862,7 +1862,7 @@ PURPOSE: "Feedback Management" page. Displays all customer responses/submissions
                 </tr></thead>
                 <tbody>
     `;
-    const starColors = ['#ef4444','#f97316','#eab308','#84cc16','#22c55e'];
+    const starColors = ['#e7f2ff','#c4d9ff','#a3c2ff','#7ba8ff','#4A90E2'];
     for (let i = 4; i >= 0; i--) {
       const stars = '★'.repeat(i + 1) + '☆'.repeat(4 - i);
       html += `
