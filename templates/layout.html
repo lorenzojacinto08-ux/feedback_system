@@ -280,19 +280,21 @@ PURPOSE: This is the main "shell" for all Admin pages. It contains the
         align-items: center;
       }
 
-      .topnav-link i {
-        color: white;
-      }
-
       .topnav-link:hover {
-        background-color: rgba(255, 255, 255, 0.3);
-        color: #000000;
+        background: rgba(255, 255, 255, 0.15);
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
+        color: white;
         transform: translateY(-1px);
         box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
       }
 
+      .topnav-link i {
+        color: white;
+      }
+
       .topnav-link:hover i {
-        color: #000000 !important;
+        color: white !important;
       }
 
       .topnav-link.active {
