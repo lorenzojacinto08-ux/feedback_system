@@ -271,13 +271,17 @@ PURPOSE: This is the main "shell" for all Admin pages. It contains the
         font-weight: 500;
       }
       .topnav-link {
-        color: var(--neutral-700);
+        color: white;
         text-decoration: none;
         transition: all 0.2s ease;
         border-radius: 8px;
         font-weight: 500;
         display: flex;
         align-items: center;
+      }
+
+      .topnav-link i {
+        color: white;
       }
 
       .topnav-link:hover {
@@ -287,10 +291,18 @@ PURPOSE: This is the main "shell" for all Admin pages. It contains the
         box-shadow: 0 2px 8px rgba(159, 200, 200, 0.2);
       }
 
+      .topnav-link:hover i {
+        color: var(--primary-600);
+      }
+
       .topnav-link.active {
         background-color: var(--primary-50);
         color: var(--primary-600) !important;
         font-weight: 600;
+      }
+
+      .topnav-link.active i {
+        color: var(--primary-600) !important;
       }
 
       /* Page title styling - smaller and more elegant */
