@@ -115,63 +115,63 @@
         </div>
 
         {% if users %}
-        <div class="row g-3">
+        <div class="vstack gap-4">
           {% for user in users %}
-          <div class="col-12 col-md-6 col-xl-4">
-            <div class="card border-0 h-100" style="background: var(--neutral-50); border-radius: 12px; border: 1px solid var(--neutral-200); transition: all 0.2s ease;">
-              <div class="card-body p-4">
-                <div class="d-flex align-items-start gap-3 mb-3">
-                  <div class="d-flex align-items-center justify-content-center rounded-circle flex-shrink-0" style="width: 48px; height: 48px; background: linear-gradient(135deg, #4A90E2, #7ba8ff); color: white; font-size: 1.2rem; font-weight: 700;">
-                    {{ user.username[0] | upper }}
-                  </div>
-                  <div class="flex-grow-1 min-width-0">
-                    <div class="d-flex align-items-center gap-2 mb-1 flex-wrap">
-                      <strong style="font-size: 1rem;">{{ user.username }}</strong>
-                      {% if user.role == 'dev' %}
-                      <span class="badge rounded-pill" style="font-size:.65rem; background: linear-gradient(135deg, #4C1D95, #6D28D9); color: white; border: 1px solid rgba(139, 92, 246, 0.3);">Dev</span>
-                      {% elif user.role == 'superadmin' %}
-                      <span class="badge rounded-pill" style="font-size:.65rem; background: linear-gradient(135deg, #854d0e, #a16207); color: white; border: 1px solid rgba(234, 179, 8, 0.3);">Superadmin</span>
-                      {% elif user.role == 'admin' %}
-                      <span class="badge rounded-pill badge-primary" style="font-size:.65rem;">Admin</span>
-                      {% else %}
-                      <span class="badge rounded-pill bg-secondary" style="font-size:.65rem;">User</span>
-                      {% endif %}
-                      {% if not user.is_active %}
-                      <span class="badge rounded-pill bg-dark" style="font-size:.65rem;">Inactive</span>
-                      {% endif %}
-                    </div>
-                    <small class="text-muted text-truncate d-block">{{ user.email }}</small>
-                  </div>
+          <div class="card border-0" style="background: var(--neutral-50); border-radius: 12px; border: 1px solid var(--neutral-200); transition: all 0.2s ease;">
+            <div class="card-body p-4">
+              <div class="d-flex align-items-start gap-4">
+                <div class="d-flex align-items-center justify-content-center rounded-circle flex-shrink-0" style="width: 56px; height: 56px; background: linear-gradient(135deg, #4A90E2, #7ba8ff); color: white; font-size: 1.4rem; font-weight: 700;">
+                  {{ user.username[0] | upper }}
                 </div>
-
-                <div class="mb-3">
-                  <div class="d-flex align-items-center gap-2 mb-2">
-                    <small class="text-muted fw-semibold" style="font-size:.7rem; text-transform: uppercase; letter-spacing: 0.5px;">Configuration Status</small>
-                  </div>
-                  <div class="d-flex flex-wrap gap-2">
-                    {% if user.license_key %}
-                    <div class="d-flex align-items-center gap-1">
-                      <i class="bi bi-check-circle-fill text-success" style="font-size:.75rem;"></i>
-                      <small class="text-success" style="font-size:.7rem;">License</small>
-                    </div>
+                <div class="flex-grow-1 min-width-0">
+                  <div class="d-flex align-items-center gap-2 mb-1 flex-wrap">
+                    <strong style="font-size: 1.1rem;">{{ user.username }}</strong>
+                    {% if user.role == 'dev' %}
+                    <span class="badge rounded-pill" style="font-size:.7rem; background: linear-gradient(135deg, #4C1D95, #6D28D9); color: white; border: 1px solid rgba(139, 92, 246, 0.3);">Dev</span>
+                    {% elif user.role == 'superadmin' %}
+                    <span class="badge rounded-pill" style="font-size:.7rem; background: linear-gradient(135deg, #854d0e, #a16207); color: white; border: 1px solid rgba(234, 179, 8, 0.3);">Superadmin</span>
+                    {% elif user.role == 'admin' %}
+                    <span class="badge rounded-pill badge-primary" style="font-size:.7rem;">Admin</span>
                     {% else %}
-                    <div class="d-flex align-items-center gap-1">
-                      <i class="bi bi-x-circle-fill text-muted" style="font-size:.75rem;"></i>
-                      <small class="text-muted" style="font-size:.7rem;">No License</small>
-                    </div>
+                    <span class="badge rounded-pill bg-secondary" style="font-size:.7rem;">User</span>
                     {% endif %}
-                    {% if user.role == 'user' and user.max_stores is not none %}
-                    <div class="d-flex align-items-center gap-1">
-                      <i class="bi bi-building-fill text-primary" style="font-size:.75rem;"></i>
-                      <small class="text-muted" style="font-size:.7rem;">{{ user.max_stores if user.max_stores > 0 else 'Unlimited' }} Stores</small>
-                    </div>
+                    {% if not user.is_active %}
+                    <span class="badge rounded-pill bg-dark" style="font-size:.7rem;">Inactive</span>
                     {% endif %}
+                  </div>
+                  <small class="text-muted mb-2 d-block">{{ user.email }}</small>
+
+                  <div class="mb-2">
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                      <small class="text-muted fw-semibold" style="font-size:.75rem; text-transform: uppercase; letter-spacing: 0.5px;">Configuration Status</small>
+                    </div>
+                    <div class="d-flex flex-wrap gap-3">
+                      {% if user.license_key %}
+                      <div class="d-flex align-items-center gap-1">
+                        <i class="bi bi-check-circle-fill text-success" style="font-size:.8rem;"></i>
+                        <small class="text-success" style="font-size:.75rem;">License Configured</small>
+                      </div>
+                      {% else %}
+                      <div class="d-flex align-items-center gap-1">
+                        <i class="bi bi-x-circle-fill text-muted" style="font-size:.8rem;"></i>
+                        <small class="text-muted" style="font-size:.75rem;">No License</small>
+                      </div>
+                      {% endif %}
+                      {% if user.role == 'user' and user.max_stores is not none %}
+                      <div class="d-flex align-items-center gap-1">
+                        <i class="bi bi-building-fill text-primary" style="font-size:.8rem;"></i>
+                        <small class="text-muted" style="font-size:.75rem;">{{ user.max_stores if user.max_stores > 0 else 'Unlimited' }} Stores</small>
+                      </div>
+                      {% endif %}
+                    </div>
                   </div>
                 </div>
 
-                <div class="d-flex justify-content-between align-items-center mt-3 pt-3" style="border-top: 1px solid var(--neutral-200);">
-                  <small class="text-muted" style="font-size:.7rem;">Created: {{ user.created_at.strftime('%B %d, %Y') }}</small>
-                  <div class="d-flex gap-1">
+                <div class="d-flex flex-column gap-2 flex-shrink-0 ms-3">
+                  <div class="d-flex justify-content-end">
+                    <small class="text-muted" style="font-size:.75rem;">Created: {{ user.created_at.strftime('%B %d, %Y') }}</small>
+                  </div>
+                  <div class="d-flex gap-2 justify-content-end">
                     {% if user.id != session.get('user_id') %}
                     <form method="POST" action="{{ url_for('admin_toggle_user', user_id=user.id) }}" onsubmit="return confirm('Are you sure you want to toggle this user status?');">
                       <button class="btn btn-sm btn-outline-{{ 'success' if user.is_active else 'secondary' }}" type="submit">
