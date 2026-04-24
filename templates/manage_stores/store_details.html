@@ -619,27 +619,6 @@ PURPOSE: Comprehensive store details page showing feedback, analytics, and staff
                   <option value="maintenance" {{ 'selected' if store.status == 'maintenance' }}>Maintenance</option>
                 </select>
               </div>
-              
-              <div class="col-12">
-                <label for="edit_logo" class="form-label fw-medium">Store Logo</label>
-                <input
-                  type="file"
-                  id="edit_logo"
-                  name="logo"
-                  class="form-control"
-                  accept="image/png,image/jpeg,image/jpg"
-                />
-                <div class="form-text">
-                  <i class="bi bi-info-circle me-1"></i>
-                  Upload a PNG or JPG logo for your brand (max 5MB). Leave empty to keep existing logo.
-                </div>
-                {% if store.logo_url %}
-                <div class="mt-2">
-                  <small class="text-muted">Current logo:</small>
-                  <img src="{{ store.logo_url }}" alt="Current Logo" class="img-fluid mt-1" style="max-height: 60px; max-width: 150px; object-fit: contain;">
-                </div>
-                {% endif %}
-              </div>
             </div>
           </form>
         </div>
