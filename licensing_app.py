@@ -33,42 +33,25 @@ def create_app() -> Flask:
     # Database configuration
     def get_db_connection() -> MySQLConnection:
         try:
-            # Check for Railway's DATABASE_URL first
-            if os.getenv("DATABASE_URL"):
-                import urllib.parse
-                db_url = os.getenv("DATABASE_URL")
-                parsed = urllib.parse.urlparse(db_url)
-                # Railway DATABASE_URL format: mysql://user:password@host:port/database
-                return mysql.connector.connect(
-                    host=parsed.hostname,
-                    port=parsed.port if parsed.port else 3306,
-                    user=parsed.username,
-                    password=parsed.password,
-                    database=parsed.path[1:] if parsed.path else "licensing_db",
-                    connect_timeout=10
-                )
-            # Then check for MYSQL_URL
-            elif os.getenv("MYSQL_URL"):
+            # Use MYSQL_URL or individual variables
+            if os.getenv("MYSQL_URL"):
                 import urllib.parse
                 db_url = os.getenv("MYSQL_URL")
                 parsed = urllib.parse.urlparse(db_url)
                 return mysql.connector.connect(
                     host=parsed.hostname,
-                    port=parsed.port if parsed.port else 3306,
+                    port=parsed.port,
                     user=parsed.username,
                     password=parsed.password,
-                    database=parsed.path[1:] if parsed.path else "licensing_db",
-                    connect_timeout=10
+                    database=parsed.path[1:]
                 )
-            # Fall back to individual variables
             else:
                 return mysql.connector.connect(
                     host=os.getenv("DB_HOST", "localhost"),
                     port=int(os.getenv("DB_PORT", 3306)),
                     user=os.getenv("DB_USER", "root"),
                     password=os.getenv("DB_PASSWORD", ""),
-                    database=os.getenv("DB_NAME", "licensing_db"),
-                    connect_timeout=10
+                    database=os.getenv("DB_NAME", "licensing_db")
                 )
         except mysql.connector.Error as e:
             logger.error(f"Failed to connect to database: {e}")
@@ -124,13 +107,10 @@ def create_app() -> Flask:
                 retries -= 1
                 logger.error(f"Schema initialization failed: {e}. Retries left: {retries}")
                 if retries == 0:
-                    logger.warning("Could not initialize database schema. App will start but database operations may fail.")
+                    raise
             finally:
                 if 'conn' in locals():
-                    try:
-                        conn.close()
-                    except:
-                        pass
+                    conn.close()
     
     # Helper functions
     def fetch_users_from_main_app():
@@ -279,18 +259,8 @@ def create_app() -> Flask:
     # Routes
     @app.route("/")
     def index():
-        try:
-            licenses = get_all_licenses()
-        except Exception as e:
-            logger.error(f"Failed to fetch licenses: {e}")
-            licenses = []
-        
-        try:
-            users = fetch_users_from_main_app()
-        except Exception as e:
-            logger.error(f"Failed to fetch users: {e}")
-            users = []
-        
+        licenses = get_all_licenses()
+        users = fetch_users_from_main_app()
         return render_template("licensing/index.html", licenses=licenses, users=users)
     
     @app.route("/license/add", methods=["POST"])
