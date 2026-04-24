@@ -133,10 +133,10 @@ PURPOSE: "Feedback Management" page. Displays all customer responses/submissions
     color: #e5e7eb;
   }
   .detail-header {
-    border-bottom: 1px solid #1a6a6a;
+    border-bottom: 1px solid #000000;
     padding-bottom: 20px;
     margin-bottom: 20px;
-    background: #1a6a6a;
+    background: #000000;
     border-radius: 8px;
     padding: 20px;
     margin-bottom: 20px;
@@ -1454,7 +1454,7 @@ PURPOSE: "Feedback Management" page. Displays all customer responses/submissions
           labels: ['5 Star', '4 Star', '3 Star', '2 Star', '1 Star'],
           datasets: [{
             data: [...(data.rating_metrics?.distribution || [0,0,0,0,0])].reverse(),
-            backgroundColor: ['#9fc8c8', '#b3d8d8', '#cce5e5', '#e0f5f5', '#e6f2f2'],
+            backgroundColor: ['#000000', '#212529', '#343a40', '#495057', '#6c757d'],
             borderRadius: 4,
             barThickness: 14
           }]
@@ -1479,12 +1479,12 @@ PURPOSE: "Feedback Management" page. Displays all customer responses/submissions
           labels: data.trend?.labels || [],
           datasets: [{
             data: data.trend?.values || [],
-            borderColor: '#9fc8c8',
-            backgroundColor: 'rgba(159, 200, 200, 0.1)',
+            borderColor: '#000000',
+            backgroundColor: 'rgba(0, 0, 0, 0.1)',
             fill: true,
             tension: 0.4,
             pointRadius: 3,
-            pointBackgroundColor: '#9fc8c8',
+            pointBackgroundColor: '#000000',
             borderWidth: 2
           }]
         },
@@ -1508,7 +1508,7 @@ PURPOSE: "Feedback Management" page. Displays all customer responses/submissions
           labels: ['Resolved', 'Unresolved'],
           datasets: [{
             data: [overview.resolved || 0, overview.unresolved || 0],
-            backgroundColor: ['#9fc8c8', '#b3d8d8'],
+            backgroundColor: ['#000000', '#212529'],
             borderWidth: 0
           }]
         },
