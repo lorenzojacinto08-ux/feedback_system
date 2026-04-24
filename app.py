@@ -647,7 +647,10 @@ def create_app() -> Flask:
                 for column_name, column_type in store_columns:
                     cursor.execute(f"SHOW COLUMNS FROM stores LIKE '{column_name}'")
                     if not cursor.fetchone():
+                        logger.info(f"Adding column {column_name} to stores table...")
                         cursor.execute(f"ALTER TABLE stores ADD COLUMN {column_name} {column_type}")
+                        conn.commit()
+                        logger.info(f"Column {column_name} added successfully")
 
                 # Generate access tokens for existing stores that don't have them
                 import secrets
@@ -3475,6 +3478,8 @@ def create_app() -> Flask:
             subdomain=subdomain if subdomain else None,
             user_id=session.get('user_id')
         )
+        
+        logger.info(f"Created store {new_store_id} for user {session.get('user_id')}")
         
         # Log the store addition
         log_audit(
