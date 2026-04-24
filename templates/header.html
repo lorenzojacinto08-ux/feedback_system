@@ -75,13 +75,13 @@
         </div>
 
         <div class="dropdown">
-          <button class="btn btn-light rounded-3 px-3 py-2 d-flex align-items-center" type="button" id="userDropdown" data-bs-toggle="dropdown" aria-expanded="false">
-            <i class="bi bi-person-circle text-dark me-2"></i>
-            <span class="text-dark fw-bold small">
+          <button class="btn rounded-3 px-3 py-2 d-flex align-items-center" type="button" id="userDropdown" data-bs-toggle="dropdown" aria-expanded="false" style="background: rgba(255, 255, 255, 0.15); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); border: 1px solid rgba(255, 255, 255, 0.2);">
+            <i class="bi bi-person-circle text-white me-2"></i>
+            <span class="text-white fw-bold small">
               {% if session.get('username') %}
                 {{ session.get('role', '').title() }}: {{ session.get('username') }}
               {% else %}
-                <a href="{{ url_for('login') }}" class="text-decoration-none text-muted">Login</a>
+                <a href="{{ url_for('login') }}" class="text-decoration-none text-white">Login</a>
               {% endif %}
             </span>
           </button>
