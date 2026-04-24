@@ -77,8 +77,15 @@
         <div class="dropdown">
           <button class="btn btn-light rounded-3 px-3 py-2 d-flex align-items-center" type="button" id="userDropdown" data-bs-toggle="dropdown" aria-expanded="false">
             <i class="bi bi-person-circle text-muted me-2"></i>
-            <span class="text-muted fw-bold small">Admin</span>
+            <span class="text-muted fw-bold small">
+              {% if session.get('username') %}
+                {{ session.get('role', '').title() }}: {{ session.get('username') }}
+              {% else %}
+                <a href="{{ url_for('login') }}" class="text-decoration-none text-muted">Login</a>
+              {% endif %}
+            </span>
           </button>
+          {% if session.get('username') %}
           <ul class="dropdown-menu dropdown-menu-end shadow-lg border-0 mt-2" aria-labelledby="userDropdown">
             <li>
               <a href="{{ url_for('logout') }}" class="dropdown-item text-danger">
@@ -86,6 +93,7 @@
               </a>
             </li>
           </ul>
+          {% endif %}
         </div>
       </div>
     </div>
