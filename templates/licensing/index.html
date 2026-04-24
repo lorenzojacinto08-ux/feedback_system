@@ -28,186 +28,78 @@
             --neutral-600: #475569;
             --neutral-700: #334155;
             --neutral-800: #1e293b;
-            --neutral-900: #0f172a;
-        }
-        
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
+            --neutral-900: #000000;
         }
         
         body {
-            background: linear-gradient(135deg, var(--neutral-900) 0%, var(--neutral-800) 50%, var(--neutral-900) 100%);
-            min-height: 100vh;
+            background-color: var(--neutral-50);
+            color: var(--neutral-900);
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-            color: var(--neutral-100);
+            min-height: 100vh;
         }
         
         .card {
-            border-radius: 16px;
-            border: none;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-        }
-        
-        .container-fluid {
-            padding: 3rem;
-        }
-        
-        .card-body {
-            padding: 2.5rem;
+            border-radius: 12px;
+            border: 1px solid var(--neutral-200);
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
         }
         
         .card-header {
-            padding: 2rem 2.5rem;
+            background: linear-gradient(135deg, var(--primary-500) 0%, var(--primary-600) 100%);
+            color: white;
+            border-radius: 12px 12px 0 0 !important;
+            padding: 1.5rem;
         }
         
         .card-header h3 {
-            font-size: 2rem;
+            font-size: 1.5rem;
             font-weight: 700;
+            margin: 0;
         }
         
         .card-header small {
-            font-size: 1rem;
+            font-size: 0.875rem;
             opacity: 0.9;
         }
         
-        .card-header {
-            background: linear-gradient(135deg, var(--primary-500) 0%, var(--primary-600) 100%);
-            color: white;
-            border-radius: 16px 16px 0 0 !important;
-        }
-        
         .btn-primary {
-            background: linear-gradient(135deg, var(--primary-500) 0%, var(--primary-600) 100%);
-            border: none;
-            transition: all 0.3s ease;
+            background: var(--primary-500);
+            border-color: var(--primary-500);
         }
         
         .btn-primary:hover {
-            background: linear-gradient(135deg, var(--primary-600) 0%, var(--primary-700) 100%);
-            transform: translateY(-1px);
-            box-shadow: 0 4px 15px rgba(249, 115, 22, 0.4);
-        }
-        
-        .form-control {
-            background: rgba(0, 0, 0, 0.3);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 10px;
-            color: white;
-        }
-        
-        .form-control:focus {
-            background: rgba(0, 0, 0, 0.4);
-            border-color: var(--primary-500);
-            box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.2);
-            color: white;
-        }
-        
-        .form-control::placeholder {
-            color: var(--neutral-500);
-        }
-        
-        .form-check-input {
-            background: rgba(0, 0, 0, 0.3);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-        }
-        
-        .form-check-input:checked {
-            background: linear-gradient(135deg, var(--primary-500) 0%, var(--primary-600) 100%);
-            border-color: var(--primary-500);
-        }
-        
-        .form-label, .form-check-label {
-            color: var(--neutral-300);
+            background: var(--primary-600);
+            border-color: var(--primary-600);
         }
         
         .card-title {
-            font-size: 1.25rem;
+            font-size: 1.125rem;
             font-weight: 600;
-            color: var(--neutral-100);
+            color: var(--neutral-800);
         }
         
         code {
-            background: rgba(0, 0, 0, 0.4);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            color: var(--neutral-300);
-            padding: 0.5rem 0.75rem;
-            border-radius: 8px;
-            font-size: 0.8rem;
-        }
-        
-        .alert {
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            background: rgba(0, 0, 0, 0.3);
-            color: white;
-        }
-        
-        .alert-success {
-            background: rgba(34, 197, 94, 0.15);
-            border-color: rgba(34, 197, 94, 0.3);
-            color: #4ade80;
-        }
-        
-        .alert-danger {
-            background: rgba(239, 68, 68, 0.15);
-            border-color: rgba(239, 68, 68, 0.3);
-            color: #f87171;
+            background: var(--neutral-100);
+            border: 1px solid var(--neutral-200);
+            color: var(--neutral-700);
+            padding: 0.5rem;
+            border-radius: 6px;
+            font-size: 0.75rem;
         }
         
         .border-0[style*="background: var(--neutral-100)"],
         .border-0[style*="background: white"] {
-            background: rgba(255, 255, 255, 0.05) !important;
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            backdrop-filter: blur(10px);
-        }
-        
-        .border-0[style*="background: white"] {
-            background: rgba(255, 255, 255, 0.03) !important;
-        }
-        
-        .btn-outline-secondary, .btn-outline-success, .btn-outline-danger {
-            border-color: rgba(255, 255, 255, 0.2);
-            color: var(--neutral-300);
-        }
-        
-        .btn-outline-secondary:hover,
-        .btn-outline-success:hover,
-        .btn-outline-danger:hover {
-            background: rgba(255, 255, 255, 0.1);
-            color: white;
-        }
-        
-        .bg-white {
-            background: rgba(255, 255, 255, 0.03) !important;
-            color: var(--neutral-300);
+            background: var(--neutral-50) !important;
+            border: 1px solid var(--neutral-200);
         }
         
         .text-muted {
-            color: var(--neutral-400) !important;
-        }
-        
-        .badge {
-            padding: 0.5rem 0.75rem;
-            border-radius: 8px;
-            font-weight: 500;
-        }
-        
-        .badge.bg-success {
-            background: rgba(34, 197, 94, 0.2);
-            color: #4ade80;
-            border: 1px solid rgba(34, 197, 94, 0.3);
-        }
-        
-        .badge.bg-secondary {
-            background: rgba(148, 163, 184, 0.2);
-            color: var(--neutral-400);
-            border: 1px solid rgba(148, 163, 184, 0.3);
+            color: var(--neutral-500) !important;
         }
     </style>
 </head>
 <body>
-    <div class="container-fluid">
+    <div class="container-fluid px-4 py-4">
         <div class="row">
             <div class="col-12">
                 <div class="card">
