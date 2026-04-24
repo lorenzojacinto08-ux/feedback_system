@@ -682,18 +682,18 @@ document.addEventListener('DOMContentLoaded', function() {
                     label: 'Number of Ratings',
                     data: {{ rating_distribution|tojson }},
                     backgroundColor: [
-                        '#e9ecef',  // 1 star - light gray
-                        '#dee2e6',  // 2 stars - light gray
-                        '#ced4da',  // 3 stars - gray
-                        '#adb5bd',  // 4 stars - medium gray
-                        '#000000'   // 5 stars - black
+                        '#e7f2ff',  // 1 star - light blue
+                        '#c4d9ff',  // 2 stars - light blue
+                        '#a3c2ff',  // 3 stars - blue
+                        '#7ba8ff',  // 4 stars - medium blue
+                        '#4A90E2'   // 5 stars - primary blue
                     ],
                     borderColor: [
-                        '#e9ecef',
-                        '#dee2e6', 
-                        '#ced4da',
-                        '#adb5bd',
-                        '#000000'
+                        '#e7f2ff',
+                        '#c4d9ff', 
+                        '#a3c2ff',
+                        '#7ba8ff',
+                        '#4A90E2'
                     ],
                     borderWidth: 1
                 }]
@@ -737,8 +737,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 datasets: [{
                     label: 'Feedback Count',
                     data: {{ feedback_trend_data|tojson }},
-                    borderColor: '#000000',
-                    backgroundColor: 'rgba(0, 0, 0, 0.1)',
+                    borderColor: '#4A90E2',
+                    backgroundColor: 'rgba(74, 144, 226, 0.1)',
                     tension: 0.4
                 }]
             },
@@ -772,20 +772,20 @@ document.addEventListener('DOMContentLoaded', function() {
                     label: 'Total Commendations',
                     data: commendationCounts,
                     backgroundColor: [
-                        '#000000',
-                        '#212529',
-                        '#343a40',
-                        '#495057',
-                        '#6c757d',
-                        '#adb5bd'
+                        '#4A90E2',
+                        '#7ba8ff',
+                        '#a3c2ff',
+                        '#c4d9ff',
+                        '#e7f2ff',
+                        '#f0f5ff'
                     ],
                     borderColor: [
-                        '#000000',
-                        '#212529',
-                        '#343a40',
-                        '#495057',
-                        '#6c757d',
-                        '#adb5bd'
+                        '#4A90E2',
+                        '#7ba8ff',
+                        '#a3c2ff',
+                        '#c4d9ff',
+                        '#e7f2ff',
+                        '#f0f5ff'
                     ],
                     borderWidth: 1
                 }]
