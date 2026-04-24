@@ -14,7 +14,6 @@ import mysql.connector
 from mysql.connector import MySQLConnection, Error
 from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, session
 from flask_mail import Mail, Message
-from mysql.connector.connection import MySQLConnection
 import qrcode
 from email_config import EmailConfig
 from collections import defaultdict
@@ -40,7 +39,6 @@ def create_app() -> Flask:
     )
     logger = logging.getLogger(__name__)
 
-    # Debug: Log all environment variable keys (NOT values) to see what's available
     logger.info(f"AVAILABLE ENV VARS: {list(os.environ.keys())}")
 
     # --- ENVIRONMENT CONFIG ---
@@ -103,10 +101,24 @@ def create_app() -> Flask:
             logger.error(f"Failed to connect to database: {e}")
             raise
 
-    def log_audit(entity_type: str, entity_id: int, action: str, old_values: str = None, new_values: str = None, user_id: str = None) -> None:
-        """Log an audit entry for tracking changes"""
+    from contextlib import contextmanager
+
+    @contextmanager
+    def get_db_connection_with_transaction():
+        """Context manager for database connections with automatic rollback on error."""
         conn = get_db_connection()
         try:
+            yield conn
+            conn.commit()
+        except Exception:
+            conn.rollback()
+            raise
+        finally:
+            conn.close()
+
+    def log_audit(entity_type: str, entity_id: int, action: str, old_values: str = None, new_values: str = None, user_id: str = None) -> None:
+        """Log an audit entry for tracking changes"""
+        with get_db_connection_with_transaction() as conn:
             cursor = conn.cursor()
             cursor.execute(
                 """
@@ -115,9 +127,6 @@ def create_app() -> Flask:
                 """,
                 (entity_type, entity_id, action, old_values, new_values, user_id),
             )
-            conn.commit()
-        finally:
-            conn.close()
 
     def prune_audit_logs(days: int = 90) -> int:
         """Delete audit logs older than specified days"""
@@ -153,6 +162,7 @@ def create_app() -> Flask:
     def validate_license_from_portal() -> Dict[str, Any]:
         """Validate license by calling the licensing portal API"""
         import requests
+        from requests.exceptions import RequestException, Timeout
         
         config = get_license_config()
         if not config:
@@ -173,8 +183,14 @@ def create_app() -> Flask:
             else:
                 logger.error(f"License validation failed: {response.status_code}")
                 return {"valid": False, "error": "License validation failed"}
+        except Timeout:
+            logger.error("License validation request timed out")
+            return {"valid": False, "error": "Request timed out"}
+        except RequestException as e:
+            logger.error(f"License validation network error: {e}")
+            return {"valid": False, "error": "Network error"}
         except Exception as e:
-            logger.error(f"Error validating license: {e}")
+            logger.error(f"Unexpected error validating license: {e}")
             return {"valid": False, "error": str(e)}
 
     def check_store_limit() -> bool:
@@ -738,7 +754,6 @@ def create_app() -> Flask:
         error_details = traceback.format_exc()
         logger.error(f"Global Crash: {e}\n{error_details}")
         
-        # In production, we'll show the error directly to fix things quickly
         return f"""
         <div style="font-family: sans-serif; padding: 20px; color: #721c24; background: #f8d7da; border: 1px solid #f5c6cb; border-radius: 8px;">
             <h2 style="margin-top: 0;">Oops! Something crashed.</h2>
@@ -754,8 +769,12 @@ def create_app() -> Flask:
         return "404 Not Found", 404
 
     @app.route("/debug/env")
+    @login_required
     def debug_env():
         """Route to see available environment variable keys (NOT values)"""
+        user = get_user_by_id(session['user_id'])
+        if user['role'] not in ['dev', 'superadmin']:
+            return jsonify({"error": "Unauthorized"}), 403
         return jsonify({
             "available_keys": list(os.environ.keys()),
             "db_config_host": app.config["DB_CONFIG"].get("host"),
@@ -838,17 +857,25 @@ def create_app() -> Flask:
         subdomain: str | None = None,
         user_id: int | None = None
     ) -> int:
+        """Create a new store with validation."""
+        # Input validation
+        if not store_name or not store_name.strip():
+            raise ValueError("Store name is required")
+        if status not in ["active", "inactive", "pending"]:
+            raise ValueError("Invalid status value")
+        if email and "@" not in email:
+            raise ValueError("Invalid email format")
+        
         import secrets
+        import re
         access_token = secrets.token_urlsafe(32)
         
         # Generate subdomain from store name if not provided
         if not subdomain:
-            import re
             subdomain = re.sub(r'[^a-zA-Z0-9\s]', '', store_name).lower().replace(' ', '-')
             subdomain = re.sub(r'-+', '-', subdomain).strip('-')
         
-        conn = get_db_connection()
-        try:
+        with get_db_connection_with_transaction() as conn:
             cursor = conn.cursor()
             cursor.execute(
                 """
@@ -860,15 +887,12 @@ def create_app() -> Flask:
                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 """,
                 (
-                    store_name, address, city, province, postal_code,
+                    store_name.strip(), address, city, province, postal_code,
                     contact_number, email, store_manager_name, manager_contact,
                     store_type, status, logo_url, access_token, subdomain, user_id
                 ),
             )
-            conn.commit()
             new_store_id = int(cursor.lastrowid)
-        finally:
-            conn.close()
 
         return new_store_id
 
@@ -941,7 +965,7 @@ def create_app() -> Flask:
     def get_store_public_url(store_id: int) -> str:
         # Get the IP address of the machine to make it accessible on the local network
         try:
-            s = socket.socket(socket.socket(socket.AF_INET, socket.SOCK_DGRAM))
+            s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
             s.connect(("8.8.8.8", 80))
             local_ip = s.getsockname()[0]
             s.close()
@@ -1245,8 +1269,7 @@ def create_app() -> Flask:
         existing = fetch_template_questionnaire()
         if existing:
             return existing
-        conn = get_db_connection()
-        try:
+        with get_db_connection_with_transaction() as conn:
             cursor = conn.cursor()
             cursor.execute(
                 """
@@ -1255,16 +1278,17 @@ def create_app() -> Flask:
                 """,
                 ("Customer Feedback", True, True, 1),
             )
-            conn.commit()
             template_id = int(cursor.lastrowid)
-        finally:
-            conn.close()
         return {"id": template_id, "title": "Customer Feedback", "is_active": 1, "version": 1, "created_at": None, "is_template": True}
 
     def update_template_questionnaire(title: str, is_active: bool, updated_at: str | None = None) -> None:
+        """Update template questionnaire with validation."""
+        # Input validation
+        if not title or not title.strip():
+            raise ValueError("Title is required")
+        
         template = ensure_template_questionnaire()
-        conn = get_db_connection()
-        try:
+        with get_db_connection_with_transaction() as conn:
             cursor = conn.cursor()
             if updated_at:
                 cursor.execute(
@@ -1273,7 +1297,7 @@ def create_app() -> Flask:
                     SET title = %s, is_active = %s, updated_at = %s
                     WHERE id = %s
                     """,
-                    (title, is_active, updated_at, int(template["id"])),
+                    (title.strip(), is_active, updated_at, int(template["id"])),
                 )
             else:
                 cursor.execute(
@@ -1282,11 +1306,8 @@ def create_app() -> Flask:
                     SET title = %s, is_active = %s, updated_at = NOW()
                     WHERE id = %s
                     """,
-                    (title, is_active, int(template["id"])),
+                    (title.strip(), is_active, int(template["id"])),
                 )
-            conn.commit()
-        finally:
-            conn.close()
 
     def fetch_template_questions(template_questionnaire_id: int) -> List[Dict[str, Any]]:
         conn = get_db_connection()
@@ -1341,8 +1362,16 @@ def create_app() -> Flask:
         max_label: str = "Excellent",
         allow_comment: bool = False,
     ) -> int:
-        conn = get_db_connection()
-        try:
+        """Add a template question with validation."""
+        # Input validation
+        if not question_text or not question_text.strip():
+            raise ValueError("Question text is required")
+        if question_type not in ["rating", "text", "multiple_choice"]:
+            raise ValueError("Invalid question type")
+        if question_order < 0:
+            raise ValueError("Question order must be non-negative")
+        
+        with get_db_connection_with_transaction() as conn:
             cursor = conn.cursor()
             cursor.execute(
                 """
@@ -1350,25 +1379,25 @@ def create_app() -> Flask:
                 (questionnaire_id, question_text, question_type, min_label, max_label, allow_comment, is_required, question_order, is_template)
                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
                 """,
-                (template_questionnaire_id, question_text, question_type, min_label, max_label, allow_comment, is_required, question_order, True),
+                (template_questionnaire_id, question_text.strip(), question_type, min_label, max_label, allow_comment, is_required, question_order, True),
             )
-            conn.commit()
             return int(cursor.lastrowid)
-        finally:
-            conn.close()
 
     def delete_template_question(template_question_id: int) -> None:
-        conn = get_db_connection()
-        try:
+        """Delete a template question by ID."""
+        with get_db_connection_with_transaction() as conn:
             cursor = conn.cursor()
             cursor.execute("DELETE FROM questions WHERE id = %s", (template_question_id,))
-            conn.commit()
-        finally:
-            conn.close()
 
     def update_template_question(question_id: int, question_text: str, question_type: str, is_required: bool, min_label: str = "Poor", max_label: str = "Excellent", allow_comment: bool = False) -> None:
-        conn = get_db_connection()
-        try:
+        """Update a template question with validation."""
+        # Input validation
+        if not question_text or not question_text.strip():
+            raise ValueError("Question text is required")
+        if question_type not in ["rating", "text", "multiple_choice"]:
+            raise ValueError("Invalid question type")
+        
+        with get_db_connection_with_transaction() as conn:
             cursor = conn.cursor()
             cursor.execute(
                 """
@@ -1376,46 +1405,41 @@ def create_app() -> Flask:
                 SET question_text = %s, question_type = %s, is_required = %s, min_label = %s, max_label = %s, allow_comment = %s
                 WHERE id = %s AND is_template = TRUE
                 """,
-                (question_text, question_type, is_required, min_label, max_label, allow_comment, question_id),
+                (question_text.strip(), question_type, is_required, min_label, max_label, allow_comment, question_id),
             )
-            conn.commit()
-        finally:
-            conn.close()
 
     def add_template_option(template_question_id: int, option_text: str) -> int:
-        conn = get_db_connection()
-        try:
+        """Add a template option with validation."""
+        # Input validation
+        if not option_text or not option_text.strip():
+            raise ValueError("Option text is required")
+        
+        with get_db_connection_with_transaction() as conn:
             cursor = conn.cursor()
             cursor.execute(
                 """
                 INSERT INTO question_options (question_id, option_text)
                 VALUES (%s, %s)
                 """,
-                (template_question_id, option_text),
+                (template_question_id, option_text.strip()),
             )
-            conn.commit()
             return int(cursor.lastrowid)
-        finally:
-            conn.close()
 
     def delete_template_option(template_option_id: int) -> None:
-        conn = get_db_connection()
-        try:
+        """Delete a template option by ID."""
+        with get_db_connection_with_transaction() as conn:
             cursor = conn.cursor()
             cursor.execute("DELETE FROM question_options WHERE id = %s", (template_option_id,))
-            conn.commit()
-        finally:
-            conn.close()
 
     def publish_template_to_all_stores() -> int:
+        """Publish template questionnaire to all stores with transaction safety."""
         template = ensure_template_questionnaire()
         template_id = int(template["id"])
         template_questions = fetch_template_questions(template_questionnaire_id=template_id)
         template_options_by_question_id = fetch_template_options_by_question([int(q["id"]) for q in template_questions])
 
         stores = fetch_stores()
-        conn = get_db_connection()
-        try:
+        with get_db_connection_with_transaction() as conn:
             cursor = conn.cursor(dictionary=True)
             published_count = 0
 
@@ -1498,10 +1522,7 @@ def create_app() -> Flask:
 
                 published_count += 1
 
-            conn.commit()
             return published_count
-        finally:
-            conn.close()
 
     @app.route("/")
     def index():
@@ -2195,7 +2216,6 @@ def create_app() -> Flask:
     @login_required
     def admin_dashboard():
         try:
-            logger.info("Accessing admin dashboard...")
             analytics = fetch_dashboard_analytics()
             return render_template("dashboard/dashboard.html", **analytics)
         except Exception as e:
@@ -2494,7 +2514,6 @@ def create_app() -> Flask:
             for table in tables_to_clear:
                 try:
                     cursor.execute(f"DELETE FROM {table}")
-                    logger.info(f"Cleared table: {table}")
                 except Exception as e:
                     logger.warning(f"Could not clear table {table}: {e}")
             
@@ -3505,12 +3524,9 @@ def create_app() -> Flask:
                         cursor = conn.cursor()
                         cursor.execute("SELECT COUNT(*) FROM stores WHERE user_id = %s", (session['user_id'],))
                         current_count = cursor.fetchone()[0]
-                        logger.info(f"User {session['user_id']} (role: {user['role']}) has {current_count} stores, max allowed: {max_stores}")
                         
-                        # Also check total stores for debugging
                         cursor.execute("SELECT COUNT(*) FROM stores")
                         total_stores = cursor.fetchone()[0]
-                        logger.info(f"Total stores in database: {total_stores}")
                         
                         if current_count >= max_stores:
                             flash(f"Your license limit reached. You can only create up to {max_stores} stores. Contact support to upgrade.", "danger")
@@ -3898,7 +3914,6 @@ def create_app() -> Flask:
             conn.commit()
 
             flash(f"Cleared {responses_count} responses, {answers_count} answers, and {commendations_count} commendations. Stores and configurations preserved.", "success")
-            logger.info(f"Cleared feedback data: {responses_count} responses, {answers_count} answers, {commendations_count} commendations")
         except Exception as e:
             logger.error(f"Error clearing feedback data: {e}")
             flash(f"Error clearing feedback data: {e}", "danger")
@@ -4923,7 +4938,7 @@ def create_app() -> Flask:
                     else:
                         return {"success": False, "error": message}, 500
                 except Exception as e:
-                    print(f"Email sending failed: {str(e)}")
+                    logger.error(f"Email sending failed: {str(e)}")
                     return {"success": False, "error": str(e)}, 500
                     
             finally:

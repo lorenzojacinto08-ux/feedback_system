@@ -11,6 +11,7 @@ from datetime import datetime, date
 import secrets
 import bcrypt
 from functools import wraps
+from contextlib import contextmanager
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -44,9 +45,25 @@ def create_app() -> Flask:
                     password=os.getenv("DB_PASSWORD", ""),
                     database=os.getenv("DB_NAME", "licensing_db")
                 )
-        except Exception as e:
+        except mysql.connector.Error as e:
             logger.error(f"Failed to connect to database: {e}")
             raise
+        except Exception as e:
+            logger.error(f"Unexpected error connecting to database: {e}")
+            raise
+
+    @contextmanager
+    def get_db_connection_with_transaction():
+        """Context manager for database connections with automatic rollback on error."""
+        conn = get_db_connection()
+        try:
+            yield conn
+            conn.commit()
+        except Exception:
+            conn.rollback()
+            raise
+        finally:
+            conn.close()
     
     # Initialize database schema
     def init_schema():
@@ -144,53 +161,70 @@ def create_app() -> Flask:
         }
     
     def save_license(company_name, contact_email, max_stores, max_questionnaires, features, expiry_date):
+        """Save a new license with validation."""
+        # Input validation
+        if not company_name or not company_name.strip():
+            logger.error("Company name is required")
+            return None
+        if max_stores < 0 or max_questionnaires < 0:
+            logger.error("max_stores and max_questionnaires must be non-negative")
+            return None
+        if contact_email and "@" not in contact_email:
+            logger.error("Invalid email format")
+            return None
+        
         try:
-            conn = get_db_connection()
-            cursor = conn.cursor()
-            
-            license_key = generate_license_key()
-            api_key = generate_api_key()
-            license_key_hash = hash_key(license_key)
-            
-            cursor.execute(
-                """
-                INSERT INTO licenses (license_key, license_key_hash, company_name, contact_email, 
-                                     max_stores, max_questionnaires, features, expiry_date, api_key)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
-                """,
-                (license_key, license_key_hash, company_name, contact_email, 
-                 max_stores, max_questionnaires, json.dumps(features), expiry_date, api_key)
-            )
-            
-            conn.commit()
-            conn.close()
-            return {"license_key": license_key, "api_key": api_key}
+            with get_db_connection_with_transaction() as conn:
+                cursor = conn.cursor()
+                
+                license_key = generate_license_key()
+                api_key = generate_api_key()
+                license_key_hash = hash_key(license_key)
+                
+                cursor.execute(
+                    """
+                    INSERT INTO licenses (license_key, license_key_hash, company_name, contact_email, 
+                                         max_stores, max_questionnaires, features, expiry_date, api_key)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    """,
+                    (license_key, license_key_hash, company_name.strip(), contact_email, 
+                     max_stores, max_questionnaires, json.dumps(features), expiry_date, api_key)
+                )
+                
+                return {"license_key": license_key, "api_key": api_key}
+        except mysql.connector.Error as e:
+            logger.error(f"Database error saving license: {e}")
+            return None
         except Exception as e:
-            logger.error(f"Error saving license: {e}")
+            logger.error(f"Unexpected error saving license: {e}")
             return None
     
     def toggle_license(license_id):
+        """Toggle license active status."""
         try:
-            conn = get_db_connection()
-            cursor = conn.cursor()
-            cursor.execute("UPDATE licenses SET is_active = NOT is_active WHERE id = %s", (license_id,))
-            conn.commit()
-            conn.close()
+            with get_db_connection_with_transaction() as conn:
+                cursor = conn.cursor()
+                cursor.execute("UPDATE licenses SET is_active = NOT is_active WHERE id = %s", (license_id,))
             return True
+        except mysql.connector.Error as e:
+            logger.error(f"Database error toggling license: {e}")
+            return False
         except Exception as e:
-            logger.error(f"Error toggling license: {e}")
+            logger.error(f"Unexpected error toggling license: {e}")
             return False
     
     def delete_license(license_id):
+        """Delete a license by ID."""
         try:
-            conn = get_db_connection()
-            cursor = conn.cursor()
-            cursor.execute("DELETE FROM licenses WHERE id = %s", (license_id,))
-            conn.commit()
-            conn.close()
+            with get_db_connection_with_transaction() as conn:
+                cursor = conn.cursor()
+                cursor.execute("DELETE FROM licenses WHERE id = %s", (license_id,))
             return True
+        except mysql.connector.Error as e:
+            logger.error(f"Database error deleting license: {e}")
+            return False
         except Exception as e:
-            logger.error(f"Error deleting license: {e}")
+            logger.error(f"Unexpected error deleting license: {e}")
             return False
     
     # Routes

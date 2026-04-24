@@ -506,13 +506,15 @@ class EmailConfig:
         # Create logs directory if it doesn't exist
         os.makedirs('email_logs', exist_ok=True)
         
-        # Append to log file
+        # Append to log file with proper error handling
         log_file = 'email_logs/email_sent_log.json'
         try:
-            with open(log_file, 'a') as f:
+            with open(log_file, 'a', encoding='utf-8') as f:
                 f.write(json.dumps(log_entry) + '\n')
+        except IOError as e:
+            logger.error(f"Failed to write email log (IOError): {e}")
         except Exception as e:
-            print(f"Failed to log email: {e}")
+            logger.error(f"Failed to log email: {e}")
     
     def send_bulk_feedback_reply(self, email_list, customer_names, reply_message, store_name, 
                                feedback_summaries, template_type='standard'):
@@ -560,23 +562,35 @@ class EmailConfig:
         seven_days_ago = datetime.now() - timedelta(days=7)
         
         try:
-            with open(log_file, 'r') as f:
+            with open(log_file, 'r', encoding='utf-8') as f:
                 for line in f:
                     if line.strip():
-                        log_entry = json.loads(line.strip())
-                        stats['total_emails'] += 1
-                        
-                        # Check if within last 7 days
-                        log_time = datetime.fromisoformat(log_entry['timestamp'])
-                        if log_time >= seven_days_ago:
-                            stats['last_7_days'] += 1
-                        
-                        stats['by_template'][log_entry['template_type']] += 1
-                        stats['by_store'][log_entry['store_name']] += 1
+                        try:
+                            log_entry = json.loads(line.strip())
+                            stats['total_emails'] += 1
+                            
+                            # Check if within last 7 days
+                            log_time = datetime.fromisoformat(log_entry['timestamp'])
+                            if log_time >= seven_days_ago:
+                                stats['last_7_days'] += 1
+                            
+                            stats['by_template'][log_entry['template_type']] += 1
+                            stats['by_store'][log_entry['store_name']] += 1
+                        except (json.JSONDecodeError, KeyError, ValueError) as e:
+                            logger.warning(f"Skipping malformed log entry: {e}")
+                            continue
+        except IOError as e:
+            logger.error(f"Failed to read email logs (IOError): {e}")
         except Exception as e:
-            print(f"Failed to read email logs: {e}")
+            logger.error(f"Unexpected error reading email logs: {e}")
         
-        return stats
+        # Convert defaultdicts to regular dicts for JSON serialization
+        return {
+            'total_emails': stats['total_emails'],
+            'last_7_days': stats['last_7_days'],
+            'by_template': dict(stats['by_template']),
+            'by_store': dict(stats['by_store'])
+        }
 
 # Initialize email config
 email_config = EmailConfig()
