@@ -33,8 +33,22 @@ def create_app() -> Flask:
     # Database configuration
     def get_db_connection() -> MySQLConnection:
         try:
-            # Use MYSQL_URL or individual variables
-            if os.getenv("MYSQL_URL"):
+            # Check for Railway's DATABASE_URL first
+            if os.getenv("DATABASE_URL"):
+                import urllib.parse
+                db_url = os.getenv("DATABASE_URL")
+                parsed = urllib.parse.urlparse(db_url)
+                # Railway DATABASE_URL format: mysql://user:password@host:port/database
+                return mysql.connector.connect(
+                    host=parsed.hostname,
+                    port=parsed.port if parsed.port else 3306,
+                    user=parsed.username,
+                    password=parsed.password,
+                    database=parsed.path[1:] if parsed.path else "licensing_db",
+                    connect_timeout=10
+                )
+            # Then check for MYSQL_URL
+            elif os.getenv("MYSQL_URL"):
                 import urllib.parse
                 db_url = os.getenv("MYSQL_URL")
                 parsed = urllib.parse.urlparse(db_url)
@@ -46,6 +60,7 @@ def create_app() -> Flask:
                     database=parsed.path[1:] if parsed.path else "licensing_db",
                     connect_timeout=10
                 )
+            # Fall back to individual variables
             else:
                 return mysql.connector.connect(
                     host=os.getenv("DB_HOST", "localhost"),
