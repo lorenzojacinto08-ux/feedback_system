@@ -22,35 +22,35 @@ PURPOSE: This is the main "shell" for all Admin pages. It contains the
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
       :root {
-        /* Primary Colors - Stripe-inspired Gradient Theme */
-        --primary-50: #f5f7ff;
-        --primary-100: #eef1ff;
-        --primary-200: #e0e6ff;
-        --primary-300: #c9d4ff;
-        --primary-400: #a8b8ff;
-        --primary-500: #7a92ff;
-        --primary-600: #635bff;
-        --primary-700: #0a2540;
-        --primary-800: #111439;
-        --primary-900: #0a2540;
+        /* Primary Colors - Teal Theme */
+        --primary-50: #e0f5f5;
+        --primary-100: #c2ebeb;
+        --primary-200: #a4e0e0;
+        --primary-300: #86d5d5;
+        --primary-400: #68caca;
+        --primary-500: #9fc8c8;
+        --primary-600: #298c8c;
+        --primary-700: #1a6a6a;
+        --primary-800: #0b4848;
+        --primary-900: #002626;
 
-        /* Secondary Accent - Purple/Blue Gradient */
-        --accent-50: #f8f8f9;
-        --accent-100: #f0f2f5;
-        --accent-200: #e5e9f2;
-        --accent-300: #d1d9e6;
-        --accent-400: #b8c5e0;
-        --accent-500: #9ab6db;
-        --accent-600: #635bff;
-        --accent-700: #4a4fd9;
-        --accent-800: #3a3cb8;
-        --accent-900: #2d2e99;
+        /* Secondary Accent - Darker Teal */
+        --accent-50: #e6f2f2;
+        --accent-100: #cce5e5;
+        --accent-200: #b3d8d8;
+        --accent-300: #99cccc;
+        --accent-400: #80bfbf;
+        --accent-500: #66b3b3;
+        --accent-600: #4da6a6;
+        --accent-700: #349999;
+        --accent-800: #1b8c8c;
+        --accent-900: #027f7f;
 
-        /* Header Color - Dark Blue */
-        --header-color: #111439;
+        /* Header Color - Dark Teal */
+        --header-color: #1a6a6a;
 
-        /* Background Color - White Lilac */
-        --bg-color: #F8F8F9;
+        /* Background Color - Light Teal */
+        --bg-color: #e0f5f5;
 
         /* Neutral Colors */
         --neutral-50: #ffffff;
@@ -62,8 +62,8 @@ PURPOSE: This is the main "shell" for all Admin pages. It contains the
         --neutral-600: #475569;
         --neutral-700: #334155;
         --neutral-800: #1e293b;
-        --neutral-900: #0a2540;
-        --primary-neutral: #0a2540;
+        --neutral-900: #0f172a;
+        --primary-neutral: #0f172a;
         --accent-neutral: #1e293b;
       }
 
@@ -94,7 +94,7 @@ PURPOSE: This is the main "shell" for all Admin pages. It contains the
         background: linear-gradient(
           135deg,
           var(--header-color) 0%,
-          var(--primary-900) 100%
+          var(--primary-800) 100%
         );
         color: var(--neutral-200);
         box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
@@ -146,7 +146,7 @@ PURPOSE: This is the main "shell" for all Admin pages. It contains the
 
       /* Notification item styles */
       .bg-primary-light {
-        background-color: rgba(99, 91, 255, 0.1);
+        background-color: rgba(41, 140, 140, 0.1);
       }
 
       .grayscale {
@@ -200,14 +200,14 @@ PURPOSE: This is the main "shell" for all Admin pages. It contains the
 
       .store-card:hover {
         transform: translateY(-4px);
-        box-shadow: 0 12px 24px rgba(17, 20, 57, 0.15);
+        box-shadow: 0 12px 24px rgba(26, 106, 106, 0.15);
         border-color: var(--primary-500);
       }
 
       .card {
         border: 1px solid var(--neutral-200);
         border-radius: 12px;
-        box-shadow: 0 2px 8px rgba(17, 20, 57, 0.08);
+        box-shadow: 0 2px 8px rgba(26, 106, 106, 0.08);
         background: white;
       }
 
@@ -226,7 +226,7 @@ PURPOSE: This is the main "shell" for all Admin pages. It contains the
 
       .btn-primary:hover {
         transform: translateY(-1px);
-        box-shadow: 0 4px 12px rgba(99, 91, 255, 0.4);
+        box-shadow: 0 4px 12px rgba(41, 140, 140, 0.4);
       }
 
       .btn-outline-primary {
@@ -257,7 +257,7 @@ PURPOSE: This is the main "shell" for all Admin pages. It contains the
       .form-control:focus,
       .form-select:focus {
         border-color: var(--primary-600);
-        box-shadow: 0 0 0 3px rgba(99, 91, 255, 0.2);
+        box-shadow: 0 0 0 3px rgba(41, 140, 140, 0.2);
         background-color: white;
       }
 
@@ -284,7 +284,7 @@ PURPOSE: This is the main "shell" for all Admin pages. It contains the
         background-color: var(--primary-50);
         color: var(--primary-600);
         transform: translateY(-1px);
-        box-shadow: 0 2px 8px rgba(99, 91, 255, 0.2);
+        box-shadow: 0 2px 8px rgba(41, 140, 140, 0.2);
       }
 
       .topnav-link.active {
@@ -309,7 +309,7 @@ PURPOSE: This is the main "shell" for all Admin pages. It contains the
         font-weight: 400;
       }
 
-      /* Stripe-inspired gradient icons */
+      /* Teal transparent icons */
       .bi:not(.star-btn .bi) {
         color: var(--primary-600) !important;
         opacity: 0.8;
