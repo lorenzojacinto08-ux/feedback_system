@@ -770,11 +770,12 @@ def create_app() -> Flask:
             
             if user_id:
                 # For client users, only show their own stores
+                logger.info(f"Fetching stores for user_id: {user_id}")
                 cursor.execute(
                     """
                     SELECT id, store_name, address, city, province, postal_code,
                            contact_number, email, store_manager_name, manager_contact,
-                           store_type, status, created_at, access_token, subdomain
+                           store_type, status, created_at, access_token, subdomain, user_id
                     FROM stores
                     WHERE user_id = %s
                     ORDER BY id ASC
@@ -783,16 +784,18 @@ def create_app() -> Flask:
                 )
             else:
                 # For admin/dev/superadmin, show all stores
+                logger.info("Fetching all stores (no user_id filter)")
                 cursor.execute(
                     """
                     SELECT id, store_name, address, city, province, postal_code,
                            contact_number, email, store_manager_name, manager_contact,
-                           store_type, status, created_at, access_token, subdomain
+                           store_type, status, created_at, access_token, subdomain, user_id
                     FROM stores
                     ORDER BY id ASC
                     """
                 )
             rows = cursor.fetchall()
+            logger.info(f"Fetched {len(rows)} stores")
         finally:
             conn.close()
 
@@ -2623,7 +2626,9 @@ def create_app() -> Flask:
         user = get_user_by_id(session['user_id'])
         # For client users, only show their own stores
         user_id = session['user_id'] if user['role'] == 'user' else None
+        logger.info(f"User {session['user_id']} (role: {user['role']}) viewing stores. Filtering by user_id: {user_id}")
         stores = fetch_stores(user_id=user_id)
+        logger.info(f"User {session['user_id']} sees {len(stores)} stores")
 
         selected_store_id_param = request.args.get("store_id")
         selected_store_id = None
