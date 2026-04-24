@@ -40,10 +40,11 @@ def create_app() -> Flask:
                 parsed = urllib.parse.urlparse(db_url)
                 return mysql.connector.connect(
                     host=parsed.hostname,
-                    port=parsed.port,
+                    port=parsed.port if parsed.port else 3306,
                     user=parsed.username,
                     password=parsed.password,
-                    database=parsed.path[1:]
+                    database=parsed.path[1:] if parsed.path else "licensing_db",
+                    connect_timeout=10
                 )
             else:
                 return mysql.connector.connect(
@@ -51,7 +52,8 @@ def create_app() -> Flask:
                     port=int(os.getenv("DB_PORT", 3306)),
                     user=os.getenv("DB_USER", "root"),
                     password=os.getenv("DB_PASSWORD", ""),
-                    database=os.getenv("DB_NAME", "licensing_db")
+                    database=os.getenv("DB_NAME", "licensing_db"),
+                    connect_timeout=10
                 )
         except mysql.connector.Error as e:
             logger.error(f"Failed to connect to database: {e}")
@@ -107,10 +109,13 @@ def create_app() -> Flask:
                 retries -= 1
                 logger.error(f"Schema initialization failed: {e}. Retries left: {retries}")
                 if retries == 0:
-                    raise
+                    logger.warning("Could not initialize database schema. App will start but database operations may fail.")
             finally:
                 if 'conn' in locals():
-                    conn.close()
+                    try:
+                        conn.close()
+                    except:
+                        pass
     
     # Helper functions
     def fetch_users_from_main_app():
@@ -259,8 +264,18 @@ def create_app() -> Flask:
     # Routes
     @app.route("/")
     def index():
-        licenses = get_all_licenses()
-        users = fetch_users_from_main_app()
+        try:
+            licenses = get_all_licenses()
+        except Exception as e:
+            logger.error(f"Failed to fetch licenses: {e}")
+            licenses = []
+        
+        try:
+            users = fetch_users_from_main_app()
+        except Exception as e:
+            logger.error(f"Failed to fetch users: {e}")
+            users = []
+        
         return render_template("licensing/index.html", licenses=licenses, users=users)
     
     @app.route("/license/add", methods=["POST"])
