@@ -652,6 +652,24 @@ def create_app() -> Flask:
                         conn.commit()
                         logger.info(f"Column {column_name} added successfully")
 
+                # Assign user_id to existing stores that don't have it
+                cursor.execute("SELECT id FROM stores WHERE user_id IS NULL")
+                stores_without_user = cursor.fetchall()
+                if stores_without_user:
+                    logger.info(f"Assigning user_id to {len(stores_without_user)} existing stores...")
+                    # Get the first admin/dev user to assign as owner
+                    cursor.execute("SELECT id FROM users WHERE role IN ('admin', 'dev', 'superadmin') LIMIT 1")
+                    admin_user = cursor.fetchone()
+                    if admin_user:
+                        admin_id = admin_user[0]
+                        for store_row in stores_without_user:
+                            store_id = store_row[0]
+                            cursor.execute("UPDATE stores SET user_id = %s WHERE id = %s", (admin_id, store_id))
+                        conn.commit()
+                        logger.info(f"Assigned {len(stores_without_user)} stores to user {admin_id}")
+                    else:
+                        logger.warning("No admin user found to assign existing stores to")
+
                 # Generate access tokens for existing stores that don't have them
                 import secrets
                 cursor.execute("SELECT id FROM stores WHERE access_token IS NULL OR access_token = ''")
@@ -3410,7 +3428,13 @@ def create_app() -> Flask:
                         cursor = conn.cursor()
                         cursor.execute("SELECT COUNT(*) FROM stores WHERE user_id = %s", (session['user_id'],))
                         current_count = cursor.fetchone()[0]
-                        logger.info(f"User {session['user_id']} has {current_count} stores, max allowed: {max_stores}")
+                        logger.info(f"User {session['user_id']} (role: {user['role']}) has {current_count} stores, max allowed: {max_stores}")
+                        
+                        # Also check total stores for debugging
+                        cursor.execute("SELECT COUNT(*) FROM stores")
+                        total_stores = cursor.fetchone()[0]
+                        logger.info(f"Total stores in database: {total_stores}")
+                        
                         if current_count >= max_stores:
                             flash(f"Your license limit reached. You can only create up to {max_stores} stores. Contact support to upgrade.", "danger")
                             return redirect(url_for("stores_management"))
