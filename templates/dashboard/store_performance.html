@@ -81,11 +81,11 @@ PURPOSE: A dedicated page to view the "Store Performance Details" table, listing
                   <div class="response-badge">
                     {% set response_count = store.total_responses or 0 %}
                     {% if response_count >= 50 %}
-                      <span class="badge bg-success bg-opacity-10 text-success px-3 py-2">
+                      <span class="badge bg-primary bg-opacity-10 text-primary px-3 py-2">
                         {{ response_count }}
                       </span>
                     {% elif response_count >= 20 %}
-                      <span class="badge bg-warning bg-opacity-10 text-warning px-3 py-2">
+                      <span class="badge bg-primary bg-opacity-10 text-primary px-3 py-2">
                         {{ response_count }}
                       </span>
                     {% else %}
@@ -116,13 +116,13 @@ PURPOSE: A dedicated page to view the "Store Performance Details" table, listing
                     {% set rating = store.avg_rating %}
                     <div class="rating-display">
                       {% if rating >= 4.5 %}
-                        <span class="rating-value fw-bold text-success">{{ "%.1f"|format(rating) }}</span>
+                        <span class="rating-value fw-bold text-primary">{{ "%.1f"|format(rating) }}</span>
                       {% elif rating >= 3.5 %}
-                        <span class="rating-value fw-bold text-warning">{{ "%.1f"|format(rating) }}</span>
+                        <span class="rating-value fw-bold text-primary">{{ "%.1f"|format(rating) }}</span>
                       {% elif rating >= 2.5 %}
-                        <span class="rating-value fw-bold text-orange">{{ "%.1f"|format(rating) }}</span>
+                        <span class="rating-value fw-bold text-primary">{{ "%.1f"|format(rating) }}</span>
                       {% else %}
-                        <span class="rating-value fw-bold text-danger">{{ "%.1f"|format(rating) }}</span>
+                        <span class="rating-value fw-bold text-primary">{{ "%.1f"|format(rating) }}</span>
                       {% endif %}
                     </div>
                   {% else %}
