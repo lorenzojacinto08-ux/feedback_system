@@ -3407,6 +3407,7 @@ def create_app() -> Flask:
                         cursor = conn.cursor()
                         cursor.execute("SELECT COUNT(*) FROM stores WHERE user_id = %s", (session['user_id'],))
                         current_count = cursor.fetchone()[0]
+                        logger.info(f"User {session['user_id']} has {current_count} stores, max allowed: {max_stores}")
                         if current_count >= max_stores:
                             flash(f"Your license limit reached. You can only create up to {max_stores} stores. Contact support to upgrade.", "danger")
                             return redirect(url_for("stores_management"))
