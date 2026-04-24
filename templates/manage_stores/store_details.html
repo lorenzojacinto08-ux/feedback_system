@@ -682,18 +682,18 @@ document.addEventListener('DOMContentLoaded', function() {
                     label: 'Number of Ratings',
                     data: {{ rating_distribution|tojson }},
                     backgroundColor: [
-                        '#dc3545',  // 1 star - red
-                        '#fd7e14',  // 2 stars - orange
-                        '#ffc107',  // 3 stars - yellow
-                        '#198754',  // 4 stars - green
-                        '#0d6efd'   // 5 stars - blue
+                        '#e0e6ff',  // 1 star - light purple
+                        '#c9d4ff',  // 2 stars - light purple-blue
+                        '#a8b8ff',  // 3 stars - purple-blue
+                        '#7a92ff',  // 4 stars - medium purple-blue
+                        '#635bff'   // 5 stars - primary purple-blue
                     ],
                     borderColor: [
-                        '#dc3545',
-                        '#fd7e14', 
-                        '#ffc107',
-                        '#198754',
-                        '#0d6efd'
+                        '#e0e6ff',
+                        '#c9d4ff', 
+                        '#a8b8ff',
+                        '#7a92ff',
+                        '#635bff'
                     ],
                     borderWidth: 1
                 }]
@@ -737,8 +737,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 datasets: [{
                     label: 'Feedback Count',
                     data: {{ feedback_trend_data|tojson }},
-                    borderColor: '#0d6efd',
-                    backgroundColor: 'rgba(13, 110, 253, 0.1)',
+                    borderColor: '#635bff',
+                    backgroundColor: 'rgba(99, 91, 255, 0.1)',
                     tension: 0.4
                 }]
             },
@@ -772,20 +772,20 @@ document.addEventListener('DOMContentLoaded', function() {
                     label: 'Total Commendations',
                     data: commendationCounts,
                     backgroundColor: [
-                        '#198754',
-                        '#ffc107',
-                        '#fd7e14',
-                        '#0d6efd',
-                        '#6f42c1',
-                        '#dc3545'
+                        '#635bff',
+                        '#7a92ff',
+                        '#a8b8ff',
+                        '#c9d4ff',
+                        '#e0e6ff',
+                        '#eef1ff'
                     ],
                     borderColor: [
-                        '#198754',
-                        '#ffc107',
-                        '#fd7e14',
-                        '#0d6efd',
-                        '#6f42c1',
-                        '#dc3545'
+                        '#635bff',
+                        '#7a92ff',
+                        '#a8b8ff',
+                        '#c9d4ff',
+                        '#e0e6ff',
+                        '#eef1ff'
                     ],
                     borderWidth: 1
                 }]
