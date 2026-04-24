@@ -22,6 +22,14 @@ def create_app() -> Flask:
     # Configuration
     app.config["SECRET_KEY"] = os.getenv("SECRET_KEY", "licensing-secret-key-change-me")
     
+    # Custom Jinja2 filter for parsing JSON
+    @app.template_filter('from_json')
+    def from_json_filter(s):
+        try:
+            return json.loads(s)
+        except (json.JSONDecodeError, TypeError):
+            return {}
+    
     # Database configuration
     def get_db_connection() -> MySQLConnection:
         try:

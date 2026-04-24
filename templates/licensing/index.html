@@ -6,7 +6,7 @@
     <title>Licensing Portal · Tugon</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
         :root {
             --primary-50: #fff7ed;
@@ -28,229 +28,669 @@
             --neutral-600: #475569;
             --neutral-700: #334155;
             --neutral-800: #1e293b;
-            --neutral-900: #000000;
+            --neutral-900: #0f172a;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
         }
         
         body {
-            background: linear-gradient(135deg, var(--neutral-800) 0%, var(--neutral-900) 100%);
+            background: linear-gradient(135deg, var(--neutral-900) 0%, var(--neutral-800) 50%, var(--neutral-900) 100%);
             min-height: 100vh;
-            padding: 2rem 0;
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            color: var(--neutral-100);
+            overflow-x: hidden;
         }
-        .card {
-            border-radius: 16px;
+        
+        .navbar-custom {
+            background: rgba(30, 41, 59, 0.8);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 1rem 2rem;
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+        
+        .nav-tabs-custom {
             border: none;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            background: rgba(30, 41, 59, 0.5);
+            border-radius: 12px;
+            padding: 0.5rem;
+            gap: 0.5rem;
         }
-        .card-header {
+        
+        .nav-tabs-custom .nav-link {
+            border: none;
+            color: var(--neutral-400);
+            padding: 0.75rem 1.5rem;
+            border-radius: 8px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            background: transparent;
+        }
+        
+        .nav-tabs-custom .nav-link:hover {
+            color: var(--neutral-100);
+            background: rgba(255, 255, 255, 0.05);
+        }
+        
+        .nav-tabs-custom .nav-link.active {
             background: linear-gradient(135deg, var(--primary-500) 0%, var(--primary-600) 100%);
             color: white;
-            border-radius: 16px 16px 0 0 !important;
+            box-shadow: 0 4px 15px rgba(249, 115, 22, 0.4);
         }
-        .btn-primary {
+        
+        .main-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        
+        .card-custom {
+            background: rgba(30, 41, 59, 0.6);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            overflow: hidden;
+        }
+        
+        .card-custom-header {
             background: linear-gradient(135deg, var(--primary-500) 0%, var(--primary-600) 100%);
-            border: none;
+            padding: 1.5rem 2rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
         }
-        .btn-primary:hover {
+        
+        .card-custom-body {
+            padding: 2rem;
+        }
+        
+        .license-card {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 16px;
+            padding: 1.5rem;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .license-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary-500), var(--primary-600));
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        
+        .license-card:hover {
+            background: rgba(255, 255, 255, 0.05);
+            border-color: rgba(249, 115, 22, 0.3);
+            transform: translateY(-2px);
+        }
+        
+        .license-card:hover::before {
+            opacity: 1;
+        }
+        
+        .license-card.inactive {
+            opacity: 0.6;
+        }
+        
+        .license-card.expired {
+            border-color: rgba(239, 68, 68, 0.3);
+        }
+        
+        .license-card.expired::before {
+            background: linear-gradient(90deg, #ef4444, #dc2626);
+            opacity: 1;
+        }
+        
+        .timer-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-size: 0.875rem;
+            font-weight: 600;
+            background: rgba(249, 115, 22, 0.15);
+            color: var(--primary-400);
+            border: 1px solid rgba(249, 115, 22, 0.3);
+        }
+        
+        .timer-badge.expired {
+            background: rgba(239, 68, 68, 0.15);
+            color: #f87171;
+            border-color: rgba(239, 68, 68, 0.3);
+        }
+        
+        .timer-badge.perpetual {
+            background: rgba(34, 197, 94, 0.15);
+            color: #4ade80;
+            border-color: rgba(34, 197, 94, 0.3);
+        }
+        
+        .key-display {
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            padding: 0.75rem 1rem;
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 0.75rem;
+            color: var(--neutral-300);
+            word-break: break-all;
+            position: relative;
+        }
+        
+        .btn-custom {
+            border: none;
+            border-radius: 10px;
+            padding: 0.625rem 1.25rem;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .btn-primary-custom {
+            background: linear-gradient(135deg, var(--primary-500) 0%, var(--primary-600) 100%);
+            color: white;
+            box-shadow: 0 4px 15px rgba(249, 115, 22, 0.4);
+        }
+        
+        .btn-primary-custom:hover {
             background: linear-gradient(135deg, var(--primary-600) 0%, var(--primary-700) 100%);
+            box-shadow: 0 6px 20px rgba(249, 115, 22, 0.5);
+            transform: translateY(-1px);
+        }
+        
+        .btn-outline-custom {
+            background: transparent;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: var(--neutral-300);
+        }
+        
+        .btn-outline-custom:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: rgba(255, 255, 255, 0.3);
+            color: white;
+        }
+        
+        .btn-danger-custom {
+            background: rgba(239, 68, 68, 0.15);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            color: #f87171;
+        }
+        
+        .btn-danger-custom:hover {
+            background: rgba(239, 68, 68, 0.25);
+            border-color: rgba(239, 68, 68, 0.5);
+            color: #fca5a5;
+        }
+        
+        .form-control-custom {
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            padding: 0.75rem 1rem;
+            color: var(--neutral-100);
+            font-size: 0.95rem;
+            transition: all 0.3s ease;
+        }
+        
+        .form-control-custom:focus {
+            background: rgba(0, 0, 0, 0.4);
+            border-color: var(--primary-500);
+            box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.2);
+            color: white;
+        }
+        
+        .form-control-custom::placeholder {
+            color: var(--neutral-500);
+        }
+        
+        .form-label-custom {
+            color: var(--neutral-300);
+            font-weight: 600;
+            font-size: 0.875rem;
+            margin-bottom: 0.5rem;
+        }
+        
+        .form-check-custom .form-check-input {
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 6px;
+        }
+        
+        .form-check-custom .form-check-input:checked {
+            background: linear-gradient(135deg, var(--primary-500) 0%, var(--primary-600) 100%);
+            border-color: var(--primary-500);
+        }
+        
+        .form-check-custom .form-check-label {
+            color: var(--neutral-300);
+            font-weight: 500;
+        }
+        
+        .stat-card {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 16px;
+            padding: 1.5rem;
+            text-align: center;
+        }
+        
+        .stat-value {
+            font-size: 2.5rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, var(--primary-400), var(--primary-500));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .stat-label {
+            color: var(--neutral-400);
+            font-size: 0.875rem;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        
+        .alert-custom {
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 1rem 1.5rem;
+            backdrop-filter: blur(10px);
+        }
+        
+        .alert-custom-success {
+            border-color: rgba(34, 197, 94, 0.3);
+            background: rgba(34, 197, 94, 0.1);
+        }
+        
+        .alert-custom-danger {
+            border-color: rgba(239, 68, 68, 0.3);
+            background: rgba(239, 68, 68, 0.1);
+        }
+        
+        .feature-tag {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+            padding: 0.35rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            background: rgba(34, 197, 94, 0.15);
+            color: #4ade80;
+            border: 1px solid rgba(34, 197, 94, 0.3);
+        }
+        
+        .feature-tag.disabled {
+            background: rgba(148, 163, 184, 0.15);
+            color: var(--neutral-500);
+            border-color: rgba(148, 163, 184, 0.3);
+        }
+        
+        .user-card {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 12px;
+            padding: 1rem;
+            transition: all 0.3s ease;
+        }
+        
+        .user-card:hover {
+            background: rgba(255, 255, 255, 0.05);
+            border-color: rgba(249, 115, 22, 0.3);
+        }
+        
+        .tab-content {
+            display: none;
+        }
+        
+        .tab-content.active {
+            display: block;
+            animation: fadeIn 0.3s ease;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .scrollbar-custom::-webkit-scrollbar {
+            width: 6px;
+        }
+        
+        .scrollbar-custom::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 3px;
+        }
+        
+        .scrollbar-custom::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 3px;
+        }
+        
+        .scrollbar-custom::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.3);
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="row justify-content-center">
-            <div class="col-12 col-lg-10">
-                <div class="card">
-                    <div class="card-header">
-                        <h3 class="mb-0"><i class="bi bi-key-fill me-2"></i>Licensing Portal</h3>
-                        <small class="text-white-50">Manage licenses for all Tugon deployments</small>
+    <nav class="navbar-custom">
+        <div class="d-flex align-items-center justify-content-between w-100">
+            <div class="d-flex align-items-center gap-3">
+                <div class="d-flex align-items-center justify-content-center" style="width: 48px; height: 48px; background: linear-gradient(135deg, var(--primary-500), var(--primary-600)); border-radius: 12px;">
+                    <i class="bi bi-key-fill text-white fs-5"></i>
+                </div>
+                <div>
+                    <h4 class="mb-0 fw-bold">Licensing Portal</h4>
+                    <small class="text-muted">Manage licenses for all Tugon deployments</small>
+                </div>
+            </div>
+            <div class="d-flex gap-3">
+                <div class="stat-card px-4 py-2">
+                    <div class="stat-value" id="totalLicenses">{{ licenses|length }}</div>
+                    <div class="stat-label">Total Licenses</div>
+                </div>
+                <div class="stat-card px-4 py-2">
+                    <div class="stat-value" id="activeLicenses">{{ licenses|selectattr('is_active')|list|length }}</div>
+                    <div class="stat-label">Active</div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="main-container">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-custom alert-custom-{{ 'danger' if category == 'danger' else 'success' }} alert-dismissible fade show mb-4" role="alert">
+                        <div class="d-flex align-items-center gap-2">
+                            <i class="bi bi-{{ 'exclamation-circle' if category == 'danger' else 'check-circle' }}"></i>
+                            <span>{{ message }}</span>
+                        </div>
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
                     </div>
-                    <div class="card-body p-4">
-                        {% with messages = get_flashed_messages(with_categories=true) %}
-                            {% if messages %}
-                                {% for category, message in messages %}
-                                    <div class="alert alert-{{ 'danger' if category == 'danger' else 'success' }} alert-dismissible fade show" role="alert">
-                                        {{ message }}
-                                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+        
+        <div class="card-custom">
+            <div class="card-custom-body">
+                <ul class="nav nav-tabs-custom mb-4" id="licenseTabs" role="tablist">
+                    <li class="nav-item">
+                        <button class="nav-link active" id="licenses-tab" data-bs-toggle="tab" data-bs-target="#licenses-content" type="button" role="tab">
+                            <i class="bi bi-list-check me-2"></i>Licenses
+                        </button>
+                    </li>
+                    <li class="nav-item">
+                        <button class="nav-link" id="create-tab" data-bs-toggle="tab" data-bs-target="#create-content" type="button" role="tab">
+                            <i class="bi bi-plus-circle me-2"></i>Create License
+                        </button>
+                    </li>
+                    <li class="nav-item">
+                        <button class="nav-link" id="users-tab" data-bs-toggle="tab" data-bs-target="#users-content" type="button" role="tab">
+                            <i class="bi bi-people me-2"></i>Users
+                        </button>
+                    </li>
+                </ul>
+                
+                <div class="tab-content">
+                    <!-- Licenses Tab -->
+                    <div class="tab-content active" id="licenses-content">
+                        {% if licenses %}
+                            <div class="row g-4 scrollbar-custom" style="max-height: calc(100vh - 300px); overflow-y: auto; padding-right: 1rem;">
+                                {% for license in licenses %}
+                                    <div class="col-12 col-lg-6 col-xl-4">
+                                        <div class="license-card {% if not license.is_active %}inactive{% endif %} {% if license.expiry_date and license.expiry_date < now() %}expired{% endif %}" data-expiry-date="{{ license.expiry_date }}">
+                                            <div class="d-flex justify-content-between align-items-start mb-3">
+                                                <div>
+                                                    <h5 class="fw-bold mb-1">{{ license.company_name }}</h5>
+                                                    <small class="text-muted">{{ license.contact_email or 'No email' }}</small>
+                                                </div>
+                                                <div class="d-flex gap-2">
+                                                    {% if not license.is_active %}
+                                                        <span class="badge bg-secondary">Inactive</span>
+                                                    {% endif %}
+                                                    {% if license.expiry_date %}
+                                                        <span class="timer-badge" data-expiry="{{ license.expiry_date }}">
+                                                            <i class="bi bi-clock"></i>
+                                                            <span class="timer-text">Loading...</span>
+                                                        </span>
+                                                    {% else %}
+                                                        <span class="timer-badge perpetual">
+                                                            <i class="bi bi-infinity"></i>
+                                                            Perpetual
+                                                        </span>
+                                                    {% endif %}
+                                                </div>
+                                            </div>
+                                            
+                                            <div class="mb-3">
+                                                <small class="form-label-custom d-block">License Key</small>
+                                                <div class="key-display">
+                                                    {{ license.license_key }}
+                                                </div>
+                                            </div>
+                                            
+                                            <div class="mb-3">
+                                                <small class="form-label-custom d-block">API Key</small>
+                                                <div class="key-display">
+                                                    {{ license.api_key }}
+                                                </div>
+                                            </div>
+                                            
+                                            <div class="mb-3">
+                                                <div class="d-flex gap-3 mb-2">
+                                                    <small class="text-muted">
+                                                        <i class="bi bi-shop me-1"></i>{{ license.max_stores if license.max_stores > 0 else 'Unlimited' }} stores
+                                                    </small>
+                                                    <small class="text-muted">
+                                                        <i class="bi bi-file-earmark-text me-1"></i>{{ license.max_questionnaires if license.max_questionnaires > 0 else 'Unlimited' }} questionnaires
+                                                    </small>
+                                                </div>
+                                            </div>
+                                            
+                                            <div class="mb-3">
+                                                <small class="form-label-custom d-block mb-2">Features</small>
+                                                <div class="d-flex flex-wrap gap-2">
+                                                    {% set features = license.features|default('{}')|from_json %}
+                                                    <span class="feature-tag {% if not features.analytics %}disabled{% endif %}">
+                                                        <i class="bi bi-{{ 'bar-chart' if features.analytics else 'x-circle' }}"></i>
+                                                        Analytics
+                                                    </span>
+                                                    <span class="feature-tag {% if not features.reports %}disabled{% endif %}">
+                                                        <i class="bi bi-{{ 'file-earmark-bar-graph' if features.reports else 'x-circle' }}"></i>
+                                                        Reports
+                                                    </span>
+                                                    <span class="feature-tag {% if not features.email_notifications %}disabled{% endif %}">
+                                                        <i class="bi bi-{{ 'envelope' if features.email_notifications else 'x-circle' }}"></i>
+                                                        Email
+                                                    </span>
+                                                    <span class="feature-tag {% if not features.custom_branding %}disabled{% endif %}">
+                                                        <i class="bi bi-{{ 'palette' if features.custom_branding else 'x-circle' }}"></i>
+                                                        Branding
+                                                    </span>
+                                                </div>
+                                            </div>
+                                            
+                                            <div class="d-flex gap-2 mt-3">
+                                                <button class="btn btn-custom btn-outline-custom flex-grow-1" onclick="copyToClipboard('{{ license.license_key }}')">
+                                                    <i class="bi bi-clipboard"></i>
+                                                    Copy Key
+                                                </button>
+                                                <form method="POST" action="{{ url_for('toggle_license_route', license_id=license.id) }}" style="display: inline;">
+                                                    <button class="btn btn-custom btn-outline-custom" type="submit">
+                                                        <i class="bi bi-{{ 'toggle-on' if license.is_active else 'toggle-off' }}"></i>
+                                                    </button>
+                                                </form>
+                                                <form method="POST" action="{{ url_for('delete_license_route', license_id=license.id) }}" onsubmit="return confirm('Delete this license?');" style="display: inline;">
+                                                    <button class="btn btn-custom btn-danger-custom" type="submit">
+                                                        <i class="bi bi-trash"></i>
+                                                    </button>
+                                                </form>
+                                            </div>
+                                        </div>
                                     </div>
                                 {% endfor %}
-                            {% endif %}
-                        {% endwith %}
-                        
-                        <div class="row g-4">
-                            <div class="col-12 col-lg-4">
-                                <div class="card border-0" style="background: var(--neutral-100);">
-                                    <div class="card-body">
-                                        <h5 class="card-title mb-3"><i class="bi bi-people me-2"></i>Pre-Registered Users</h5>
-                                        {% if users %}
-                                        <div class="vstack gap-2" style="max-height: 400px; overflow-y: auto;">
-                                            {% for user in users %}
-                                            <div class="card border-0" style="background: white;">
-                                                <div class="card-body p-3">
-                                                    <div class="d-flex justify-content-between align-items-start">
-                                                        <div class="flex-grow-1">
-                                                            <div class="d-flex align-items-center gap-2 mb-1">
-                                                                <strong>{{ user.username }}</strong>
-                                                                {% if not user.is_active %}
-                                                                <span class="badge rounded-pill bg-secondary">Inactive</span>
-                                                                {% else %}
-                                                                <span class="badge rounded-pill bg-success">Active</span>
-                                                                {% endif %}
-                                                            </div>
-                                                            <small class="text-muted d-block">{{ user.email }}</small>
-                                                            <small class="text-muted">
-                                                                <i class="bi bi-person-badge me-1"></i>{{ user.role }}
-                                                                {% if user.max_stores %}| <i class="bi bi-shop me-1"></i>{{ user.max_stores }} stores{% endif %}
-                                                            </small>
-                                                        </div>
-                                                        <form method="POST" action="{{ url_for('generate_license_for_user', user_id=user.id) }}">
-                                                            <button class="btn btn-sm btn-primary" type="submit" title="Generate License">
-                                                                <i class="bi bi-key"></i>
-                                                            </button>
-                                                        </form>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            {% endfor %}
-                                        </div>
-                                        {% else %}
-                                        <div class="text-center py-4">
-                                            <i class="bi bi-people text-muted" style="font-size: 2rem;"></i>
-                                            <p class="text-muted mt-2">No users found</p>
-                                        </div>
-                                        {% endif %}
-                                    </div>
-                                </div>
                             </div>
-                            
-                            <div class="col-12 col-lg-4">
-                                <div class="card border-0" style="background: var(--neutral-100);">
-                                    <div class="card-body">
-                                        <h5 class="card-title mb-3"><i class="bi bi-plus-circle me-2"></i>Create New License</h5>
-                                        <form method="POST" action="{{ url_for('add_license') }}" class="vstack gap-3">
-                                            <div>
-                                                <label class="form-label fw-semibold">Company Name</label>
-                                                <input class="form-control" name="company_name" required placeholder="e.g., Jiangnan Restaurant">
-                                            </div>
-                                            <div>
-                                                <label class="form-label fw-semibold">Contact Email</label>
-                                                <input class="form-control" type="email" name="contact_email" placeholder="contact@company.com">
-                                            </div>
-                                            <div class="row g-3">
-                                                <div class="col-6">
-                                                    <label class="form-label fw-semibold">Max Stores</label>
-                                                    <input class="form-control" type="number" name="max_stores" value="0" min="0">
-                                                    <small class="text-muted">0 = unlimited</small>
-                                                </div>
-                                                <div class="col-6">
-                                                    <label class="form-label fw-semibold">Max Questionnaires</label>
-                                                    <input class="form-control" type="number" name="max_questionnaires" value="0" min="0">
-                                                    <small class="text-muted">0 = unlimited</small>
-                                                </div>
-                                            </div>
-                                            <div>
-                                                <label class="form-label fw-semibold">Expiry Date (Optional)</label>
-                                                <input class="form-control" type="date" name="expiry_date">
-                                                <small class="text-muted">Leave blank for perpetual</small>
-                                            </div>
-                                            <div>
-                                                <label class="fw-semibold mb-2 d-block">Features</label>
-                                                <div class="vstack gap-2">
-                                                    <div class="form-check">
-                                                        <input class="form-check-input" type="checkbox" id="feature_analytics" name="feature_analytics" checked>
-                                                        <label class="form-check-label" for="feature_analytics">Analytics Dashboard</label>
-                                                    </div>
-                                                    <div class="form-check">
-                                                        <input class="form-check-input" type="checkbox" id="feature_reports" name="feature_reports" checked>
-                                                        <label class="form-check-label" for="feature_reports">Reports Generation</label>
-                                                    </div>
-                                                    <div class="form-check">
-                                                        <input class="form-check-input" type="checkbox" id="feature_email_notifications" name="feature_email_notifications">
-                                                        <label class="form-check-label" for="feature_email_notifications">Email Notifications</label>
-                                                    </div>
-                                                    <div class="form-check">
-                                                        <input class="form-check-input" type="checkbox" id="feature_custom_branding" name="feature_custom_branding">
-                                                        <label class="form-check-label" for="feature_custom_branding">Custom Branding</label>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <button class="btn btn-primary" type="submit">
-                                                <i class="bi bi-check-lg me-2"></i>Create License
-                                            </button>
-                                        </form>
+                        {% else %}
+                            <div class="text-center py-5">
+                                <div class="d-flex justify-content-center mb-4">
+                                    <div style="width: 80px; height: 80px; background: rgba(255, 255, 255, 0.05); border-radius: 50%; display: flex; align-items: center; justify-content: center;">
+                                        <i class="bi bi-inbox text-muted fs-2"></i>
                                     </div>
                                 </div>
+                                <h4 class="text-muted mb-2">No licenses yet</h4>
+                                <p class="text-muted">Create your first license to get started</p>
+                                <button class="btn btn-custom btn-primary-custom mt-3" onclick="document.getElementById('create-tab').click()">
+                                    <i class="bi bi-plus-circle me-2"></i>Create License
+                                </button>
                             </div>
-                            
-                            <div class="col-12 col-lg-4">
-                                <div class="card border-0" style="background: var(--neutral-100);">
-                                    <div class="card-body">
-                                        <h5 class="card-title mb-3"><i class="bi bi-list me-2"></i>Existing Licenses</h5>
-                                        {% if licenses %}
-                                        <div class="vstack gap-2" style="max-height: 400px; overflow-y: auto;">
-                                            {% for license in licenses %}
-                                            <div class="card border-0">
-                                                <div class="card-body p-3">
-                                                    <div class="d-flex justify-content-between align-items-start">
-                                                        <div>
-                                                            <div class="d-flex align-items-center gap-2 mb-1">
-                                                                <strong>{{ license.company_name }}</strong>
-                                                                {% if not license.is_active %}
-                                                                <span class="badge rounded-pill bg-secondary">Inactive</span>
-                                                                {% endif %}
-                                                            </div>
-                                                            <small class="text-muted d-block">{{ license.contact_email or 'No email' }}</small>
-                                                            <div class="mt-2">
-                                                                <small class="text-muted fw-semibold">License Key:</small>
-                                                                <div class="d-flex gap-2 align-items-center mt-1">
-                                                                    <code class="flex-grow-1 p-2 bg-white rounded" style="font-size:.75rem; word-break:break-all;">{{ license.license_key }}</code>
-                                                                    <button class="btn btn-sm btn-outline-secondary" onclick="copyToClipboard('{{ license.license_key }}')" style="flex-shrink:0;">
-                                                                        <i class="bi bi-clipboard"></i>
-                                                                    </button>
-                                                                </div>
-                                                            </div>
-                                                            <div class="mt-2">
-                                                                <small class="text-muted fw-semibold">API Key:</small>
-                                                                <div class="d-flex gap-2 align-items-center mt-1">
-                                                                    <code class="flex-grow-1 p-2 bg-white rounded" style="font-size:.75rem; word-break:break-all;">{{ license.api_key }}</code>
-                                                                    <button class="btn btn-sm btn-outline-secondary" onclick="copyToClipboard('{{ license.api_key }}')" style="flex-shrink:0;">
-                                                                        <i class="bi bi-clipboard"></i>
-                                                                    </button>
-                                                                </div>
-                                                            </div>
-                                                            <div class="mt-2">
-                                                                <small class="text-muted">
-                                                                    <i class="bi bi-shop me-1"></i>Max Stores: {{ license.max_stores if license.max_stores > 0 else 'Unlimited' }}
-                                                                </small>
-                                                            </div>
-                                                        </div>
-                                                        <div class="d-flex gap-1">
-                                                            <form method="POST" action="{{ url_for('toggle_license_route', license_id=license.id) }}">
-                                                                <button class="btn btn-sm btn-outline-{{ 'success' if license.is_active else 'secondary' }}" type="submit">
-                                                                    <i class="bi bi-{{ 'toggle-on' if license.is_active else 'toggle-off' }}"></i>
-                                                                </button>
-                                                            </form>
-                                                            <form method="POST" action="{{ url_for('delete_license_route', license_id=license.id) }}" onsubmit="return confirm('Delete this license?');">
-                                                                <button class="btn btn-sm btn-outline-danger" type="submit">
-                                                                    <i class="bi bi-trash"></i>
-                                                                </button>
-                                                            </form>
-                                                        </div>
-                                                    </div>
+                        {% endif %}
+                    </div>
+                    
+                    <!-- Create License Tab -->
+                    <div class="tab-content" id="create-content">
+                        <div class="row justify-content-center">
+                            <div class="col-12 col-lg-8 col-xl-6">
+                                <form method="POST" action="{{ url_for('add_license') }}" class="vstack gap-4">
+                                    <div>
+                                        <label class="form-label-custom">Company Name</label>
+                                        <input class="form-control form-control-custom" name="company_name" required placeholder="e.g., Jiangnan Restaurant">
+                                    </div>
+                                    <div>
+                                        <label class="form-label-custom">Contact Email</label>
+                                        <input class="form-control form-control-custom" type="email" name="contact_email" placeholder="contact@company.com">
+                                    </div>
+                                    <div class="row g-3">
+                                        <div class="col-6">
+                                            <label class="form-label-custom">Max Stores</label>
+                                            <input class="form-control form-control-custom" type="number" name="max_stores" value="0" min="0">
+                                            <small class="text-muted">0 = unlimited</small>
+                                        </div>
+                                        <div class="col-6">
+                                            <label class="form-label-custom">Max Questionnaires</label>
+                                            <input class="form-control form-control-custom" type="number" name="max_questionnaires" value="0" min="0">
+                                            <small class="text-muted">0 = unlimited</small>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label class="form-label-custom">Expiry Date (Optional)</label>
+                                        <input class="form-control form-control-custom" type="date" name="expiry_date">
+                                        <small class="text-muted">Leave blank for perpetual license</small>
+                                    </div>
+                                    <div>
+                                        <label class="form-label-custom mb-3 d-block">Features</label>
+                                        <div class="row g-3">
+                                            <div class="col-6">
+                                                <div class="form-check form-check-custom">
+                                                    <input class="form-check-input" type="checkbox" id="feature_analytics" name="feature_analytics" checked>
+                                                    <label class="form-check-label" for="feature_analytics">
+                                                        <i class="bi bi-bar-chart me-2"></i>Analytics Dashboard
+                                                    </label>
                                                 </div>
                                             </div>
-                                            {% endfor %}
+                                            <div class="col-6">
+                                                <div class="form-check form-check-custom">
+                                                    <input class="form-check-input" type="checkbox" id="feature_reports" name="feature_reports" checked>
+                                                    <label class="form-check-label" for="feature_reports">
+                                                        <i class="bi bi-file-earmark-bar-graph me-2"></i>Reports Generation
+                                                    </label>
+                                                </div>
+                                            </div>
+                                            <div class="col-6">
+                                                <div class="form-check form-check-custom">
+                                                    <input class="form-check-input" type="checkbox" id="feature_email_notifications" name="feature_email_notifications">
+                                                    <label class="form-check-label" for="feature_email_notifications">
+                                                        <i class="bi bi-envelope me-2"></i>Email Notifications
+                                                    </label>
+                                                </div>
+                                            </div>
+                                            <div class="col-6">
+                                                <div class="form-check form-check-custom">
+                                                    <input class="form-check-input" type="checkbox" id="feature_custom_branding" name="feature_custom_branding">
+                                                    <label class="form-check-label" for="feature_custom_branding">
+                                                        <i class="bi bi-palette me-2"></i>Custom Branding
+                                                    </label>
+                                                </div>
+                                            </div>
                                         </div>
-                                        {% else %}
-                                        <div class="text-center py-4">
-                                            <i class="bi bi-inbox text-muted" style="font-size: 2rem;"></i>
-                                            <p class="text-muted mt-2">No licenses yet</p>
-                                        </div>
-                                        {% endif %}
                                     </div>
-                                </div>
+                                    <button class="btn btn-custom btn-primary-custom w-100 py-3" type="submit">
+                                        <i class="bi bi-check-lg me-2"></i>Create License
+                                    </button>
+                                </form>
                             </div>
                         </div>
+                    </div>
+                    
+                    <!-- Users Tab -->
+                    <div class="tab-content" id="users-content">
+                        {% if users %}
+                            <div class="row g-3 scrollbar-custom" style="max-height: calc(100vh - 300px); overflow-y: auto; padding-right: 1rem;">
+                                {% for user in users %}
+                                    <div class="col-12 col-md-6 col-lg-4">
+                                        <div class="user-card">
+                                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                                <div class="d-flex align-items-center gap-2">
+                                                    <div style="width: 40px; height: 40px; background: linear-gradient(135deg, var(--primary-500), var(--primary-600)); border-radius: 50%; display: flex; align-items: center; justify-content: center;">
+                                                        <i class="bi bi-person-fill text-white"></i>
+                                                    </div>
+                                                    <div>
+                                                        <strong class="d-block">{{ user.username }}</strong>
+                                                        <small class="text-muted">{{ user.email }}</small>
+                                                    </div>
+                                                </div>
+                                                <span class="badge rounded-pill {% if user.is_active %}bg-success{% else %}bg-secondary{% endif %}">
+                                                    {{ 'Active' if user.is_active else 'Inactive' }}
+                                                </span>
+                                            </div>
+                                            <div class="d-flex gap-3 mb-3">
+                                                <small class="text-muted">
+                                                    <i class="bi bi-person-badge me-1"></i>{{ user.role }}
+                                                </small>
+                                                {% if user.max_stores %}
+                                                    <small class="text-muted">
+                                                        <i class="bi bi-shop me-1"></i>{{ user.max_stores }} stores
+                                                    </small>
+                                                {% endif %}
+                                            </div>
+                                            <form method="POST" action="{{ url_for('generate_license_for_user', user_id=user.id) }}">
+                                                <button class="btn btn-custom btn-primary-custom w-100" type="submit">
+                                                    <i class="bi bi-key me-2"></i>Generate License
+                                                </button>
+                                            </form>
+                                        </div>
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        {% else %}
+                            <div class="text-center py-5">
+                                <div class="d-flex justify-content-center mb-4">
+                                    <div style="width: 80px; height: 80px; background: rgba(255, 255, 255, 0.05); border-radius: 50%; display: flex; align-items: center; justify-content: center;">
+                                        <i class="bi bi-people text-muted fs-2"></i>
+                                    </div>
+                                </div>
+                                <h4 class="text-muted mb-2">No users found</h4>
+                                <p class="text-muted">Users from the main application will appear here</p>
+                            </div>
+                        {% endif %}
                     </div>
                 </div>
             </div>
@@ -259,13 +699,95 @@
     
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-    function copyToClipboard(text) {
-        navigator.clipboard.writeText(text).then(() => {
-            alert('Copied to clipboard!');
-        }).catch(err => {
-            console.error('Failed to copy: ', err);
+        function copyToClipboard(text) {
+            navigator.clipboard.writeText(text).then(() => {
+                // Show toast notification
+                const toast = document.createElement('div');
+                toast.style.cssText = `
+                    position: fixed;
+                    bottom: 20px;
+                    right: 20px;
+                    background: linear-gradient(135deg, #22c55e, #16a34a);
+                    color: white;
+                    padding: 1rem 1.5rem;
+                    border-radius: 12px;
+                    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+                    z-index: 9999;
+                    animation: slideIn 0.3s ease;
+                    font-weight: 600;
+                `;
+                toast.innerHTML = '<i class="bi bi-check-circle me-2"></i>Copied to clipboard!';
+                document.body.appendChild(toast);
+                setTimeout(() => {
+                    toast.style.animation = 'slideOut 0.3s ease';
+                    setTimeout(() => toast.remove(), 300);
+                }, 2000);
+            }).catch(err => {
+                console.error('Failed to copy: ', err);
+            });
+        }
+        
+        // Tab switching functionality
+        document.querySelectorAll('#licenseTabs .nav-link').forEach(tab => {
+            tab.addEventListener('click', function() {
+                document.querySelectorAll('#licenseTabs .nav-link').forEach(t => t.classList.remove('active'));
+                document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+                this.classList.add('active');
+                const targetId = this.getAttribute('data-bs-target');
+                document.querySelector(targetId).classList.add('active');
+            });
         });
-    }
+        
+        // Countdown timer for licenses
+        function updateTimers() {
+            document.querySelectorAll('.timer-badge[data-expiry]').forEach(badge => {
+                const expiryDate = new Date(badge.getAttribute('data-expiry'));
+                const now = new Date();
+                const diff = expiryDate - now;
+                
+                if (diff <= 0) {
+                    badge.classList.add('expired');
+                    badge.querySelector('.timer-text').textContent = 'Expired';
+                    badge.closest('.license-card')?.classList.add('expired');
+                } else {
+                    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+                    const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+                    const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+                    
+                    let timeText = '';
+                    if (days > 0) {
+                        timeText = `${days}d ${hours}h`;
+                    } else if (hours > 0) {
+                        timeText = `${hours}h ${minutes}m`;
+                    } else if (minutes > 0) {
+                        timeText = `${minutes}m ${seconds}s`;
+                    } else {
+                        timeText = `${seconds}s`;
+                    }
+                    
+                    badge.querySelector('.timer-text').textContent = timeText;
+                }
+            });
+        }
+        
+        // Update timers every second
+        updateTimers();
+        setInterval(updateTimers, 1000);
+        
+        // Add CSS animations
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes slideIn {
+                from { transform: translateX(100%); opacity: 0; }
+                to { transform: translateX(0); opacity: 1; }
+            }
+            @keyframes slideOut {
+                from { transform: translateX(0); opacity: 1; }
+                to { transform: translateX(100%); opacity: 0; }
+            }
+        `;
+        document.head.appendChild(style);
     </script>
 </body>
 </html>
