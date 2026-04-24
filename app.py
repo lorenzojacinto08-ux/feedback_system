@@ -640,7 +640,8 @@ def create_app() -> Flask:
                     ("status", "ENUM('active', 'inactive', 'pending') DEFAULT 'active'"),
                     ("logo_url", "VARCHAR(500)"),
                     ("access_token", "VARCHAR(100) UNIQUE"),
-                    ("subdomain", "VARCHAR(100) UNIQUE")
+                    ("subdomain", "VARCHAR(100) UNIQUE"),
+                    ("user_id", "INT")
                 ]
                 
                 for column_name, column_type in store_columns:
@@ -794,7 +795,8 @@ def create_app() -> Flask:
         store_type: str | None = None,
         status: str = "active",
         logo_url: str | None = None,
-        subdomain: str | None = None
+        subdomain: str | None = None,
+        user_id: int | None = None
     ) -> int:
         import secrets
         access_token = secrets.token_urlsafe(32)
@@ -813,14 +815,14 @@ def create_app() -> Flask:
                 INSERT INTO stores (
                     store_name, address, city, province, postal_code,
                     contact_number, email, store_manager_name, manager_contact,
-                    store_type, status, logo_url, access_token, subdomain
+                    store_type, status, logo_url, access_token, subdomain, user_id
                 )
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 """,
                 (
                     store_name, address, city, province, postal_code,
                     contact_number, email, store_manager_name, manager_contact,
-                    store_type, status, logo_url, access_token, subdomain
+                    store_type, status, logo_url, access_token, subdomain, user_id
                 ),
             )
             conn.commit()
@@ -3403,7 +3405,7 @@ def create_app() -> Flask:
                     conn = get_db_connection()
                     try:
                         cursor = conn.cursor()
-                        cursor.execute("SELECT COUNT(*) FROM stores")
+                        cursor.execute("SELECT COUNT(*) FROM stores WHERE user_id = %s", (session['user_id'],))
                         current_count = cursor.fetchone()[0]
                         if current_count >= max_stores:
                             flash(f"Your license limit reached. You can only create up to {max_stores} stores. Contact support to upgrade.", "danger")
@@ -3469,7 +3471,8 @@ def create_app() -> Flask:
             store_type=store_type if store_type else None,
             status=status,
             logo_url=logo_url,
-            subdomain=subdomain if subdomain else None
+            subdomain=subdomain if subdomain else None,
+            user_id=session.get('user_id')
         )
         
         # Log the store addition
