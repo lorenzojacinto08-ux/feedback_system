@@ -271,14 +271,15 @@ def create_app() -> Flask:
         max_questionnaires = int(request.form.get("max_questionnaires", "0"))
         expiry_date_str = request.form.get("expiry_date", "").strip() or None
         user_id = request.form.get("user_id", "").strip() or None
-        
+
+        # All features enabled by default
         features = {
-            "analytics": request.form.get("feature_analytics") == "on",
-            "reports": request.form.get("feature_reports") == "on",
-            "email_notifications": request.form.get("feature_email_notifications") == "on",
-            "custom_branding": request.form.get("feature_custom_branding") == "on",
+            "analytics": True,
+            "reports": True,
+            "email_notifications": True,
+            "custom_branding": True,
         }
-        
+
         expiry_date = None
         if expiry_date_str:
             try:
@@ -286,14 +287,14 @@ def create_app() -> Flask:
             except ValueError:
                 flash("Invalid expiry date", "danger")
                 return redirect(url_for("index"))
-        
+
         result = save_license(company_name, contact_email, max_stores, max_questionnaires, features, expiry_date)
-        
+
         if result:
             flash(f"License created for {company_name}. Key: {result['license_key']}", "success")
         else:
             flash("Failed to create license", "danger")
-        
+
         return redirect(url_for("index"))
 
     @app.route("/license/generate/<int:user_id>", methods=["POST"])
