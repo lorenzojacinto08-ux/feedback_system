@@ -32,69 +32,157 @@
         }
         
         body {
-            background-color: var(--neutral-50);
-            color: var(--neutral-900);
+            background-color: var(--neutral-100);
+            color: var(--neutral-800);
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
             min-height: 100vh;
+            font-size: 0.95rem;
         }
         
         .card {
-            border-radius: 12px;
+            border-radius: 16px;
             border: 1px solid var(--neutral-200);
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05), 0 1px 2px rgba(0, 0, 0, 0.1);
+            transition: box-shadow 0.2s ease;
+        }
+        
+        .card:hover {
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.07), 0 2px 4px rgba(0, 0, 0, 0.05);
         }
         
         .card-header {
             background: linear-gradient(135deg, var(--primary-500) 0%, var(--primary-600) 100%);
             color: white;
-            border-radius: 12px 12px 0 0 !important;
-            padding: 1.5rem;
+            border-radius: 16px 16px 0 0 !important;
+            padding: 1.75rem 2rem;
+            border-bottom: none;
         }
         
         .card-header h3 {
             font-size: 1.5rem;
             font-weight: 700;
             margin: 0;
+            letter-spacing: -0.02em;
         }
         
         .card-header small {
             font-size: 0.875rem;
-            opacity: 0.9;
+            opacity: 0.95;
+            font-weight: 400;
+        }
+        
+        .card-body {
+            padding: 2rem;
         }
         
         .btn-primary {
-            background: var(--primary-500);
-            border-color: var(--primary-500);
+            background: linear-gradient(135deg, var(--primary-500) 0%, var(--primary-600) 100%);
+            border: none;
+            font-weight: 600;
+            padding: 0.625rem 1.25rem;
+            transition: all 0.2s ease;
         }
         
         .btn-primary:hover {
-            background: var(--primary-600);
-            border-color: var(--primary-600);
+            background: linear-gradient(135deg, var(--primary-600) 0%, var(--primary-700) 100%);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(249, 115, 22, 0.3);
+        }
+        
+        .btn-outline-secondary, .btn-outline-success, .btn-outline-danger {
+            border-width: 1.5px;
+            font-weight: 500;
         }
         
         .card-title {
             font-size: 1.125rem;
-            font-weight: 600;
+            font-weight: 700;
             color: var(--neutral-800);
+            margin-bottom: 1rem;
+        }
+        
+        .form-label {
+            font-weight: 600;
+            color: var(--neutral-700);
+            font-size: 0.875rem;
+            margin-bottom: 0.5rem;
+        }
+        
+        .form-control {
+            border: 1px solid var(--neutral-300);
+            border-radius: 10px;
+            padding: 0.75rem 1rem;
+            font-size: 0.95rem;
+            transition: all 0.2s ease;
+        }
+        
+        .form-control:focus {
+            border-color: var(--primary-500);
+            box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.1);
+        }
+        
+        .form-check-input {
+            border-width: 1.5px;
+        }
+        
+        .form-check-input:checked {
+            background-color: var(--primary-500);
+            border-color: var(--primary-500);
+        }
+        
+        .form-check-label {
+            font-weight: 500;
+            color: var(--neutral-700);
         }
         
         code {
             background: var(--neutral-100);
-            border: 1px solid var(--neutral-200);
+            border: 1px solid var(--neutral-300);
             color: var(--neutral-700);
-            padding: 0.5rem;
-            border-radius: 6px;
-            font-size: 0.75rem;
+            padding: 0.5rem 0.75rem;
+            border-radius: 8px;
+            font-size: 0.8rem;
+            font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
         }
         
         .border-0[style*="background: var(--neutral-100)"],
         .border-0[style*="background: white"] {
             background: var(--neutral-50) !important;
             border: 1px solid var(--neutral-200);
+            border-radius: 12px;
         }
         
         .text-muted {
             color: var(--neutral-500) !important;
+            font-weight: 500;
+        }
+        
+        .badge {
+            font-weight: 600;
+            padding: 0.5rem 0.75rem;
+            border-radius: 8px;
+        }
+        
+        .alert {
+            border: none;
+            border-radius: 12px;
+            font-weight: 500;
+        }
+        
+        .alert-success {
+            background: rgba(34, 197, 94, 0.1);
+            color: #16a34a;
+            border: 1px solid rgba(34, 197, 94, 0.2);
+        }
+        
+        .alert-danger {
+            background: rgba(239, 68, 68, 0.1);
+            color: #dc2626;
+            border: 1px solid rgba(239, 68, 68, 0.2);
+        }
+        
+        .vstack gap-2 > .card {
+            margin-bottom: 0;
         }
     </style>
 </head>
