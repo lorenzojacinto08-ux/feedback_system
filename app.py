@@ -2345,13 +2345,37 @@ def create_app() -> Flask:
                 entity_type="user",
                 entity_id=user_id,
                 action="deleted",
-                old_values="User deleted"
+                user_id=session.get('user_id')
             )
         except Exception as e:
             logger.error(f"Error deleting user: {e}")
-            flash("Failed to delete user.", "danger")
-        
+            flash(f"Error deleting user: {e}", "danger")
         return redirect(url_for("admin_users"))
+
+    @app.route("/api/licensing/users", methods=["GET"])
+    def api_licensing_users():
+        """API endpoint for licensing portal to fetch users"""
+        # Simple API key check for security
+        api_key = request.headers.get("X-Licensing-API-Key")
+        if not api_key or api_key != os.getenv("LICENSING_API_KEY", "change-me"):
+            return jsonify({"error": "Unauthorized"}), 401
+        
+        conn = get_db_connection()
+        try:
+            cursor = conn.cursor(dictionary=True)
+            cursor.execute("""
+                SELECT id, username, email, role, max_stores, created_at, is_active
+                FROM users
+                WHERE role IN ('admin', 'user')
+                ORDER BY created_at DESC
+            """)
+            users = cursor.fetchall()
+            return jsonify({"users": users})
+        except Exception as e:
+            logger.error(f"Error fetching users for licensing portal: {e}")
+            return jsonify({"error": str(e)}), 500
+        finally:
+            conn.close()
 
     @app.route("/admin/license-config")
     @role_required('dev', 'superadmin')

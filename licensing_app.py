@@ -105,6 +105,27 @@ def create_app() -> Flask:
                     conn.close()
     
     # Helper functions
+    def fetch_users_from_main_app():
+        """Fetch users from the main application API"""
+        import requests
+        main_app_url = os.getenv("MAIN_APP_URL", "http://localhost:8000")
+        api_key = os.getenv("LICENSING_API_KEY", "change-me")
+        
+        try:
+            response = requests.get(
+                f"{main_app_url}/api/licensing/users",
+                headers={"X-Licensing-API-Key": api_key},
+                timeout=10
+            )
+            if response.status_code == 200:
+                return response.json().get("users", [])
+            else:
+                logger.error(f"Failed to fetch users: {response.status_code}")
+                return []
+        except Exception as e:
+            logger.error(f"Error fetching users from main app: {e}")
+            return []
+
     def generate_license_key() -> str:
         return secrets.token_urlsafe(32)
     
@@ -231,7 +252,8 @@ def create_app() -> Flask:
     @app.route("/")
     def index():
         licenses = get_all_licenses()
-        return render_template("licensing/index.html", licenses=licenses)
+        users = fetch_users_from_main_app()
+        return render_template("licensing/index.html", licenses=licenses, users=users)
     
     @app.route("/license/add", methods=["POST"])
     def add_license():
@@ -240,6 +262,7 @@ def create_app() -> Flask:
         max_stores = int(request.form.get("max_stores", "0"))
         max_questionnaires = int(request.form.get("max_questionnaires", "0"))
         expiry_date_str = request.form.get("expiry_date", "").strip() or None
+        user_id = request.form.get("user_id", "").strip() or None
         
         features = {
             "analytics": request.form.get("feature_analytics") == "on",
@@ -262,6 +285,39 @@ def create_app() -> Flask:
             flash(f"License created for {company_name}. Key: {result['license_key']}", "success")
         else:
             flash("Failed to create license", "danger")
+        
+        return redirect(url_for("index"))
+
+    @app.route("/license/generate/<int:user_id>", methods=["POST"])
+    def generate_license_for_user(user_id):
+        """Generate a license for an existing user from the main app"""
+        users = fetch_users_from_main_app()
+        user = next((u for u in users if u["id"] == user_id), None)
+        
+        if not user:
+            flash("User not found", "danger")
+            return redirect(url_for("index"))
+        
+        company_name = user.get("username", user.get("email", "Unknown"))
+        contact_email = user.get("email")
+        max_stores = user.get("max_stores", 0)
+        max_questionnaires = 0  # Default value
+        
+        features = {
+            "analytics": True,
+            "reports": True,
+            "email_notifications": False,
+            "custom_branding": False,
+        }
+        
+        expiry_date = None
+        
+        result = save_license(company_name, contact_email, max_stores, max_questionnaires, features, expiry_date)
+        
+        if result:
+            flash(f"License generated for {company_name}. Key: {result['license_key']}", "success")
+        else:
+            flash("Failed to generate license", "danger")
         
         return redirect(url_for("index"))
     

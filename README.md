@@ -21,30 +21,44 @@ A comprehensive web-based platform for businesses to collect, manage, and analyz
 ## 📦 Installation
 
 1. **Clone the repository**:
+
    ```bash
    git clone https://github.com/YOUR_USERNAME/feedback_system.git
    cd feedback_system
    ```
 
 2. **Set up a virtual environment**:
+
    ```bash
    python3 -m venv venv
    source venv/bin/activate
    ```
 
 3. **Install dependencies**:
+
    ```bash
    pip install -r requirements.txt
    ```
 
 4. **Configure the environment**:
    Create a `.env` file in the root directory with your database credentials:
+
    ```env
    DB_HOST=localhost
    DB_USER=your_user
    DB_PASSWORD=your_password
    DB_NAME=feedback_system
    DB_PORT=3306
+   SECRET_KEY=change-me
+   LICENSING_API_KEY=change-me
+   MAIN_APP_URL=http://localhost:8000
+   ```
+
+   For the licensing portal, set these additional variables:
+
+   ```env
+   MAIN_APP_URL=http://localhost:8000  # URL of the main feedback system
+   LICENSING_API_KEY=change-me  # Must match the LICENSING_API_KEY in main app
    ```
 
 5. **Initialize the database**:
@@ -58,6 +72,7 @@ A comprehensive web-based platform for businesses to collect, manage, and analyz
 ## 🧪 Testing
 
 Run the automated QA test suite:
+
 ```bash
 source venv/bin/activate && python3 qa_tester.py
 ```
@@ -65,6 +80,7 @@ source venv/bin/activate && python3 qa_tester.py
 ## 📊 Generating Demo Data
 
 To populate the dashboard with realistic simulation data:
+
 ```bash
 source venv/bin/activate && python3 generate_realistic_data.py
 ```
