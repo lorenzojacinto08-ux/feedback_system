@@ -16,34 +16,34 @@
         </div>
         <nav class="d-none d-lg-flex flex-nowrap overflow-hidden">
           <a href="{{ url_for('admin_dashboard') }}" class="text-decoration-none topnav-link px-3 py-2 rounded-2 text-nowrap {% if request.endpoint == 'admin_dashboard' %}active{% endif %}">
-            <i class="bi bi-speedometer2 me-2"></i>Dashboard
+            <i class="bi bi-speedometer2 me-2" style="color: white;"></i>Dashboard
           </a>
           <div class="border-start border-2 mx-2 flex-shrink-0" style="border-color: rgba(255, 255, 255, 0.3); height: 20px; align-self: center;"></div>
           <a href="{{ url_for('stores_management') }}" class="text-decoration-none topnav-link px-3 py-2 rounded-2 text-nowrap {% if request.endpoint == 'stores_management' or 'store' in request.endpoint %}active{% endif %}">
-            <i class="bi bi-shop me-2"></i>Stores
+            <i class="bi bi-shop me-2" style="color: white;"></i>Stores
           </a>
           <div class="border-start border-2 mx-2 flex-shrink-0" style="border-color: rgba(255, 255, 255, 0.3); height: 20px; align-self: center;"></div>
           <a href="{{ url_for('master_questionnaire') }}" class="text-decoration-none topnav-link px-3 py-2 rounded-2 text-nowrap {% if request.endpoint == 'master_questionnaire' %}active{% endif %}">
-            <i class="bi bi-question-square me-2"></i>Survey
+            <i class="bi bi-question-square me-2" style="color: white;"></i>Survey
           </a>
           <div class="border-start border-2 mx-2 flex-shrink-0" style="border-color: rgba(255, 255, 255, 0.3); height: 20px; align-self: center;"></div>
           <a href="{{ url_for('history') }}" class="text-decoration-none topnav-link px-3 py-2 rounded-2 text-nowrap {% if request.endpoint == 'history' %}active{% endif %}">
-            <i class="bi bi-clock-history me-2"></i>History
+            <i class="bi bi-clock-history me-2" style="color: white;"></i>History
           </a>
           {% if session.get('role') != 'user' %}
           <div class="border-start border-2 mx-2 flex-shrink-0" style="border-color: rgba(255, 255, 255, 0.3); height: 20px; align-self: center;"></div>
           <a href="{{ url_for('admin_users') }}" class="text-decoration-none topnav-link px-3 py-2 rounded-2 text-nowrap {% if request.endpoint == 'admin_users' %}active{% endif %}">
-            <i class="bi bi-people me-2"></i>Users
+            <i class="bi bi-people me-2" style="color: white;"></i>Users
           </a>
           {% endif %}
           <div class="border-start border-2 mx-2 flex-shrink-0" style="border-color: rgba(255, 255, 255, 0.3); height: 20px; align-self: center;"></div>
           {% if session.get('role') == 'user' %}
           <a href="{{ url_for('client_license_config') }}" class="text-decoration-none topnav-link px-3 py-2 rounded-2 text-nowrap {% if request.endpoint == 'client_license_config' %}active{% endif %}">
-            <i class="bi bi-key me-2"></i>License
+            <i class="bi bi-key me-2" style="color: white;"></i>License
           </a>
           {% else %}
           <a href="{{ url_for('admin_license_config') }}" class="text-decoration-none topnav-link px-3 py-2 rounded-2 text-nowrap {% if request.endpoint == 'admin_license_config' %}active{% endif %}">
-            <i class="bi bi-key me-2"></i>License
+            <i class="bi bi-key me-2" style="color: white;"></i>License
           </a>
           {% endif %}
         </nav>
@@ -51,7 +51,7 @@
       <div class="d-flex align-items-center flex-shrink-0 ms-3">
         <!-- Notification Bell -->
         <div class="dropdown me-3">
-          <button class="btn btn-link text-muted p-0 position-relative border-0" type="button" id="notificationDropdown" data-bs-toggle="dropdown" aria-expanded="false" style="box-shadow: none;">
+          <button class="btn btn-link text-white p-0 position-relative border-0" type="button" id="notificationDropdown" data-bs-toggle="dropdown" aria-expanded="false" style="box-shadow: none;">
             <i class="bi bi-bell fs-4"></i>
             <span id="notification-badge" class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger d-none" style="font-size: 0.6rem; padding: 0.25em 0.5em; border: 2px solid white;">
               0
@@ -76,8 +76,8 @@
 
         <div class="dropdown">
           <button class="btn btn-light rounded-3 px-3 py-2 d-flex align-items-center" type="button" id="userDropdown" data-bs-toggle="dropdown" aria-expanded="false">
-            <i class="bi bi-person-circle text-muted me-2"></i>
-            <span class="text-muted fw-bold small">
+            <i class="bi bi-person-circle text-dark me-2"></i>
+            <span class="text-dark fw-bold small">
               {% if session.get('username') %}
                 {{ session.get('role', '').title() }}: {{ session.get('username') }}
               {% else %}
