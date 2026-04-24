@@ -347,33 +347,25 @@ def create_app() -> Flask:
     
     @app.route("/license/<int:license_id>/renew", methods=["POST"])
     def renew_license_route(license_id):
-        """Renew a license by extending its expiry date by 1 year"""
+        """Renew a license with a custom expiry date"""
         try:
+            new_expiry_str = request.form.get("new_expiry_date", "").strip()
+            
+            if not new_expiry_str:
+                flash("Please provide an expiry date", "danger")
+                return redirect(url_for("index"))
+            
+            # Parse the new expiry date
+            try:
+                new_expiry = datetime.strptime(new_expiry_str, "%Y-%m-%d").date()
+            except ValueError:
+                flash("Invalid expiry date format", "danger")
+                return redirect(url_for("index"))
+            
             with get_db_connection_with_transaction() as conn:
                 cursor = conn.cursor()
-                # Get current expiry date
-                cursor.execute("SELECT expiry_date FROM licenses WHERE id = %s", (license_id,))
-                result = cursor.fetchone()
                 
-                if not result:
-                    flash("License not found", "danger")
-                    return redirect(url_for("index"))
-                
-                current_expiry = result[0]
-                # Calculate new expiry: if expired, renew from now; if not, extend from current expiry
-                if current_expiry:
-                    if isinstance(current_expiry, date):
-                        base_date = current_expiry if current_expiry > date.today() else date.today()
-                    else:
-                        base_date = datetime.strptime(current_expiry, "%Y-%m-%d").date()
-                        base_date = base_date if base_date > date.today() else date.today()
-                else:
-                    base_date = date.today()
-                
-                # Add 1 year to the base date
-                new_expiry = date(base_date.year + 1, base_date.month, base_date.day)
-                
-                # Update the license
+                # Update the license with the new expiry date
                 cursor.execute(
                     "UPDATE licenses SET expiry_date = %s, is_active = TRUE WHERE id = %s",
                     (new_expiry, license_id)
