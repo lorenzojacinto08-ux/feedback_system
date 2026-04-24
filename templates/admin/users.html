@@ -115,17 +115,17 @@
         </div>
 
         {% if users %}
-        <div class="vstack gap-3">
+        <div class="row g-3">
           {% for user in users %}
-          <div class="card border-0" style="background: var(--neutral-50); border-radius: 12px; border: 1px solid var(--neutral-200);">
-            <div class="card-body p-4">
-              <div class="d-flex justify-content-between align-items-start">
-                <div class="d-flex gap-3">
-                  <div class="d-flex align-items-center justify-content-center rounded-circle" style="width: 48px; height: 48px; min-width: 48px; background: linear-gradient(135deg, #4A90E2, #7ba8ff); color: white; font-size: 1.2rem; font-weight: 700;">
+          <div class="col-12 col-md-6 col-xl-4">
+            <div class="card border-0 h-100" style="background: var(--neutral-50); border-radius: 12px; border: 1px solid var(--neutral-200); transition: all 0.2s ease;">
+              <div class="card-body p-4">
+                <div class="d-flex align-items-start gap-3 mb-3">
+                  <div class="d-flex align-items-center justify-content-center rounded-circle flex-shrink-0" style="width: 48px; height: 48px; background: linear-gradient(135deg, #4A90E2, #7ba8ff); color: white; font-size: 1.2rem; font-weight: 700;">
                     {{ user.username[0] | upper }}
                   </div>
-                  <div>
-                    <div class="d-flex align-items-center gap-2 mb-1">
+                  <div class="flex-grow-1 min-width-0">
+                    <div class="d-flex align-items-center gap-2 mb-1 flex-wrap">
                       <strong style="font-size: 1rem;">{{ user.username }}</strong>
                       {% if user.role == 'dev' %}
                       <span class="badge rounded-pill" style="font-size:.65rem; background: linear-gradient(135deg, #4C1D95, #6D28D9); color: white; border: 1px solid rgba(139, 92, 246, 0.3);">Dev</span>
@@ -140,39 +140,53 @@
                       <span class="badge rounded-pill bg-dark" style="font-size:.65rem;">Inactive</span>
                       {% endif %}
                     </div>
-                    <small class="text-muted">{{ user.email }}</small>
-                    {% if user.role == 'user' and user.max_stores is not none %}
-                    <div class="mt-1">
-                      <small class="text-muted" style="font-size:.7rem;">Max Stores: {{ user.max_stores if user.max_stores > 0 else 'Unlimited' }}</small>
-                    </div>
-                    {% endif %}
-                    {% if user.license_key %}
-                    <div class="mt-1">
-                      <small class="text-success" style="font-size:.7rem;">
-                        <i class="bi bi-check-circle me-1"></i>License Configured
-                      </small>
-                    </div>
-                    {% endif %}
-                    <div class="mt-1">
-                      <small class="text-muted" style="font-size:.7rem;">Created: {{ user.created_at.strftime('%B %d, %Y') }}</small>
-                    </div>
+                    <small class="text-muted text-truncate d-block">{{ user.email }}</small>
                   </div>
                 </div>
-                <div class="d-flex gap-1">
-                  {% if user.id != session.get('user_id') %}
-                  <form method="POST" action="{{ url_for('admin_toggle_user', user_id=user.id) }}" onsubmit="return confirm('Are you sure you want to toggle this user status?');">
-                    <button class="btn btn-sm btn-outline-{{ 'success' if user.is_active else 'secondary' }}" type="submit">
-                      <i class="bi bi-{{ 'toggle-on' if user.is_active else 'toggle-off' }}"></i>
-                    </button>
-                  </form>
-                  {% if session.get('role') == 'dev' %}
-                  <form method="POST" action="{{ url_for('admin_delete_user', user_id=user.id) }}" onsubmit="return confirm('Are you sure you want to delete this user? This action cannot be undone.');">
-                    <button class="btn btn-sm btn-outline-danger" type="submit">
-                      <i class="bi bi-trash"></i>
-                    </button>
-                  </form>
-                  {% endif %}
-                  {% endif %}
+
+                <div class="mb-3">
+                  <div class="d-flex align-items-center gap-2 mb-2">
+                    <small class="text-muted fw-semibold" style="font-size:.7rem; text-transform: uppercase; letter-spacing: 0.5px;">Configuration Status</small>
+                  </div>
+                  <div class="d-flex flex-wrap gap-2">
+                    {% if user.license_key %}
+                    <div class="d-flex align-items-center gap-1">
+                      <i class="bi bi-check-circle-fill text-success" style="font-size:.75rem;"></i>
+                      <small class="text-success" style="font-size:.7rem;">License</small>
+                    </div>
+                    {% else %}
+                    <div class="d-flex align-items-center gap-1">
+                      <i class="bi bi-x-circle-fill text-muted" style="font-size:.75rem;"></i>
+                      <small class="text-muted" style="font-size:.7rem;">No License</small>
+                    </div>
+                    {% endif %}
+                    {% if user.role == 'user' and user.max_stores is not none %}
+                    <div class="d-flex align-items-center gap-1">
+                      <i class="bi bi-building-fill text-primary" style="font-size:.75rem;"></i>
+                      <small class="text-muted" style="font-size:.7rem;">{{ user.max_stores if user.max_stores > 0 else 'Unlimited' }} Stores</small>
+                    </div>
+                    {% endif %}
+                  </div>
+                </div>
+
+                <div class="d-flex justify-content-between align-items-center mt-3 pt-3" style="border-top: 1px solid var(--neutral-200);">
+                  <small class="text-muted" style="font-size:.7rem;">Created: {{ user.created_at.strftime('%B %d, %Y') }}</small>
+                  <div class="d-flex gap-1">
+                    {% if user.id != session.get('user_id') %}
+                    <form method="POST" action="{{ url_for('admin_toggle_user', user_id=user.id) }}" onsubmit="return confirm('Are you sure you want to toggle this user status?');">
+                      <button class="btn btn-sm btn-outline-{{ 'success' if user.is_active else 'secondary' }}" type="submit">
+                        <i class="bi bi-{{ 'toggle-on' if user.is_active else 'toggle-off' }}"></i>
+                      </button>
+                    </form>
+                    {% if session.get('role') == 'dev' %}
+                    <form method="POST" action="{{ url_for('admin_delete_user', user_id=user.id) }}" onsubmit="return confirm('Are you sure you want to delete this user? This action cannot be undone.');">
+                      <button class="btn btn-sm btn-outline-danger" type="submit">
+                        <i class="bi bi-trash"></i>
+                      </button>
+                    </form>
+                    {% endif %}
+                    {% endif %}
+                  </div>
                 </div>
               </div>
             </div>
