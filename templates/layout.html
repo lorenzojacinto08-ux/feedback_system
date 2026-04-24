@@ -46,6 +46,18 @@ PURPOSE: This is the main "shell" for all Admin pages. It contains the
         --accent-800: #1d5188;
         --accent-900: #0e3c6a;
 
+        /* Tertiary Accent - Purple Theme for contrast */
+        --purple-50: #f5f3ff;
+        --purple-100: #ede9fe;
+        --purple-200: #ddd6fe;
+        --purple-300: #c4b5fd;
+        --purple-400: #a78bfa;
+        --purple-500: #8B5CF6;
+        --purple-600: #7C3AED;
+        --purple-700: #6D28D9;
+        --purple-800: #5B21B6;
+        --purple-900: #4C1D95;
+
         /* Header Color - Blue */
         --header-color: #4A90E2;
 
@@ -207,16 +219,11 @@ PURPOSE: This is the main "shell" for all Admin pages. It contains the
       .card {
         border: 1px solid var(--neutral-200);
         border-radius: 12px;
-        box-shadow: 0 2px 8px rgba(26, 106, 106, 0.08);
-        background: white;
       }
 
       .btn-primary {
-        background: linear-gradient(
-          135deg,
-          var(--primary-600) 0%,
-          var(--primary-700) 100%
-        );
+        background: linear-gradient(135deg, var(--purple-500), var(--purple-600));
+        color: white;
         border: none;
         border-radius: 8px;
         padding: 8px 16px;
@@ -226,22 +233,20 @@ PURPOSE: This is the main "shell" for all Admin pages. It contains the
 
       .btn-primary:hover {
         transform: translateY(-1px);
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+        box-shadow: 0 4px 12px rgba(139, 92, 246, 0.4);
       }
 
       .btn-outline-primary {
-        color: var(--primary-600);
-        border-color: var(--primary-300);
+        color: var(--purple-600);
+        border-color: var(--purple-300);
         border-radius: 8px;
         font-weight: 500;
         transition: all 0.2s ease;
       }
 
       .btn-outline-primary:hover {
-        background: var(--primary-600);
-        border-color: var(--primary-600);
-        color: white;
-        transform: translateY(-1px);
+        background: var(--purple-50);
+        color: var(--purple-700);
       }
 
       .form-control,
@@ -256,8 +261,8 @@ PURPOSE: This is the main "shell" for all Admin pages. It contains the
 
       .form-control:focus,
       .form-select:focus {
-        border-color: var(--primary-600);
-        box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.2);
+        border-color: var(--purple-500);
+        box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.2);
         background-color: white;
       }
 
@@ -269,7 +274,15 @@ PURPOSE: This is the main "shell" for all Admin pages. It contains the
       .badge {
         border-radius: 6px;
         font-weight: 500;
+        padding: 0.25rem 0.5rem;
       }
+
+      .badge-primary {
+        background-color: var(--purple-100);
+        color: var(--purple-700);
+        border: 1px solid var(--purple-300);
+      }
+
       .topnav-link {
         color: white;
         text-decoration: none;
