@@ -3415,12 +3415,15 @@ def create_app() -> Flask:
                     timeout=10
                 )
                 
+                logger.info(f"License validation response status: {response.status_code}")
+                
                 if response.status_code != 200 or not response.json().get("valid"):
                     flash("Invalid license. Please contact your administrator.", "danger")
                     return redirect(url_for("client_license_config"))
                 
                 license_data = response.json()
                 max_stores = license_data.get("max_stores", 0)
+                logger.info(f"License data: {license_data}")
                 
                 if max_stores > 0:
                     conn = get_db_connection()
