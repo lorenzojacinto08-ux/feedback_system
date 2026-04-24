@@ -184,6 +184,34 @@
         .vstack gap-2 > .card {
             margin-bottom: 0;
         }
+        
+        .timer-badge {
+            display: inline-block;
+            padding: 0.375rem 0.75rem;
+            border-radius: 8px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            background: var(--neutral-100);
+            border: 1px solid var(--neutral-300);
+        }
+        
+        .timer-badge.expired {
+            background: rgba(239, 68, 68, 0.1);
+            border-color: rgba(239, 68, 68, 0.3);
+            color: #dc2626;
+        }
+        
+        .timer-badge.warning {
+            background: rgba(234, 179, 8, 0.1);
+            border-color: rgba(234, 179, 8, 0.3);
+            color: #ca8a04;
+        }
+        
+        .timer-badge.ok {
+            background: rgba(34, 197, 94, 0.1);
+            border-color: rgba(34, 197, 94, 0.3);
+            color: #16a34a;
+        }
     </style>
 </head>
 <body>
@@ -308,15 +336,33 @@
                                                                     <i class="bi bi-shop me-1"></i>Max Stores: {{ license.max_stores if license.max_stores > 0 else 'Unlimited' }}
                                                                 </small>
                                                             </div>
+                                                            <div class="mt-2">
+                                                                <small class="text-muted fw-semibold">Expiry:</small>
+                                                                {% if license.expiry_date %}
+                                                                    <div class="timer-badge mt-1" data-expiry="{{ license.expiry_date }}">
+                                                                        <span class="timer-text">Loading...</span>
+                                                                    </div>
+                                                                {% else %}
+                                                                    <span class="badge bg-success">Perpetual</span>
+                                                                {% endif %}
+                                                            </div>
+                                                            </div>
                                                         </div>
                                                         <div class="d-flex gap-1">
                                                             <form method="POST" action="{{ url_for('toggle_license_route', license_id=license.id) }}">
-                                                                <button class="btn btn-sm btn-outline-{{ 'success' if license.is_active else 'secondary' }}" type="submit">
+                                                                <button class="btn btn-sm btn-outline-{{ 'success' if license.is_active else 'secondary' }}" type="submit" title="{{ 'Deactivate' if license.is_active else 'Activate' }}">
                                                                     <i class="bi bi-{{ 'toggle-on' if license.is_active else 'toggle-off' }}"></i>
                                                                 </button>
                                                             </form>
+                                                            {% if license.expiry_date %}
+                                                            <form method="POST" action="{{ url_for('renew_license_route', license_id=license.id) }}" onsubmit="return confirm('Renew this license?');">
+                                                                <button class="btn btn-sm btn-outline-primary" type="submit" title="Renew License">
+                                                                    <i class="bi bi-arrow-clockwise"></i>
+                                                                </button>
+                                                            </form>
+                                                            {% endif %}
                                                             <form method="POST" action="{{ url_for('delete_license_route', license_id=license.id) }}" onsubmit="return confirm('Delete this license?');">
-                                                                <button class="btn btn-sm btn-outline-danger" type="submit">
+                                                                <button class="btn btn-sm btn-outline-danger" type="submit" title="Delete License">
                                                                     <i class="bi bi-trash"></i>
                                                                 </button>
                                                             </form>
@@ -351,6 +397,51 @@
             console.error('Failed to copy: ', err);
         });
     }
+    
+    // Countdown timer for licenses
+    function updateTimers() {
+        document.querySelectorAll('.timer-badge[data-expiry]').forEach(badge => {
+            const expiryDate = new Date(badge.getAttribute('data-expiry'));
+            const now = new Date();
+            const diff = expiryDate - now;
+            
+            badge.classList.remove('expired', 'warning', 'ok');
+            
+            if (diff <= 0) {
+                badge.classList.add('expired');
+                badge.querySelector('.timer-text').textContent = 'Expired';
+            } else {
+                const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+                const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+                const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+                
+                let timeText = '';
+                if (days > 0) {
+                    timeText = `${days}d ${hours}h`;
+                } else if (hours > 0) {
+                    timeText = `${hours}h ${minutes}m`;
+                } else if (minutes > 0) {
+                    timeText = `${minutes}m ${seconds}s`;
+                } else {
+                    timeText = `${seconds}s`;
+                }
+                
+                badge.querySelector('.timer-text').textContent = timeText;
+                
+                // Add warning if less than 7 days
+                if (days < 7) {
+                    badge.classList.add('warning');
+                } else {
+                    badge.classList.add('ok');
+                }
+            }
+        });
+    }
+    
+    // Update timers every second
+    updateTimers();
+    setInterval(updateTimers, 1000);
     </script>
 </body>
 </html>

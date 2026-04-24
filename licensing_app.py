@@ -345,6 +345,50 @@ def create_app() -> Flask:
             flash("Failed to delete license", "danger")
         return redirect(url_for("index"))
     
+    @app.route("/license/<int:license_id>/renew", methods=["POST"])
+    def renew_license_route(license_id):
+        """Renew a license by extending its expiry date by 1 year"""
+        try:
+            with get_db_connection_with_transaction() as conn:
+                cursor = conn.cursor()
+                # Get current expiry date
+                cursor.execute("SELECT expiry_date FROM licenses WHERE id = %s", (license_id,))
+                result = cursor.fetchone()
+                
+                if not result:
+                    flash("License not found", "danger")
+                    return redirect(url_for("index"))
+                
+                current_expiry = result[0]
+                # Calculate new expiry: if expired, renew from now; if not, extend from current expiry
+                if current_expiry:
+                    if isinstance(current_expiry, date):
+                        base_date = current_expiry if current_expiry > date.today() else date.today()
+                    else:
+                        base_date = datetime.strptime(current_expiry, "%Y-%m-%d").date()
+                        base_date = base_date if base_date > date.today() else date.today()
+                else:
+                    base_date = date.today()
+                
+                # Add 1 year to the base date
+                new_expiry = date(base_date.year + 1, base_date.month, base_date.day)
+                
+                # Update the license
+                cursor.execute(
+                    "UPDATE licenses SET expiry_date = %s, is_active = TRUE WHERE id = %s",
+                    (new_expiry, license_id)
+                )
+            
+            flash(f"License renewed successfully. New expiry: {new_expiry}", "success")
+        except mysql.connector.Error as e:
+            logger.error(f"Database error renewing license: {e}")
+            flash("Failed to renew license", "danger")
+        except Exception as e:
+            logger.error(f"Unexpected error renewing license: {e}")
+            flash("Failed to renew license", "danger")
+        
+        return redirect(url_for("index"))
+    
     @app.route("/api/validate/<license_key>")
     def api_validate(license_key):
         """API endpoint for validating licenses"""
