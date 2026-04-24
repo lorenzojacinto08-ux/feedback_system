@@ -27,13 +27,33 @@
         {% if user.license_key %}
         <div class="mb-4 p-3 bg-light rounded">
           <h6 class="fw-bold mb-2"><i class="bi bi-info-circle me-2"></i>Your License Key</h6>
-          <div class="d-flex gap-2 align-items-center">
+          <div class="d-flex gap-2 align-items-center mt-1">
             <code class="flex-grow-1 p-2 bg-white rounded" style="font-size:.85rem; word-break:break-all;">{{ user.license_key }}</code>
             <button class="btn btn-sm btn-outline-secondary" onclick="copyLicenseKey('{{ user.license_key }}')">
               <i class="bi bi-clipboard"></i>
             </button>
           </div>
           <p class="small text-muted mt-2 mb-0">Max Stores: {{ user.max_stores if user.max_stores > 0 else 'Unlimited' }}</p>
+          <button class="btn btn-sm btn-outline-primary mt-2" onclick="toggleEditLicense()">
+            <i class="bi bi-pencil me-1"></i>Change License Key
+          </button>
+        </div>
+        <div id="edit_license_form" class="d-none">
+          <form method="POST" action="{{ url_for('client_save_license_config') }}" class="vstack gap-3">
+            <div>
+              <label class="form-label fw-semibold" for="license_key">New License Key</label>
+              <input class="form-control" id="license_key" name="license_key" placeholder="Enter new license key" />
+              <small class="text-muted">Enter the new license key provided by your administrator</small>
+            </div>
+            <div class="d-flex gap-2">
+              <button class="btn btn-primary" type="submit">
+                <i class="bi bi-check-lg me-2"></i>Save New Key
+              </button>
+              <button class="btn btn-outline-secondary" type="button" onclick="toggleEditLicense()">
+                Cancel
+              </button>
+            </div>
+          </form>
         </div>
         {% else %}
         <form method="POST" action="{{ url_for('client_save_license_config') }}" class="vstack gap-3">
@@ -59,6 +79,15 @@ function copyLicenseKey(licenseKey) {
   }).catch(err => {
     console.error('Failed to copy: ', err);
   });
+}
+
+function toggleEditLicense() {
+  const editForm = document.getElementById('edit_license_form');
+  if (editForm.classList.contains('d-none')) {
+    editForm.classList.remove('d-none');
+  } else {
+    editForm.classList.add('d-none');
+  }
 }
 </script>
 {% endblock %}
