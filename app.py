@@ -763,19 +763,35 @@ def create_app() -> Flask:
             "python_version": sys.version
         })
 
-    def fetch_stores() -> List[Dict[str, Any]]:
+    def fetch_stores(user_id: int | None = None) -> List[Dict[str, Any]]:
         conn = get_db_connection()
         try:
             cursor = conn.cursor(dictionary=True)
-            cursor.execute(
-                """
-                SELECT id, store_name, address, city, province, postal_code,
-                       contact_number, email, store_manager_name, manager_contact,
-                       store_type, status, created_at, access_token, subdomain
-                FROM stores
-                ORDER BY id ASC
-                """
-            )
+            
+            if user_id:
+                # For client users, only show their own stores
+                cursor.execute(
+                    """
+                    SELECT id, store_name, address, city, province, postal_code,
+                           contact_number, email, store_manager_name, manager_contact,
+                           store_type, status, created_at, access_token, subdomain
+                    FROM stores
+                    WHERE user_id = %s
+                    ORDER BY id ASC
+                    """,
+                    (user_id,)
+                )
+            else:
+                # For admin/dev/superadmin, show all stores
+                cursor.execute(
+                    """
+                    SELECT id, store_name, address, city, province, postal_code,
+                           contact_number, email, store_manager_name, manager_contact,
+                           store_type, status, created_at, access_token, subdomain
+                    FROM stores
+                    ORDER BY id ASC
+                    """
+                )
             rows = cursor.fetchall()
         finally:
             conn.close()
@@ -2604,7 +2620,10 @@ def create_app() -> Flask:
     @app.route("/admin/stores", methods=["GET"])
     @login_required
     def stores_management():
-        stores = fetch_stores()
+        user = get_user_by_id(session['user_id'])
+        # For client users, only show their own stores
+        user_id = session['user_id'] if user['role'] == 'user' else None
+        stores = fetch_stores(user_id=user_id)
 
         selected_store_id_param = request.args.get("store_id")
         selected_store_id = None
