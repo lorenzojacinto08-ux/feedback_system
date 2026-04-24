@@ -120,52 +120,7 @@
                         {% endwith %}
                         
                         <div class="row g-4">
-                            <div class="col-12 col-lg-4">
-                                <div class="card border-0" style="background: var(--neutral-100);">
-                                    <div class="card-body">
-                                        <h5 class="card-title mb-3"><i class="bi bi-people me-2"></i>Pre-Registered Users</h5>
-                                        {% if users %}
-                                        <div class="vstack gap-2" style="max-height: 400px; overflow-y: auto;">
-                                            {% for user in users %}
-                                            <div class="card border-0" style="background: white;">
-                                                <div class="card-body p-3">
-                                                    <div class="d-flex justify-content-between align-items-start">
-                                                        <div class="flex-grow-1">
-                                                            <div class="d-flex align-items-center gap-2 mb-1">
-                                                                <strong>{{ user.username }}</strong>
-                                                                {% if not user.is_active %}
-                                                                <span class="badge rounded-pill bg-secondary">Inactive</span>
-                                                                {% else %}
-                                                                <span class="badge rounded-pill bg-success">Active</span>
-                                                                {% endif %}
-                                                            </div>
-                                                            <small class="text-muted d-block">{{ user.email }}</small>
-                                                            <small class="text-muted">
-                                                                <i class="bi bi-person-badge me-1"></i>{{ user.role }}
-                                                                {% if user.max_stores %}| <i class="bi bi-shop me-1"></i>{{ user.max_stores }} stores{% endif %}
-                                                            </small>
-                                                        </div>
-                                                        <form method="POST" action="{{ url_for('generate_license_for_user', user_id=user.id) }}">
-                                                            <button class="btn btn-sm btn-primary" type="submit" title="Generate License">
-                                                                <i class="bi bi-key"></i>
-                                                            </button>
-                                                        </form>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            {% endfor %}
-                                        </div>
-                                        {% else %}
-                                        <div class="text-center py-4">
-                                            <i class="bi bi-people text-muted" style="font-size: 2rem;"></i>
-                                            <p class="text-muted mt-2">No users found</p>
-                                        </div>
-                                        {% endif %}
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <div class="col-12 col-lg-4">
+                            <div class="col-12 col-lg-6">
                                 <div class="card border-0" style="background: var(--neutral-100);">
                                     <div class="card-body">
                                         <h5 class="card-title mb-3"><i class="bi bi-plus-circle me-2"></i>Create New License</h5>
@@ -224,7 +179,7 @@
                                 </div>
                             </div>
                             
-                            <div class="col-12 col-lg-4">
+                            <div class="col-12 col-lg-6">
                                 <div class="card border-0" style="background: var(--neutral-100);">
                                     <div class="card-body">
                                         <h5 class="card-title mb-3"><i class="bi bi-list me-2"></i>Existing Licenses</h5>
