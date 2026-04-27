@@ -2394,7 +2394,18 @@ def create_app() -> Flask:
             license_status = None
             if config:
                 try:
-                    license_status = validate_license_from_portal()
+                    import requests
+                    portal_url = config.get("licensing_portal_url") if config else None
+                    if not portal_url:
+                        portal_url = "http://feedbacklicensing-production.up.railway.app"
+                    
+                    response = requests.post(
+                        f"{portal_url}/api/validate/{config['license_key']}",
+                        timeout=10
+                    )
+                    
+                    if response.status_code == 200:
+                        license_status = response.json()
                 except Exception as e:
                     logger.error(f"Error fetching license status: {e}")
                     license_status = None
