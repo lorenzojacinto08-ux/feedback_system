@@ -2489,28 +2489,24 @@ def create_app() -> Flask:
         if user.get('license_key'):
             try:
                 config = get_license_config()
-                if config:
-                    # Validate the user's license key against the portal
-                    import requests
-                    portal_url = config.get("licensing_portal_url") if config else None
-                    if not portal_url:
-                        portal_url = "http://feedbacklicensing-production.up.railway.app"
-                    
-                    logger.info(f"Fetching license status from portal: {portal_url}/api/validate/{user['license_key']}")
-                    response = requests.post(
-                        f"{portal_url}/api/validate/{user['license_key']}",
-                        timeout=10
-                    )
-                    
-                    logger.info(f"License status response status: {response.status_code}")
-                    if response.status_code == 200:
-                        license_status = response.json()
-                        logger.info(f"License status data: {license_status}")
-                        if not license_status.get('valid'):
-                            license_error = license_status.get('message', 'License validation failed')
-                    else:
-                        logger.error(f"License validation failed with status: {response.status_code}")
-                        license_error = f"API error: {response.status_code}"
+                portal_url = (config.get("licensing_portal_url") if config else None) or "http://feedbacklicensing-production.up.railway.app"
+                
+                import requests
+                logger.info(f"Fetching license status from portal: {portal_url}/api/validate/{user['license_key']}")
+                response = requests.post(
+                    f"{portal_url}/api/validate/{user['license_key']}",
+                    timeout=5
+                )
+                
+                logger.info(f"License status response status: {response.status_code}")
+                if response.status_code == 200:
+                    license_status = response.json()
+                    logger.info(f"License status data: {license_status}")
+                    if not license_status.get('valid'):
+                        license_error = license_status.get('message', 'License validation failed')
+                else:
+                    logger.error(f"License validation failed with status: {response.status_code}")
+                    license_error = f"API error: {response.status_code}"
             except Exception as e:
                 logger.error(f"Error fetching license status: {e}")
                 license_error = str(e)
@@ -2581,48 +2577,56 @@ def create_app() -> Flask:
     @app.route("/client/support")
     @login_required
     def client_support():
-        """Client support page — view license, request renewal, submit tickets"""
+        """Client support page — renders instantly, data loads via AJAX"""
         user = get_user_by_id(session['user_id'])
         if user['role'] not in ('user', 'admin', 'superadmin', 'dev'):
             flash("Access denied.", "danger")
             return redirect(url_for("admin_dashboard"))
 
-        license_status = None
-        license_error = None
-        tickets = []
         config = get_license_config()
-        portal_url = (config.get("licensing_portal_url") if config else None) or "http://feedbacklicensing-production.up.railway.app"
-
         license_key = user.get('license_key') or (config.get('license_key') if config else None)
 
-        if license_key:
-            try:
-                import requests as http_requests
-                # Fetch license status
-                resp = http_requests.post(f"{portal_url}/api/validate/{license_key}", timeout=10)
-                if resp.status_code == 200:
-                    license_status = resp.json()
-                    if not license_status.get('valid'):
-                        license_error = license_status.get('message', 'License validation failed')
-                else:
-                    license_error = f"API error: {resp.status_code}"
-            except Exception as e:
-                logger.error(f"Error fetching license status for support: {e}")
-                license_error = "Unable to reach licensing portal"
-
-            # Fetch tickets for this license
-            try:
-                import requests as http_requests
-                resp = http_requests.get(f"{portal_url}/api/tickets/{license_key}", timeout=10)
-                if resp.status_code == 200:
-                    tickets = resp.json().get('tickets', [])
-            except Exception:
-                pass  # Tickets fetch is best-effort
-
         return render_template("client/support.html",
-                               user=user, license_status=license_status,
-                               license_error=license_error, tickets=tickets,
-                               license_key=license_key or '')
+                               user=user, license_key=license_key or '')
+
+    @app.route("/api/support/status")
+    @login_required
+    def api_support_status():
+        """AJAX endpoint — fetch license status + tickets from portal"""
+        user = get_user_by_id(session['user_id'])
+        config = get_license_config()
+        portal_url = (config.get("licensing_portal_url") if config else None) or "http://feedbacklicensing-production.up.railway.app"
+        license_key = user.get('license_key') or (config.get('license_key') if config else None)
+
+        result = {"license_status": None, "license_error": None, "tickets": []}
+
+        if not license_key:
+            return jsonify(result)
+
+        import requests as http_requests
+        # Fetch license status (short timeout)
+        try:
+            resp = http_requests.post(f"{portal_url}/api/validate/{license_key}", timeout=5)
+            if resp.status_code == 200:
+                data = resp.json()
+                result["license_status"] = data
+                if not data.get('valid'):
+                    result["license_error"] = data.get('message', 'License validation failed')
+            else:
+                result["license_error"] = f"API error: {resp.status_code}"
+        except Exception as e:
+            logger.error(f"Error fetching license status: {e}")
+            result["license_error"] = "Unable to reach licensing portal"
+
+        # Fetch tickets (short timeout, best-effort)
+        try:
+            resp = http_requests.get(f"{portal_url}/api/tickets/{license_key}", timeout=5)
+            if resp.status_code == 200:
+                result["tickets"] = resp.json().get('tickets', [])
+        except Exception:
+            pass
+
+        return jsonify(result)
 
     @app.route("/client/support/ticket", methods=["POST"])
     @login_required

@@ -16,7 +16,7 @@
     <div class="card border-0 shadow-lg mb-4">
       <div class="card-body p-4">
         <div class="d-flex align-items-center gap-2 mb-3 pb-3" style="border-bottom:1px solid var(--neutral-200);">
-          <div class="survey-section-icon" style="background:linear-gradient(135deg, rgba(74,144,226,.15) 0%, rgba(74,144,226,.25) 100%); width:40px; height:40px; border-radius:10px; display:flex; align-items:center; justify-content:center;">
+          <div style="background:linear-gradient(135deg, rgba(74,144,226,.15) 0%, rgba(74,144,226,.25) 100%); width:40px; height:40px; border-radius:10px; display:flex; align-items:center; justify-content:center;">
             <i class="bi bi-shield-check" style="color:var(--accent-500) !important;opacity:1; font-size:1.1rem;"></i>
           </div>
           <div>
@@ -25,83 +25,14 @@
           </div>
         </div>
 
-        {% if license_key and license_status %}
-          {% if license_status.get('valid') %}
-          <div class="p-3 rounded mb-3" style="background: linear-gradient(135deg, rgba(34,197,94,.08), rgba(34,197,94,.03)); border:1px solid rgba(34,197,94,.25);">
-            <div class="d-flex align-items-center gap-3">
-              <div class="rounded-circle p-2" style="background:rgba(34,197,94,.15);">
-                <i class="bi bi-check-circle-fill text-success"></i>
-              </div>
-              <div>
-                <h6 class="fw-bold mb-0 text-success" style="font-size:.9rem;">License Active</h6>
-                <small class="text-muted">
-                  {% if license_status.get('expiry_date') %}
-                    Expires: <strong>{{ license_status.expiry_date }}</strong>
-                  {% else %}
-                    Perpetual license
-                  {% endif %}
-                </small>
-              </div>
-            </div>
+        <div id="license-status-area">
+          {% if license_key %}
+          <!-- Loading state -->
+          <div class="text-center py-3" id="license-loading">
+            <div class="spinner-border spinner-border-sm text-muted" role="status"></div>
+            <p class="small text-muted mt-2 mb-0">Checking license...</p>
           </div>
           {% else %}
-          <div class="p-3 rounded mb-3" style="background: linear-gradient(135deg, rgba(239,68,68,.08), rgba(239,68,68,.03)); border:1px solid rgba(239,68,68,.25);">
-            <div class="d-flex align-items-center gap-3">
-              <div class="rounded-circle p-2" style="background:rgba(239,68,68,.15);">
-                <i class="bi bi-x-circle-fill text-danger"></i>
-              </div>
-              <div>
-                <h6 class="fw-bold mb-0 text-danger" style="font-size:.9rem;">{{ license_error or 'License Invalid' }}</h6>
-                <small class="text-muted">Please renew your license or contact support</small>
-              </div>
-            </div>
-          </div>
-          {% endif %}
-
-          <div class="row g-2 mb-3">
-            {% if license_status.get('company_name') %}
-            <div class="col-6">
-              <div class="p-2 rounded" style="background:var(--neutral-100); border:1px solid var(--neutral-200);">
-                <small class="text-muted d-block" style="font-size:.7rem; text-transform:uppercase; letter-spacing:.04em;">Company</small>
-                <span class="fw-semibold" style="font-size:.85rem;">{{ license_status.company_name }}</span>
-              </div>
-            </div>
-            {% endif %}
-            <div class="col-6">
-              <div class="p-2 rounded" style="background:var(--neutral-100); border:1px solid var(--neutral-200);">
-                <small class="text-muted d-block" style="font-size:.7rem; text-transform:uppercase; letter-spacing:.04em;">Max Stores</small>
-                <span class="fw-semibold" style="font-size:.85rem;">{{ license_status.get('max_stores', 0) if license_status.get('max_stores', 0) > 0 else 'Unlimited' }}</span>
-              </div>
-            </div>
-          </div>
-
-          <!-- Renewal Request -->
-          <div class="pt-3" style="border-top:1px solid var(--neutral-200);">
-            <form method="POST" action="{{ url_for('client_request_renewal') }}" class="d-flex gap-2 align-items-end flex-wrap">
-              <input type="hidden" name="license_key" value="{{ license_key }}">
-              <div class="flex-grow-1" style="min-width:180px;">
-                <label class="form-label small fw-semibold mb-1">Contact email for renewal</label>
-                <input type="email" class="form-control form-control-sm" name="contact_email" value="{{ user.email or '' }}" required placeholder="your@email.com">
-              </div>
-              <button type="submit" class="btn btn-sm" style="background:linear-gradient(135deg,#f59e0b,#d97706); color:#fff; border:none; white-space:nowrap;">
-                <i class="bi bi-arrow-clockwise me-1" style="color:#fff !important; opacity:1;"></i>Request Renewal
-              </button>
-            </form>
-          </div>
-
-        {% elif license_key and license_error %}
-          <div class="p-3 rounded mb-3" style="background: linear-gradient(135deg, rgba(239,68,68,.08), rgba(239,68,68,.03)); border:1px solid rgba(239,68,68,.25);">
-            <div class="d-flex align-items-center gap-3">
-              <div class="rounded-circle p-2" style="background:rgba(239,68,68,.15);">
-                <i class="bi bi-exclamation-triangle-fill text-danger"></i>
-              </div>
-              <div>
-                <h6 class="fw-bold mb-0 text-danger" style="font-size:.9rem;">{{ license_error }}</h6>
-                <small class="text-muted">Unable to verify license status</small>
-              </div>
-            </div>
-          </div>
-        {% else %}
           <div class="p-3 rounded text-center" style="background:var(--neutral-100); border:1px solid var(--neutral-200);">
             <i class="bi bi-key text-muted" style="font-size:2rem; opacity:.4;"></i>
             <p class="small text-muted mt-2 mb-1">No license key configured</p>
@@ -109,7 +40,8 @@
               <i class="bi bi-gear me-1"></i>Configure License
             </a>
           </div>
-        {% endif %}
+          {% endif %}
+        </div>
       </div>
     </div>
   </div>
@@ -173,63 +105,151 @@
       </div>
     </div>
 
-    {% if tickets %}
-    <div class="table-responsive">
-      <table class="table table-hover align-middle mb-0" style="font-size:.875rem;">
-        <thead>
-          <tr class="text-muted" style="font-size:.75rem; text-transform:uppercase; letter-spacing:.04em;">
+    <div id="tickets-area">
+      {% if license_key %}
+      <div class="text-center py-3" id="tickets-loading">
+        <div class="spinner-border spinner-border-sm text-muted" role="status"></div>
+        <p class="small text-muted mt-2 mb-0">Loading tickets...</p>
+      </div>
+      {% else %}
+      <div class="text-center py-4">
+        <i class="bi bi-inbox text-muted" style="font-size:2.5rem; opacity:.3;"></i>
+        <p class="text-muted mt-2 mb-0">Configure your license to view tickets.</p>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{% if license_key %}
+<script>
+(function() {
+  const licenseKey = "{{ license_key }}";
+  const userEmail = "{{ user.email or '' }}";
+
+  fetch('/api/support/status')
+    .then(r => r.json())
+    .then(data => {
+      renderLicenseStatus(data);
+      renderTickets(data.tickets || []);
+    })
+    .catch(() => {
+      document.getElementById('license-status-area').innerHTML = `
+        <div class="p-3 rounded" style="background:rgba(239,68,68,.06); border:1px solid rgba(239,68,68,.2);">
+          <div class="d-flex align-items-center gap-2">
+            <i class="bi bi-exclamation-triangle text-danger"></i>
+            <span class="small text-danger fw-semibold">Unable to reach licensing portal</span>
+          </div>
+        </div>`;
+      document.getElementById('tickets-area').innerHTML = `
+        <div class="text-center py-4">
+          <i class="bi bi-inbox text-muted" style="font-size:2.5rem; opacity:.3;"></i>
+          <p class="text-muted mt-2 mb-0">Unable to load tickets.</p>
+        </div>`;
+    });
+
+  function renderLicenseStatus(data) {
+    const area = document.getElementById('license-status-area');
+    const ls = data.license_status;
+
+    if (ls && ls.valid) {
+      const expiry = ls.expiry_date ? `Expires: <strong>${ls.expiry_date}</strong>` : 'Perpetual license';
+      const company = ls.company_name ? `<div class="col-6"><div class="p-2 rounded" style="background:var(--neutral-100);border:1px solid var(--neutral-200);"><small class="text-muted d-block" style="font-size:.7rem;text-transform:uppercase;letter-spacing:.04em;">Company</small><span class="fw-semibold" style="font-size:.85rem;">${ls.company_name}</span></div></div>` : '';
+      const maxStores = ls.max_stores > 0 ? ls.max_stores : 'Unlimited';
+
+      area.innerHTML = `
+        <div class="p-3 rounded mb-3" style="background:linear-gradient(135deg,rgba(34,197,94,.08),rgba(34,197,94,.03));border:1px solid rgba(34,197,94,.25);">
+          <div class="d-flex align-items-center gap-3">
+            <div class="rounded-circle p-2" style="background:rgba(34,197,94,.15);"><i class="bi bi-check-circle-fill text-success"></i></div>
+            <div><h6 class="fw-bold mb-0 text-success" style="font-size:.9rem;">License Active</h6><small class="text-muted">${expiry}</small></div>
+          </div>
+        </div>
+        <div class="row g-2 mb-3">
+          ${company}
+          <div class="col-6"><div class="p-2 rounded" style="background:var(--neutral-100);border:1px solid var(--neutral-200);"><small class="text-muted d-block" style="font-size:.7rem;text-transform:uppercase;letter-spacing:.04em;">Max Stores</small><span class="fw-semibold" style="font-size:.85rem;">${maxStores}</span></div></div>
+        </div>
+        <div class="pt-3" style="border-top:1px solid var(--neutral-200);">
+          <form method="POST" action="/client/support/renew" class="d-flex gap-2 align-items-end flex-wrap">
+            <input type="hidden" name="license_key" value="${licenseKey}">
+            <div class="flex-grow-1" style="min-width:180px;">
+              <label class="form-label small fw-semibold mb-1">Contact email for renewal</label>
+              <input type="email" class="form-control form-control-sm" name="contact_email" value="${userEmail}" required placeholder="your@email.com">
+            </div>
+            <button type="submit" class="btn btn-sm" style="background:linear-gradient(135deg,#f59e0b,#d97706);color:#fff;border:none;white-space:nowrap;">
+              <i class="bi bi-arrow-clockwise me-1" style="color:#fff !important;opacity:1;"></i>Request Renewal
+            </button>
+          </form>
+        </div>`;
+    } else {
+      const errMsg = data.license_error || 'License validation failed';
+      area.innerHTML = `
+        <div class="p-3 rounded mb-3" style="background:linear-gradient(135deg,rgba(239,68,68,.08),rgba(239,68,68,.03));border:1px solid rgba(239,68,68,.25);">
+          <div class="d-flex align-items-center gap-3">
+            <div class="rounded-circle p-2" style="background:rgba(239,68,68,.15);"><i class="bi bi-x-circle-fill text-danger"></i></div>
+            <div><h6 class="fw-bold mb-0 text-danger" style="font-size:.9rem;">${errMsg}</h6><small class="text-muted">Please renew your license or contact support</small></div>
+          </div>
+        </div>
+        <div class="pt-3" style="border-top:1px solid var(--neutral-200);">
+          <form method="POST" action="/client/support/renew" class="d-flex gap-2 align-items-end flex-wrap">
+            <input type="hidden" name="license_key" value="${licenseKey}">
+            <div class="flex-grow-1" style="min-width:180px;">
+              <label class="form-label small fw-semibold mb-1">Contact email for renewal</label>
+              <input type="email" class="form-control form-control-sm" name="contact_email" value="${userEmail}" required placeholder="your@email.com">
+            </div>
+            <button type="submit" class="btn btn-sm" style="background:linear-gradient(135deg,#f59e0b,#d97706);color:#fff;border:none;white-space:nowrap;">
+              <i class="bi bi-arrow-clockwise me-1" style="color:#fff !important;opacity:1;"></i>Request Renewal
+            </button>
+          </form>
+        </div>`;
+    }
+  }
+
+  function renderTickets(tickets) {
+    const area = document.getElementById('tickets-area');
+    if (!tickets.length) {
+      area.innerHTML = `<div class="text-center py-4"><i class="bi bi-inbox text-muted" style="font-size:2.5rem;opacity:.3;"></i><p class="text-muted mt-2 mb-0">No tickets yet. Submit a ticket above if you need help.</p></div>`;
+      return;
+    }
+
+    const statusBadge = s => {
+      const map = {
+        open: ['success', 'Open'],
+        in_progress: ['warning', 'In Progress'],
+        resolved: ['info', 'Resolved'],
+        closed: ['secondary', 'Closed']
+      };
+      const [color, label] = map[s] || ['secondary', s];
+      return `<span class="badge bg-${color} bg-opacity-10 text-${color}" style="font-size:.75rem;">${label}</span>`;
+    };
+
+    const rows = tickets.map(t => `
+      <tr>
+        <td>${statusBadge(t.status)}</td>
+        <td><span class="badge bg-light text-dark border" style="font-size:.7rem;text-transform:uppercase;">${t.ticket_type || ''}</span></td>
+        <td class="fw-semibold">${t.subject || ''}</td>
+        <td class="text-muted" style="font-size:.8rem;">${t.created_at ? new Date(t.created_at).toLocaleDateString('en-US', {month:'short',day:'numeric',year:'numeric'}) : ''}</td>
+        <td>${t.admin_reply
+          ? `<div class="p-2 rounded" style="background:rgba(74,144,226,.06);border-left:3px solid var(--accent-500);font-size:.8rem;">${t.admin_reply}</div>`
+          : '<span class="text-muted" style="font-size:.8rem;">Awaiting reply</span>'}</td>
+      </tr>`).join('');
+
+    area.innerHTML = `
+      <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0" style="font-size:.875rem;">
+          <thead><tr class="text-muted" style="font-size:.75rem;text-transform:uppercase;letter-spacing:.04em;">
             <th class="border-0 fw-semibold">Status</th>
             <th class="border-0 fw-semibold">Type</th>
             <th class="border-0 fw-semibold">Subject</th>
             <th class="border-0 fw-semibold">Date</th>
             <th class="border-0 fw-semibold">Reply</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for ticket in tickets %}
-          <tr>
-            <td>
-              {% set status = ticket.get('status', ticket.status) if ticket is mapping else ticket.status %}
-              {% if status == 'open' %}
-                <span class="badge bg-success bg-opacity-10 text-success" style="font-size:.75rem;">Open</span>
-              {% elif status == 'in_progress' %}
-                <span class="badge bg-warning bg-opacity-10 text-warning" style="font-size:.75rem;">In Progress</span>
-              {% elif status == 'resolved' %}
-                <span class="badge bg-info bg-opacity-10 text-info" style="font-size:.75rem;">Resolved</span>
-              {% else %}
-                <span class="badge bg-secondary bg-opacity-10 text-secondary" style="font-size:.75rem;">Closed</span>
-              {% endif %}
-            </td>
-            <td>
-              <span class="badge bg-light text-dark border" style="font-size:.7rem; text-transform:uppercase;">
-                {{ ticket.get('ticket_type', '') if ticket is mapping else ticket.ticket_type }}
-              </span>
-            </td>
-            <td class="fw-semibold">{{ ticket.get('subject', '') if ticket is mapping else ticket.subject }}</td>
-            <td class="text-muted" style="font-size:.8rem;">
-              {{ ticket.get('created_at', '') if ticket is mapping else ticket.created_at }}
-            </td>
-            <td>
-              {% set reply = ticket.get('admin_reply', '') if ticket is mapping else ticket.admin_reply %}
-              {% if reply %}
-                <div class="p-2 rounded" style="background:rgba(74,144,226,.06); border-left:3px solid var(--accent-500); font-size:.8rem;">
-                  {{ reply }}
-                </div>
-              {% else %}
-                <span class="text-muted" style="font-size:.8rem;">Awaiting reply</span>
-              {% endif %}
-            </td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
-    {% else %}
-    <div class="text-center py-4">
-      <i class="bi bi-inbox text-muted" style="font-size:2.5rem; opacity:.3;"></i>
-      <p class="text-muted mt-2 mb-0">No tickets yet. Submit a ticket above if you need help.</p>
-    </div>
-    {% endif %}
-  </div>
-</div>
+          </tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>`;
+  }
+})();
+</script>
+{% endif %}
 {% endblock %}
