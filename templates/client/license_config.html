@@ -25,6 +25,7 @@
         </div>
 
         {% if user.license_key %}
+        {% if license_status and license_status.get('valid') %}
         <div class="mb-4 p-4 rounded" style="background: linear-gradient(135deg, rgba(34, 197, 94, 0.1), rgba(34, 197, 94, 0.05)); border: 1px solid rgba(34, 197, 94, 0.3);">
           <div class="d-flex align-items-center gap-3">
             <div class="rounded-circle bg-success bg-opacity-20 p-3">
@@ -33,21 +34,41 @@
             <div class="flex-grow-1">
               <h6 class="fw-bold mb-1 text-success">License Active</h6>
               <p class="small text-muted mb-0">
-                Your license is configured and active.
-                {% if license_status and license_status.get('valid') and license_status.get('expiry_date') %}
-                <span class="fw-semibold">Expires: {{ license_status.expiry_date }}</span>
-                {% elif license_status and license_status.get('valid') %}
-                <span class="fw-semibold text-warning">Expiry date not set (Perpetual license)</span>
-                {% elif license_error %}
-                <span class="fw-semibold text-danger">{{ license_error }}</span>
+                {% if license_status.get('expiry_date') %}
+                Expires: <span class="fw-semibold">{{ license_status.expiry_date }}</span>
                 {% else %}
-                <span class="fw-semibold text-warning">Unable to fetch expiry date from portal</span>
+                Perpetual license
                 {% endif %}
-                Max Stores: {{ user.max_stores if user.max_stores > 0 else 'Unlimited' }}
+                &middot; Max Stores: <span class="fw-semibold">{{ license_status.get('max_stores', 'Unlimited') if license_status.get('max_stores', 0) > 0 else 'Unlimited' }}</span>
               </p>
             </div>
           </div>
         </div>
+        {% elif license_error %}
+        <div class="mb-4 p-4 rounded" style="background: linear-gradient(135deg, rgba(100,116,139,0.08), rgba(100,116,139,0.03)); border: 1px solid rgba(100,116,139,0.25);">
+          <div class="d-flex align-items-center gap-3">
+            <div class="rounded-circle p-3" style="background:rgba(100,116,139,0.12);">
+              <i class="bi bi-cloud-slash fs-4" style="color:var(--neutral-500);"></i>
+            </div>
+            <div class="flex-grow-1">
+              <h6 class="fw-bold mb-1" style="color:var(--neutral-700);">License Key Configured</h6>
+              <p class="small text-muted mb-0">{{ license_error }}</p>
+            </div>
+          </div>
+        </div>
+        {% else %}
+        <div class="mb-4 p-4 rounded" style="background: linear-gradient(135deg, rgba(100,116,139,0.08), rgba(100,116,139,0.03)); border: 1px solid rgba(100,116,139,0.25);">
+          <div class="d-flex align-items-center gap-3">
+            <div class="rounded-circle p-3" style="background:rgba(100,116,139,0.12);">
+              <i class="bi bi-key fs-4" style="color:var(--neutral-500);"></i>
+            </div>
+            <div class="flex-grow-1">
+              <h6 class="fw-bold mb-1" style="color:var(--neutral-700);">License Key Configured</h6>
+              <p class="small text-muted mb-0">License key is saved. Status check is currently unavailable.</p>
+            </div>
+          </div>
+        </div>
+        {% endif %}
 
         <div class="mb-4 p-3 bg-light rounded">
           <h6 class="fw-bold mb-2"><i class="bi bi-info-circle me-2"></i>Your License Key</h6>
