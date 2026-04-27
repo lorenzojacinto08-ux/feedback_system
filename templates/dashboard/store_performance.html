@@ -50,11 +50,14 @@ PURPOSE: A dedicated page to view the "Store Performance Details" table, listing
         <table class="table table-hover align-middle modern-table">
           <thead class="table-light">
             <tr>
+              <th style="width: 60px;">Rank</th>
               <th>Store</th>
               <th>Location</th>
               <th>Responses</th>
               <th>Users</th>
-              <th>Rating</th>
+              <th class="text-center">Rating Feedbacks</th>
+              <th>Avg Rating</th>
+              <th class="text-center">Weighted Score</th>
               <th>Actions</th>
             </tr>
           </thead>
@@ -62,6 +65,17 @@ PURPOSE: A dedicated page to view the "Store Performance Details" table, listing
             {% if stores_data %}
               {% for store in stores_data %}
               <tr>
+                <td>
+                  {% if loop.index == 1 %}
+                    <div class="rounded-circle bg-warning text-white d-inline-flex align-items-center justify-content-center shadow-sm" style="width:28px;height:28px;font-size:0.8125rem;"><i class="bi bi-trophy-fill"></i></div>
+                  {% elif loop.index == 2 %}
+                    <div class="rounded-circle bg-secondary bg-opacity-25 text-dark d-inline-flex align-items-center justify-content-center" style="width:28px;height:28px;font-size:0.8125rem;font-weight:600;">2</div>
+                  {% elif loop.index == 3 %}
+                    <div class="rounded-circle bg-warning bg-opacity-25 text-dark d-inline-flex align-items-center justify-content-center" style="width:28px;height:28px;font-size:0.8125rem;font-weight:600;">3</div>
+                  {% else %}
+                    <span class="text-muted ps-2" style="font-size:0.875rem;">{{ loop.index }}</span>
+                  {% endif %}
+                </td>
                 <td>
                   <div>
                     <div class="fw-medium">{{ store.store_name }}</div>
@@ -111,22 +125,25 @@ PURPOSE: A dedicated page to view the "Store Performance Details" table, listing
                     </span>
                   {% endif %}
                 </td>
+                <td class="text-center">
+                  {% if store.rating_feedback_count and store.rating_feedback_count > 0 %}
+                    <span class="badge bg-primary bg-opacity-10 text-primary px-3 py-2">{{ store.rating_feedback_count }}</span>
+                  {% else %}
+                    <span class="text-muted small">0</span>
+                  {% endif %}
+                </td>
                 <td>
                   {% if store.avg_rating %}
-                    {% set rating = store.avg_rating %}
-                    <div class="rating-display">
-                      {% if rating >= 4.5 %}
-                        <span class="rating-value fw-bold text-primary">{{ "%.1f"|format(rating) }}</span>
-                      {% elif rating >= 3.5 %}
-                        <span class="rating-value fw-bold text-primary">{{ "%.1f"|format(rating) }}</span>
-                      {% elif rating >= 2.5 %}
-                        <span class="rating-value fw-bold text-primary">{{ "%.1f"|format(rating) }}</span>
-                      {% else %}
-                        <span class="rating-value fw-bold text-primary">{{ "%.1f"|format(rating) }}</span>
-                      {% endif %}
-                    </div>
+                    <span class="badge bg-primary bg-opacity-10 text-primary">{{ "%.1f"|format(store.avg_rating) }} ★</span>
                   {% else %}
                     <span class="text-muted">No rating</span>
+                  {% endif %}
+                </td>
+                <td class="text-center">
+                  {% if store.weighted_score and store.weighted_score > 0 %}
+                    <span class="badge bg-primary bg-opacity-10 text-primary">{{ "%.2f"|format(store.weighted_score) }}</span>
+                  {% else %}
+                    <span class="text-muted small">0.00</span>
                   {% endif %}
                 </td>
                 <td>
@@ -140,7 +157,7 @@ PURPOSE: A dedicated page to view the "Store Performance Details" table, listing
               {% endfor %}
             {% else %}
               <tr>
-                <td colspan="6" class="text-center py-5">
+                <td colspan="9" class="text-center py-5">
                   <div class="text-muted mb-3">
                     <i class="bi bi-shop fs-1"></i>
                   </div>

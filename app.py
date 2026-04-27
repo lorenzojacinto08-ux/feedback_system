@@ -2075,17 +2075,43 @@ def create_app() -> Flask:
     # -------------------------
     # DASHBOARD ANALYTICS
     # -------------------------
+    # Bayesian-average smoothing constant: how many feedbacks a store/staff
+    # needs before its own average dominates the global prior.
+    BAYESIAN_C = 5
+
     def fetch_dashboard_analytics() -> Dict[str, Any]:
         conn = get_db_connection()
         try:
             cursor = conn.cursor(dictionary=True)
-            
-            # Store overview data
+
+            # Global average rating across all stores (prior `m`).
+            # Falls back to 4.0 (mid-high default) when there are no ratings yet.
+            cursor.execute(
+                """
+                SELECT AVG(a.rating_value) as global_avg
+                FROM answers a
+                JOIN questions q2 ON a.question_id = q2.id
+                WHERE q2.question_type = 'rating' AND a.rating_value IS NOT NULL
+                """
+            )
+            row = cursor.fetchone()
+            global_avg_rating = float(row['global_avg']) if row and row['global_avg'] is not None else 4.0
+
+            # Store overview data — `weighted_score` is now a Bayesian average:
+            #   (C * m + sum_of_ratings) / (C + n)
+            # which keeps the score on the 1–5 scale and pulls low-volume stores
+            # toward the global mean until they accumulate enough feedback.
             cursor.execute(
                 """
                 SELECT s.id, s.store_name, s.address, s.city, s.created_at,
                        COUNT(DISTINCT r.id) as total_responses,
                        AVG(CASE WHEN q2.question_type = 'rating' THEN a.rating_value END) as avg_rating,
+                       COUNT(DISTINCT CASE WHEN q2.question_type = 'rating' AND a.rating_value IS NOT NULL THEN r.id END) as rating_feedback_count,
+                       (
+                           (%s * %s) + COALESCE(SUM(CASE WHEN q2.question_type = 'rating' THEN a.rating_value END), 0)
+                       ) / (
+                           %s + COUNT(CASE WHEN q2.question_type = 'rating' AND a.rating_value IS NOT NULL THEN 1 END)
+                       ) as weighted_score,
                        COUNT(DISTINCT r.user_email) as unique_users
                 FROM stores s
                 LEFT JOIN questionnaires q ON s.id = q.store_id
@@ -2093,14 +2119,17 @@ def create_app() -> Flask:
                 LEFT JOIN answers a ON r.id = a.response_id
                 LEFT JOIN questions q2 ON a.question_id = q2.id
                 GROUP BY s.id, s.store_name, s.address, s.city, s.created_at
-                ORDER BY total_responses DESC
-                """
+                ORDER BY weighted_score DESC, total_responses DESC
+                """,
+                (BAYESIAN_C, global_avg_rating, BAYESIAN_C),
             )
             stores_data = cursor.fetchall()
             
             # Convert Decimal values to float for template compatibility
             for store in stores_data:
                 store['avg_rating'] = float(store['avg_rating']) if store['avg_rating'] is not None else 0.0
+                store['rating_feedback_count'] = int(store['rating_feedback_count']) if store.get('rating_feedback_count') else 0
+                store['weighted_score'] = float(store['weighted_score']) if store.get('weighted_score') is not None else 0.0
             
             # Overall statistics
             cursor.execute(
@@ -2159,12 +2188,18 @@ def create_app() -> Flask:
             )
             top_stores = cursor.fetchall()
 
-            # Best overall store (highest average rating with minimum responses)
+            # Best overall store ranked by Bayesian-average score so a store
+            # with one lucky 5★ doesn't beat a store with sustained 4.6★.
             cursor.execute(
                 """
                 SELECT s.id, s.store_name, s.address, s.city,
                        COUNT(DISTINCT r.id) as total_responses,
-                       AVG(CASE WHEN q2.question_type = 'rating' THEN a.rating_value END) as avg_rating
+                       AVG(CASE WHEN q2.question_type = 'rating' THEN a.rating_value END) as avg_rating,
+                       (
+                           (%s * %s) + COALESCE(SUM(CASE WHEN q2.question_type = 'rating' THEN a.rating_value END), 0)
+                       ) / (
+                           %s + COUNT(CASE WHEN q2.question_type = 'rating' AND a.rating_value IS NOT NULL THEN 1 END)
+                       ) as weighted_score
                 FROM stores s
                 LEFT JOIN questionnaires q ON s.id = q.store_id
                 LEFT JOIN responses r ON q.id = r.questionnaire_id
@@ -2173,21 +2208,33 @@ def create_app() -> Flask:
                 WHERE q2.question_type = 'rating'
                 GROUP BY s.id, s.store_name, s.address, s.city
                 HAVING total_responses >= 1
-                ORDER BY avg_rating DESC, total_responses DESC
+                ORDER BY weighted_score DESC, total_responses DESC
                 LIMIT 1
-                """
+                """,
+                (BAYESIAN_C, global_avg_rating, BAYESIAN_C),
             )
             best_overall_store = cursor.fetchone()
             if best_overall_store:
                 best_overall_store['avg_rating'] = float(best_overall_store['avg_rating']) if best_overall_store['avg_rating'] is not None else 0.0
 
-            # Best overall staff (highest weighted score: avg_rating * SQRT(count))
+            # Global average commendation rating (Bayesian prior `m`).
+            cursor.execute(
+                "SELECT AVG(rating) as global_avg FROM staff_commendations WHERE rating IS NOT NULL"
+            )
+            srow = cursor.fetchone()
+            staff_global_avg = float(srow['global_avg']) if srow and srow['global_avg'] is not None else 4.0
+
+            # Best overall staff (highest Bayesian-average score).
             cursor.execute(
                 """
                 SELECT s.id, s.first_name, s.last_name, s.position, s.role,
                        AVG(sc.rating) as avg_rating,
                        COUNT(sc.id) as commendation_count,
-                       AVG(sc.rating) * SQRT(COUNT(sc.id)) as weighted_score,
+                       (
+                           (%s * %s) + COALESCE(SUM(sc.rating), 0)
+                       ) / (
+                           %s + COUNT(sc.rating)
+                       ) as weighted_score,
                        st.store_name
                 FROM staff s
                 LEFT JOIN staff_commendations sc ON s.id = sc.staff_id
@@ -2198,7 +2245,8 @@ def create_app() -> Flask:
                 HAVING avg_rating IS NOT NULL
                 ORDER BY weighted_score DESC
                 LIMIT 1
-                """
+                """,
+                (BAYESIAN_C, staff_global_avg, BAYESIAN_C),
             )
             best_overall_staff = cursor.fetchone()
             if best_overall_staff:
@@ -2714,19 +2762,35 @@ def create_app() -> Flask:
         try:
             conn = get_db_connection()
             cursor = conn.cursor(dictionary=True)
-            
-            # Fetch all staff with their commendation ratings and metrics
-            cursor.execute("""
+
+            # Global average commendation rating (prior `m`); fall back to 4.0.
+            cursor.execute(
+                "SELECT AVG(rating) as global_avg FROM staff_commendations WHERE rating IS NOT NULL"
+            )
+            row = cursor.fetchone()
+            global_avg_rating = float(row['global_avg']) if row and row['global_avg'] is not None else 4.0
+
+            # Fetch all staff with their commendation ratings and metrics.
+            # `weighted_score` is the Bayesian average:
+            #   (C * m + sum_of_ratings) / (C + n)
+            cursor.execute(
+                """
                 SELECT s.id, s.first_name, s.last_name, s.email, s.phone, s.position, s.role, s.status, st.store_name, s.store_id,
                        AVG(sc.rating) as avg_rating,
                        COUNT(sc.id) as commendation_count,
-                       AVG(sc.rating) * SQRT(COUNT(sc.id)) as weighted_score
+                       (
+                           (%s * %s) + COALESCE(SUM(sc.rating), 0)
+                       ) / (
+                           %s + COUNT(sc.rating)
+                       ) as weighted_score
                 FROM staff s
                 LEFT JOIN staff_commendations sc ON s.id = sc.staff_id
                 LEFT JOIN stores st ON s.store_id = st.id
                 GROUP BY s.id, s.first_name, s.last_name, s.email, s.phone, s.position, s.role, s.status, st.store_name, s.store_id
                 ORDER BY weighted_score DESC, s.last_name, s.first_name
-            """)
+                """,
+                (BAYESIAN_C, global_avg_rating, BAYESIAN_C),
+            )
             staff_data = cursor.fetchall()
             
             # Format the data
@@ -2933,23 +2997,38 @@ def create_app() -> Flask:
             conn.close()
 
     def get_staff_performance_for_store(store_id: int) -> List[Dict[str, Any]]:
-        """Get staff members for a store ranked by weighted score (avg_rating * SQRT(count))."""
+        """Get staff for a store ranked by Bayesian-average score.
+
+        Score = (C * m + sum_of_ratings) / (C + n), where m is the global
+        commendation rating and C is the smoothing constant (`BAYESIAN_C`).
+        """
         conn = get_db_connection()
         try:
             cursor = conn.cursor(dictionary=True)
+
+            cursor.execute(
+                "SELECT AVG(rating) as global_avg FROM staff_commendations WHERE rating IS NOT NULL"
+            )
+            row = cursor.fetchone()
+            global_avg_rating = float(row['global_avg']) if row and row['global_avg'] is not None else 4.0
+
             cursor.execute(
                 """
                 SELECT s.id, s.first_name, s.last_name, s.position, s.role,
                        AVG(sc.rating) as avg_rating,
                        COUNT(sc.id) as commendation_count,
-                       AVG(sc.rating) * SQRT(COUNT(sc.id)) as weighted_score
+                       (
+                           (%s * %s) + COALESCE(SUM(sc.rating), 0)
+                       ) / (
+                           %s + COUNT(sc.rating)
+                       ) as weighted_score
                 FROM staff s
                 LEFT JOIN staff_commendations sc ON s.id = sc.staff_id
                 WHERE s.store_id = %s
                 GROUP BY s.id, s.first_name, s.last_name, s.position, s.role
                 ORDER BY weighted_score DESC
                 """,
-                (store_id,)
+                (BAYESIAN_C, global_avg_rating, BAYESIAN_C, store_id),
             )
             return cursor.fetchall()
         finally:
@@ -3051,19 +3130,30 @@ def create_app() -> Flask:
                 """, all_response_ids)
                 total_commendations = cursor.fetchone()["cnt"]
                 
-                # Top 5 commended staff (by weighted score: avg_rating * SQRT(count))
+                # Global average commendation rating (Bayesian prior `m`).
+                cursor.execute(
+                    "SELECT AVG(rating) as global_avg FROM staff_commendations WHERE rating IS NOT NULL"
+                )
+                grow = cursor.fetchone()
+                staff_global_avg = float(grow['global_avg']) if grow and grow['global_avg'] is not None else 4.0
+
+                # Top 5 commended staff ranked by Bayesian-average score.
                 cursor.execute(f"""
                     SELECT s.first_name, s.last_name, s.position, s.role,
                            AVG(sc.rating) as avg_rating,
                            COUNT(sc.id) as commendation_count,
-                           AVG(sc.rating) * SQRT(COUNT(sc.id)) as weighted_score
+                           (
+                               (%s * %s) + COALESCE(SUM(sc.rating), 0)
+                           ) / (
+                               %s + COUNT(sc.rating)
+                           ) as weighted_score
                     FROM staff_commendations sc
                     JOIN staff s ON s.id = sc.staff_id
                     WHERE sc.response_id IN ({placeholders})
                     GROUP BY s.id, s.first_name, s.last_name, s.position, s.role
                     ORDER BY weighted_score DESC
                     LIMIT 5
-                """, all_response_ids)
+                """, [BAYESIAN_C, staff_global_avg, BAYESIAN_C, *all_response_ids])
                 top_staff = cursor.fetchall()
             else:
                 total_commendations = 0
@@ -3116,18 +3206,34 @@ def create_app() -> Flask:
         try:
             cursor = conn.cursor(dictionary=True)
             
-            # Fetch staff with commendation ratings
-            cursor.execute("""
+            # Global average commendation rating (Bayesian prior `m`).
+            cursor.execute(
+                "SELECT AVG(rating) as global_avg FROM staff_commendations WHERE rating IS NOT NULL"
+            )
+            row = cursor.fetchone()
+            global_avg_rating = float(row['global_avg']) if row and row['global_avg'] is not None else 4.0
+
+            # Fetch staff with commendation ratings; `weighted_score` uses the
+            # Bayesian average so low-volume staff don't outrank high-volume
+            # staff just because of a single 5★ commendation.
+            cursor.execute(
+                """
                 SELECT s.id, s.first_name, s.last_name, s.email, s.phone, s.position, s.role, s.status,
                        AVG(sc.rating) as avg_rating,
                        COUNT(sc.id) as commendation_count,
-                       AVG(sc.rating) * SQRT(COUNT(sc.id)) as weighted_score
+                       (
+                           (%s * %s) + COALESCE(SUM(sc.rating), 0)
+                       ) / (
+                           %s + COUNT(sc.rating)
+                       ) as weighted_score
                 FROM staff s
                 LEFT JOIN staff_commendations sc ON s.id = sc.staff_id
                 WHERE s.store_id = %s
                 GROUP BY s.id
                 ORDER BY weighted_score DESC, s.last_name, s.first_name
-            """, (store_id,))
+                """,
+                (BAYESIAN_C, global_avg_rating, BAYESIAN_C, store_id),
+            )
             
             staff_members = cursor.fetchall()
             

@@ -208,7 +208,7 @@ PURPOSE: The main "Analytics Dashboard" showing store counts, total responses,
               <div class="section-icon section-icon--trophy"><i class="bi bi-trophy-fill"></i></div>
               <div class="flex-grow-1">
                 <h5 class="mb-0 fw-semibold" style="font-size:.95rem;">Top Performers</h5>
-                <small class="text-muted" style="font-size:.75rem;">Ranked by average rating</small>
+                <small class="text-muted" style="font-size:.75rem;">Ranked by Bayesian score</small>
               </div>
             </div>
             <div class="flex-grow-1 overflow-auto" style="flex:1 1 0; min-height:0;">
@@ -222,7 +222,7 @@ PURPOSE: The main "Analytics Dashboard" showing store counts, total responses,
                 </thead>
                 <tbody id="topPerformersBody">
                   {% if stores_data %}
-                    {% for store in (stores_data|sort(attribute='avg_rating', reverse=true, case_sensitive=false)) %}
+                    {% for store in (stores_data|sort(attribute='weighted_score', reverse=true, case_sensitive=false)) %}
                     <tr>
                       <td class="text-center">
                         {% if loop.index == 1 and store.avg_rating %}
@@ -240,16 +240,9 @@ PURPOSE: The main "Analytics Dashboard" showing store counts, total responses,
                         <small class="text-muted" style="font-size:0.85rem;">{{ store.total_responses or 0 }} responses</small>
                       </td>
                       <td class="text-end">
-                        {% if store.avg_rating %}
-                          <div class="fw-bold" style="font-size:1rem; line-height:1.3; color:var(--primary-600);">{{ "%.1f"|format(store.avg_rating) }}</div>
-                          {% set rating = store.avg_rating %}
-                          {% if rating >= 4.5 %}
-                            <span class="perf-badge perf-exc">Excellent</span>
-                          {% elif rating >= 3.5 %}
-                            <span class="perf-badge perf-good">Good</span>
-                          {% else %}
-                            <span class="perf-badge perf-fair">Fair</span>
-                          {% endif %}
+                        {% if store.weighted_score %}
+                          <div class="fw-bold" style="font-size:1rem; line-height:1.3; color:var(--primary-600);">{{ "%.2f"|format(store.weighted_score) }}</div>
+                          <span class="perf-badge perf-exc">Score</span>
                         {% else %}
                           <span class="text-muted" style="font-size:0.9rem;">No rating</span>
                         {% endif %}
