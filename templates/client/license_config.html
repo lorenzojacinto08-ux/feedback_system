@@ -35,7 +35,11 @@
               <p class="small text-muted mb-0">
                 Your license is configured and active.
                 {% if license_status and license_status.get('expiry_date') %}
-                Expires: {{ license_status.expiry_date }}
+                <span class="fw-semibold">Expires: {{ license_status.expiry_date }}</span>
+                {% elif license_status %}
+                <span class="fw-semibold text-warning">Expiry date not set (Perpetual license)</span>
+                {% else %}
+                <span class="fw-semibold text-warning">Unable to fetch expiry date from portal</span>
                 {% endif %}
                 Max Stores: {{ user.max_stores if user.max_stores > 0 else 'Unlimited' }}
               </p>
