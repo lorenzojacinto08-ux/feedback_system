@@ -38,20 +38,27 @@ def create_app() -> Flask:
                 import urllib.parse
                 db_url = os.getenv("MYSQL_URL")
                 parsed = urllib.parse.urlparse(db_url)
+                logger.info(f"Connecting to DB via MYSQL_URL: {parsed.hostname}:{parsed.port}/{parsed.path[1:]}")
                 return mysql.connector.connect(
                     host=parsed.hostname,
                     port=parsed.port,
                     user=parsed.username,
                     password=parsed.password,
-                    database=parsed.path[1:]
+                    database=parsed.path[1:],
+                    connection_timeout=10
                 )
             else:
+                host = os.getenv("DB_HOST", "localhost")
+                port = int(os.getenv("DB_PORT", 3306))
+                db_name = os.getenv("DB_NAME", "licensing_db")
+                logger.info(f"Connecting to DB: {host}:{port}/{db_name}")
                 return mysql.connector.connect(
-                    host=os.getenv("DB_HOST", "localhost"),
-                    port=int(os.getenv("DB_PORT", 3306)),
+                    host=host,
+                    port=port,
                     user=os.getenv("DB_USER", "root"),
                     password=os.getenv("DB_PASSWORD", ""),
-                    database=os.getenv("DB_NAME", "licensing_db")
+                    database=db_name,
+                    connection_timeout=10
                 )
         except mysql.connector.Error as e:
             logger.error(f"Failed to connect to database: {e}")
@@ -610,8 +617,17 @@ def create_app() -> Flask:
 
     return app
 
-# Module-level app instance for gunicorn compatibility (supports both "app:app" and "app:create_app()")
-app = create_app()
+# Module-level app instance for gunicorn compatibility
+try:
+    app = create_app()
+    logger.info("Licensing app created successfully")
+except Exception as e:
+    logger.error(f"FATAL: Failed to create app: {e}")
+    # Create a minimal fallback app so gunicorn doesn't crash entirely
+    app = Flask(__name__)
+    @app.route("/health")
+    def health_fallback():
+        return jsonify({"status": "error", "message": "App failed to initialize"}), 503
 
 if __name__ == "__main__":
     port = int(os.getenv("PORT", 8081))
