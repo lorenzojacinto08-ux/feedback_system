@@ -2577,6 +2577,124 @@ def create_app() -> Flask:
         
         return redirect(url_for("client_license_config"))
 
+    # ── Client Support Portal ──────────────────────────────────────
+    @app.route("/client/support")
+    @login_required
+    def client_support():
+        """Client support page — view license, request renewal, submit tickets"""
+        user = get_user_by_id(session['user_id'])
+        if user['role'] not in ('user', 'admin', 'superadmin', 'dev'):
+            flash("Access denied.", "danger")
+            return redirect(url_for("admin_dashboard"))
+
+        license_status = None
+        license_error = None
+        tickets = []
+        config = get_license_config()
+        portal_url = (config.get("licensing_portal_url") if config else None) or "http://feedbacklicensing-production.up.railway.app"
+
+        license_key = user.get('license_key') or (config.get('license_key') if config else None)
+
+        if license_key:
+            try:
+                import requests as http_requests
+                # Fetch license status
+                resp = http_requests.post(f"{portal_url}/api/validate/{license_key}", timeout=10)
+                if resp.status_code == 200:
+                    license_status = resp.json()
+                    if not license_status.get('valid'):
+                        license_error = license_status.get('message', 'License validation failed')
+                else:
+                    license_error = f"API error: {resp.status_code}"
+            except Exception as e:
+                logger.error(f"Error fetching license status for support: {e}")
+                license_error = "Unable to reach licensing portal"
+
+            # Fetch tickets for this license
+            try:
+                import requests as http_requests
+                resp = http_requests.get(f"{portal_url}/api/tickets/{license_key}", timeout=10)
+                if resp.status_code == 200:
+                    tickets = resp.json().get('tickets', [])
+            except Exception:
+                pass  # Tickets fetch is best-effort
+
+        return render_template("client/support.html",
+                               user=user, license_status=license_status,
+                               license_error=license_error, tickets=tickets,
+                               license_key=license_key or '')
+
+    @app.route("/client/support/ticket", methods=["POST"])
+    @login_required
+    def client_submit_ticket():
+        """Submit a support ticket to the licensing portal"""
+        user = get_user_by_id(session['user_id'])
+        config = get_license_config()
+        portal_url = (config.get("licensing_portal_url") if config else None) or "http://feedbacklicensing-production.up.railway.app"
+
+        license_key = request.form.get("license_key", "").strip()
+        subject = request.form.get("subject", "").strip()
+        message = request.form.get("message", "").strip()
+        ticket_type = request.form.get("ticket_type", "general")
+        contact_email = request.form.get("contact_email", "").strip() or user.get('email', '')
+
+        if not subject or not message:
+            flash("Subject and message are required.", "danger")
+            return redirect(url_for("client_support"))
+
+        try:
+            import requests as http_requests
+            resp = http_requests.post(f"{portal_url}/api/tickets/create", json={
+                "license_key": license_key,
+                "contact_email": contact_email,
+                "subject": subject,
+                "message": message,
+                "ticket_type": ticket_type
+            }, timeout=10)
+            if resp.status_code in (200, 201):
+                flash("Ticket submitted successfully. We'll get back to you soon.", "success")
+            else:
+                flash("Failed to submit ticket. Please try again.", "danger")
+        except Exception as e:
+            logger.error(f"Error submitting ticket to portal: {e}")
+            flash("Unable to reach support. Please try again later.", "danger")
+
+        return redirect(url_for("client_support"))
+
+    @app.route("/client/support/renew", methods=["POST"])
+    @login_required
+    def client_request_renewal():
+        """Submit a renewal request to the licensing portal"""
+        user = get_user_by_id(session['user_id'])
+        config = get_license_config()
+        portal_url = (config.get("licensing_portal_url") if config else None) or "http://feedbacklicensing-production.up.railway.app"
+
+        license_key = request.form.get("license_key", "").strip()
+        contact_email = request.form.get("contact_email", "").strip() or user.get('email', '')
+
+        if not license_key:
+            flash("No license key found.", "danger")
+            return redirect(url_for("client_support"))
+
+        try:
+            import requests as http_requests
+            resp = http_requests.post(f"{portal_url}/api/tickets/create", json={
+                "license_key": license_key,
+                "contact_email": contact_email,
+                "subject": f"License Renewal Request - {user.get('username', 'Client')}",
+                "message": f"Requesting license renewal for account: {user.get('username', 'N/A')}.",
+                "ticket_type": "renewal"
+            }, timeout=10)
+            if resp.status_code in (200, 201):
+                flash("Renewal request submitted. Our team will process it shortly.", "success")
+            else:
+                flash("Failed to submit renewal request.", "danger")
+        except Exception as e:
+            logger.error(f"Error submitting renewal request: {e}")
+            flash("Unable to reach support. Please try again later.", "danger")
+
+        return redirect(url_for("client_support"))
+
     @app.route("/admin/reset-database", methods=["POST"])
     @role_required('dev')
     def admin_reset_database():

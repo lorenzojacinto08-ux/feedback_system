@@ -445,6 +445,40 @@ def create_app() -> Flask:
         result = validate_license_key(license_key)
         return jsonify(result)
 
+    @app.route("/api/tickets/create", methods=["POST"])
+    def api_create_ticket():
+        """API endpoint for creating tickets from the main app"""
+        data = request.get_json() or {}
+        license_key = data.get("license_key", "").strip()
+        contact_email = data.get("contact_email", "").strip()
+        subject = data.get("subject", "").strip()
+        message = data.get("message", "").strip()
+        ticket_type = data.get("ticket_type", "general")
+
+        if not subject or not message or not contact_email:
+            return jsonify({"error": "subject, message, and contact_email are required"}), 400
+
+        license_data = get_license_by_key(license_key) if license_key else None
+        company_name = license_data["company_name"] if license_data else "Unknown"
+
+        if create_ticket(license_key, company_name, contact_email, subject, message, ticket_type):
+            return jsonify({"success": True}), 201
+        return jsonify({"error": "Failed to create ticket"}), 500
+
+    @app.route("/api/tickets/<license_key>", methods=["GET"])
+    def api_get_tickets(license_key):
+        """API endpoint for fetching tickets by license key"""
+        tickets = get_tickets_by_license(license_key)
+        # Convert datetime objects for JSON serialization
+        serialized = []
+        for t in tickets:
+            row = dict(t)
+            for k, v in row.items():
+                if hasattr(v, 'isoformat'):
+                    row[k] = v.isoformat()
+            serialized.append(row)
+        return jsonify({"tickets": serialized})
+
     # ── Client support portal ────────────────────────────────────
     @app.route("/support")
     def support_portal():
