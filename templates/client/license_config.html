@@ -32,7 +32,13 @@
             </div>
             <div class="flex-grow-1">
               <h6 class="fw-bold mb-1 text-success">License Active</h6>
-              <p class="small text-muted mb-0">Your license is configured and active. Max Stores: {{ user.max_stores if user.max_stores > 0 else 'Unlimited' }}</p>
+              <p class="small text-muted mb-0">
+                Your license is configured and active.
+                {% if license_status and license_status.get('expiry_date') %}
+                Expires: {{ license_status.expiry_date }}
+                {% endif %}
+                Max Stores: {{ user.max_stores if user.max_stores > 0 else 'Unlimited' }}
+              </p>
             </div>
           </div>
         </div>

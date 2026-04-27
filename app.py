@@ -2378,6 +2378,7 @@ def create_app() -> Flask:
             conn.close()
 
     @app.route("/admin/license-config")
+    @login_required
     @role_required('dev', 'superadmin')
     def admin_license_config():
         """License configuration page"""
@@ -2388,7 +2389,17 @@ def create_app() -> Flask:
             cursor.execute("CREATE TABLE IF NOT EXISTS license_config (id INT AUTO_INCREMENT PRIMARY KEY, license_key VARCHAR(255) NOT NULL, api_key VARCHAR(255) NOT NULL, licensing_portal_url VARCHAR(255) DEFAULT 'http://feedbacklicensing-production.up.railway.app', created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP)")
             cursor.execute("SELECT * FROM license_config ORDER BY id DESC LIMIT 1")
             config = cursor.fetchone()
-            return render_template("admin/license_config.html", config=config)
+            
+            # Fetch license status from portal if config exists
+            license_status = None
+            if config:
+                try:
+                    license_status = validate_license_from_portal()
+                except Exception as e:
+                    logger.error(f"Error fetching license status: {e}")
+                    license_status = None
+            
+            return render_template("admin/license_config.html", config=config, license_status=license_status)
         finally:
             conn.close()
 
@@ -2452,7 +2463,30 @@ def create_app() -> Flask:
             flash("This page is for client accounts only.", "danger")
             return redirect(url_for("admin_dashboard"))
         
-        return render_template("client/license_config.html", user=user)
+        # Fetch license status from portal if user has license key
+        license_status = None
+        if user.get('license_key'):
+            try:
+                config = get_license_config()
+                if config:
+                    # Validate the user's license key against the portal
+                    import requests
+                    portal_url = config.get("licensing_portal_url") if config else None
+                    if not portal_url:
+                        portal_url = "http://feedbacklicensing-production.up.railway.app"
+                    
+                    response = requests.post(
+                        f"{portal_url}/api/validate/{user['license_key']}",
+                        timeout=10
+                    )
+                    
+                    if response.status_code == 200:
+                        license_status = response.json()
+            except Exception as e:
+                logger.error(f"Error fetching license status: {e}")
+                license_status = None
+        
+        return render_template("client/license_config.html", user=user, license_status=license_status)
 
     @app.route("/client/license-config/save", methods=["POST"])
     @login_required

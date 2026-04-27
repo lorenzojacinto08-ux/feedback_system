@@ -50,7 +50,13 @@
             </div>
             <div class="flex-grow-1">
               <h6 class="fw-bold mb-1 text-success">License Configured</h6>
-              <p class="small text-muted mb-0">Your license is configured. Visit the <a href="{{ config.licensing_portal_url }}" target="_blank" class="text-decoration-none text-success fw-semibold">Licensing Portal</a> to check your license status and details.</p>
+              <p class="small text-muted mb-0">
+                Your license is configured.
+                {% if license_status and license_status.get('expiry_date') %}
+                Expires: {{ license_status.expiry_date }}
+                {% endif %}
+                Visit the <a href="{{ config.licensing_portal_url }}" target="_blank" class="text-decoration-none text-success fw-semibold">Licensing Portal</a> to check your license status and details.
+              </p>
             </div>
           </div>
         </div>
