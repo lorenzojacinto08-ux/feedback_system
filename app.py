@@ -28,6 +28,10 @@ from functools import wraps
 load_dotenv()
 
 
+# Default licensing portal URL when not configured in DB or env
+DEFAULT_PORTAL_URL = os.getenv("LICENSING_PORTAL_URL", "https://feedbacklicensing-production.up.railway.app")
+
+
 def create_app() -> Flask:
     app = Flask(__name__)
 
@@ -2396,9 +2400,7 @@ def create_app() -> Flask:
             if config:
                 try:
                     import requests
-                    portal_url = config.get("licensing_portal_url") if config else None
-                    if not portal_url:
-                        portal_url = "https://feedbacklicensing-production.up.railway.app"
+                    portal_url = (config.get("licensing_portal_url") if config else None) or DEFAULT_PORTAL_URL
                     
                     logger.info(f"Fetching license status from portal: {portal_url}/api/validate/{config['license_key']}")
                     response = requests.post(
@@ -2429,7 +2431,7 @@ def create_app() -> Flask:
         """Save license configuration"""
         license_key = request.form.get("license_key", "").strip()
         api_key = request.form.get("api_key", "").strip()
-        licensing_portal_url = request.form.get("licensing_portal_url", "https://feedbacklicensing-production.up.railway.app").strip()
+        licensing_portal_url = request.form.get("licensing_portal_url", DEFAULT_PORTAL_URL).strip()
         
         if not license_key or not api_key:
             flash("License key and API key are required.", "danger")
@@ -2489,7 +2491,7 @@ def create_app() -> Flask:
         if user.get('license_key'):
             try:
                 config = get_license_config()
-                portal_url = (config.get("licensing_portal_url") if config else None) or "https://feedbacklicensing-production.up.railway.app"
+                portal_url = (config.get("licensing_portal_url") if config else None) or DEFAULT_PORTAL_URL
                 
                 import requests
                 logger.info(f"Fetching license status from portal: {portal_url}/api/validate/{user['license_key']}")
@@ -2526,11 +2528,7 @@ def create_app() -> Flask:
         try:
             # Validate license against the licensing portal
             config = get_license_config()
-            portal_url = config.get("licensing_portal_url") if config else None
-            
-            # Use default portal URL if not configured
-            if not portal_url:
-                portal_url = "https://feedbacklicensing-production.up.railway.app"
+            portal_url = (config.get("licensing_portal_url") if config else None) or DEFAULT_PORTAL_URL
             
             # Call the licensing portal API to validate the license
             import requests
@@ -2595,7 +2593,7 @@ def create_app() -> Flask:
         """AJAX endpoint — fetch license status + tickets from portal"""
         user = get_user_by_id(session['user_id'])
         config = get_license_config()
-        portal_url = (config.get("licensing_portal_url") if config else None) or "https://feedbacklicensing-production.up.railway.app"
+        portal_url = (config.get("licensing_portal_url") if config else None) or DEFAULT_PORTAL_URL
         license_key = user.get('license_key') or (config.get('license_key') if config else None)
 
         result = {"license_status": None, "license_error": None, "tickets": []}
@@ -2634,7 +2632,7 @@ def create_app() -> Flask:
         """Submit a support ticket to the licensing portal"""
         user = get_user_by_id(session['user_id'])
         config = get_license_config()
-        portal_url = (config.get("licensing_portal_url") if config else None) or "https://feedbacklicensing-production.up.railway.app"
+        portal_url = (config.get("licensing_portal_url") if config else None) or DEFAULT_PORTAL_URL
 
         license_key = request.form.get("license_key", "").strip()
         subject = request.form.get("subject", "").strip()
@@ -2671,7 +2669,7 @@ def create_app() -> Flask:
         """Submit a renewal request to the licensing portal"""
         user = get_user_by_id(session['user_id'])
         config = get_license_config()
-        portal_url = (config.get("licensing_portal_url") if config else None) or "https://feedbacklicensing-production.up.railway.app"
+        portal_url = (config.get("licensing_portal_url") if config else None) or DEFAULT_PORTAL_URL
 
         license_key = request.form.get("license_key", "").strip()
         contact_email = request.form.get("contact_email", "").strip() or user.get('email', '')
@@ -3704,11 +3702,7 @@ def create_app() -> Flask:
             
             # Validate license against portal and get max_stores
             config = get_license_config()
-            portal_url = config.get("licensing_portal_url") if config else None
-            
-            # Use default portal URL if not configured
-            if not portal_url:
-                portal_url = "https://feedbacklicensing-production.up.railway.app"
+            portal_url = (config.get("licensing_portal_url") if config else None) or DEFAULT_PORTAL_URL
             
             try:
                 import requests
