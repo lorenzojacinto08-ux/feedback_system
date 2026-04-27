@@ -33,15 +33,49 @@
             <p class="small text-muted mt-2 mb-0">Checking license...</p>
           </div>
           {% else %}
-          <div class="p-3 rounded text-center" style="background:var(--neutral-100); border:1px solid var(--neutral-200);">
-            <i class="bi bi-key text-muted" style="font-size:2rem; opacity:.4;"></i>
-            <p class="small text-muted mt-2 mb-1">No license key configured</p>
-            <a href="{{ url_for('client_license_config') }}" class="btn btn-sm btn-outline-secondary">
-              <i class="bi bi-gear me-1"></i>Configure License
-            </a>
+          <div class="p-3 rounded mb-3" style="background:linear-gradient(135deg, rgba(234,179,8,.08), rgba(234,179,8,.03)); border:1px solid rgba(234,179,8,.25);">
+            <div class="d-flex align-items-center gap-3">
+              <div class="rounded-circle p-2" style="background:rgba(234,179,8,.15);">
+                <i class="bi bi-exclamation-circle-fill" style="color:var(--yellow-600);"></i>
+              </div>
+              <div>
+                <h6 class="fw-bold mb-0" style="font-size:.9rem; color:var(--yellow-700);">License Not Configured</h6>
+                <small class="text-muted">Enter your license key below to activate your account</small>
+              </div>
+            </div>
           </div>
+          <form method="POST" action="{{ url_for('client_save_license_config') }}" class="vstack gap-2">
+            <input class="form-control form-control-sm" name="license_key" required placeholder="Enter license key from administrator">
+            <button class="btn btn-primary btn-sm" type="submit">
+              <i class="bi bi-check-lg me-1" style="color:#fff !important; opacity:1;"></i>Save License Key
+            </button>
+          </form>
           {% endif %}
         </div>
+
+        {% if license_key %}
+        <div class="mt-3 pt-3" style="border-top:1px solid var(--neutral-200);">
+          <small class="text-muted d-block mb-1" style="font-size:.7rem; text-transform:uppercase; letter-spacing:.05em; font-weight:600;">Your License Key</small>
+          <div class="d-flex gap-2 align-items-center">
+            <code class="flex-grow-1 p-2 rounded" style="font-size:.78rem; word-break:break-all; background:var(--neutral-100); border:1px solid var(--neutral-200);">{{ license_key }}</code>
+            <button class="btn btn-sm btn-outline-secondary" type="button" onclick="copyLicenseKey('{{ license_key }}')" title="Copy">
+              <i class="bi bi-clipboard"></i>
+            </button>
+            <button class="btn btn-sm btn-outline-secondary" type="button" onclick="toggleEditLicense()" title="Change">
+              <i class="bi bi-pencil"></i>
+            </button>
+          </div>
+          <form id="edit_license_form" method="POST" action="{{ url_for('client_save_license_config') }}" class="d-none mt-2 vstack gap-2">
+            <input class="form-control form-control-sm" name="license_key" placeholder="Enter new license key" required>
+            <div class="d-flex gap-2">
+              <button class="btn btn-primary btn-sm" type="submit">
+                <i class="bi bi-check-lg me-1" style="color:#fff !important; opacity:1;"></i>Save
+              </button>
+              <button class="btn btn-outline-secondary btn-sm" type="button" onclick="toggleEditLicense()">Cancel</button>
+            </div>
+          </form>
+        </div>
+        {% endif %}
       </div>
     </div>
   </div>
@@ -123,6 +157,18 @@
 {% endblock %}
 
 {% block scripts %}
+<script>
+function copyLicenseKey(key) {
+  navigator.clipboard.writeText(key).then(() => {
+    if (window.showNotification) showNotification('License key copied to clipboard', 'success');
+    else alert('License key copied to clipboard');
+  }).catch(err => console.error('Copy failed:', err));
+}
+function toggleEditLicense() {
+  const f = document.getElementById('edit_license_form');
+  if (f) f.classList.toggle('d-none');
+}
+</script>
 {% if license_key %}
 <script>
 (function() {

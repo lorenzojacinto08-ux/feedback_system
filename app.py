@@ -2477,43 +2477,8 @@ def create_app() -> Flask:
     @app.route("/client/license-config")
     @login_required
     def client_license_config():
-        """Client license configuration page"""
-        user = get_user_by_id(session['user_id'])
-        
-        # Only allow client users to access this page
-        if user['role'] != 'user':
-            flash("This page is for client accounts only.", "danger")
-            return redirect(url_for("admin_dashboard"))
-        
-        # Fetch license status from portal if user has license key
-        license_status = None
-        license_error = None
-        if user.get('license_key'):
-            try:
-                config = get_license_config()
-                portal_url = (config.get("licensing_portal_url") if config else None) or DEFAULT_PORTAL_URL
-                
-                import requests
-                logger.info(f"Fetching license status from portal: {portal_url}/api/validate/{user['license_key']}")
-                response = requests.post(
-                    f"{portal_url}/api/validate/{user['license_key']}",
-                    timeout=5
-                )
-                
-                logger.info(f"License status response status: {response.status_code}")
-                if response.status_code == 200:
-                    license_status = response.json()
-                    logger.info(f"License status data: {license_status}")
-                    if not license_status.get('valid'):
-                        license_error = license_status.get('message', 'License validation failed')
-                else:
-                    logger.error(f"License validation failed with status: {response.status_code}")
-                    license_error = f"API error: {response.status_code}"
-            except Exception as e:
-                logger.error(f"Error fetching license status: {e}")
-                license_error = "Unable to reach licensing portal. Please try again later."
-        
-        return render_template("client/license_config.html", user=user, license_status=license_status, license_error=license_error)
+        """Deprecated — license management is now part of the Support page."""
+        return redirect(url_for("client_support"))
 
     @app.route("/client/license-config/save", methods=["POST"])
     @login_required
