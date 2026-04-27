@@ -2399,13 +2399,18 @@ def create_app() -> Flask:
                     if not portal_url:
                         portal_url = "http://feedbacklicensing-production.up.railway.app"
                     
+                    logger.info(f"Fetching license status from portal: {portal_url}/api/validate/{config['license_key']}")
                     response = requests.post(
                         f"{portal_url}/api/validate/{config['license_key']}",
                         timeout=10
                     )
                     
+                    logger.info(f"License status response status: {response.status_code}")
                     if response.status_code == 200:
                         license_status = response.json()
+                        logger.info(f"License status data: {license_status}")
+                    else:
+                        logger.error(f"License validation failed with status: {response.status_code}")
                 except Exception as e:
                     logger.error(f"Error fetching license status: {e}")
                     license_status = None
@@ -2486,13 +2491,18 @@ def create_app() -> Flask:
                     if not portal_url:
                         portal_url = "http://feedbacklicensing-production.up.railway.app"
                     
+                    logger.info(f"Fetching license status from portal: {portal_url}/api/validate/{user['license_key']}")
                     response = requests.post(
                         f"{portal_url}/api/validate/{user['license_key']}",
                         timeout=10
                     )
                     
+                    logger.info(f"License status response status: {response.status_code}")
                     if response.status_code == 200:
                         license_status = response.json()
+                        logger.info(f"License status data: {license_status}")
+                    else:
+                        logger.error(f"License validation failed with status: {response.status_code}")
             except Exception as e:
                 logger.error(f"Error fetching license status: {e}")
                 license_status = None
