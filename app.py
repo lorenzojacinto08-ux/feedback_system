@@ -2392,6 +2392,7 @@ def create_app() -> Flask:
             
             # Fetch license status from portal if config exists
             license_status = None
+            license_error = None
             if config:
                 try:
                     import requests
@@ -2409,13 +2410,16 @@ def create_app() -> Flask:
                     if response.status_code == 200:
                         license_status = response.json()
                         logger.info(f"License status data: {license_status}")
+                        if not license_status.get('valid'):
+                            license_error = license_status.get('message', 'License validation failed')
                     else:
                         logger.error(f"License validation failed with status: {response.status_code}")
+                        license_error = f"API error: {response.status_code}"
                 except Exception as e:
                     logger.error(f"Error fetching license status: {e}")
-                    license_status = None
+                    license_error = str(e)
             
-            return render_template("admin/license_config.html", config=config, license_status=license_status)
+            return render_template("admin/license_config.html", config=config, license_status=license_status, license_error=license_error)
         finally:
             conn.close()
 
@@ -2481,6 +2485,7 @@ def create_app() -> Flask:
         
         # Fetch license status from portal if user has license key
         license_status = None
+        license_error = None
         if user.get('license_key'):
             try:
                 config = get_license_config()
@@ -2501,13 +2506,16 @@ def create_app() -> Flask:
                     if response.status_code == 200:
                         license_status = response.json()
                         logger.info(f"License status data: {license_status}")
+                        if not license_status.get('valid'):
+                            license_error = license_status.get('message', 'License validation failed')
                     else:
                         logger.error(f"License validation failed with status: {response.status_code}")
+                        license_error = f"API error: {response.status_code}"
             except Exception as e:
                 logger.error(f"Error fetching license status: {e}")
-                license_status = None
+                license_error = str(e)
         
-        return render_template("client/license_config.html", user=user, license_status=license_status)
+        return render_template("client/license_config.html", user=user, license_status=license_status, license_error=license_error)
 
     @app.route("/client/license-config/save", methods=["POST"])
     @login_required
