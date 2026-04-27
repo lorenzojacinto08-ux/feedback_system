@@ -2820,37 +2820,58 @@ def create_app() -> Flask:
         logger.info(f"User {session['user_id']} (role: {user['role']}) viewing stores. Filtering by user_id: {user_id}")
         stores = fetch_stores(user_id=user_id)
         logger.info(f"User {session['user_id']} sees {len(stores)} stores")
-        
-        # For dev/admin/superadmin, group stores by user
-        stores_by_user = None
-        if user['role'] != 'user' and stores:
-            # Group stores by user_id
-            stores_by_user = {}
-            for store in stores:
-                uid = store.get('user_id')
-                if uid:
-                    if uid not in stores_by_user:
-                        stores_by_user[uid] = []
-                    stores_by_user[uid].append(store)
-                else:
-                    # Stores without user_id (legacy)
-                    if 'unassigned' not in stores_by_user:
-                        stores_by_user['unassigned'] = []
-                    stores_by_user['unassigned'].append(store)
-            
-            # Fetch user information for each group
+
+        # Batch-load feedback + staff counts and (for non-clients) user info in 3 queries
+        # instead of running 2 queries per store + 1 per user.
+        store_ids = [s["id"] for s in stores]
+        feedback_counts = {}
+        staff_counts = {}
+        user_info = {}
+        if store_ids:
             conn = get_db_connection()
             try:
-                cursor = conn.cursor(dictionary=True)
-                user_info = {}
-                for uid in stores_by_user.keys():
-                    if uid != 'unassigned':
-                        cursor.execute("SELECT id, username, role FROM users WHERE id = %s", (uid,))
-                        u = cursor.fetchone()
-                        if u:
-                            user_info[uid] = u
+                cursor = conn.cursor()
+                placeholders = ",".join(["%s"] * len(store_ids))
+                cursor.execute(
+                    f"SELECT store_id, COUNT(*) FROM responses WHERE store_id IN ({placeholders}) GROUP BY store_id",
+                    tuple(store_ids),
+                )
+                feedback_counts = {row[0]: int(row[1]) for row in cursor.fetchall()}
+                cursor.execute(
+                    f"SELECT store_id, COUNT(*) FROM staff WHERE store_id IN ({placeholders}) GROUP BY store_id",
+                    tuple(store_ids),
+                )
+                staff_counts = {row[0]: int(row[1]) for row in cursor.fetchall()}
+
+                if user['role'] != 'user':
+                    user_ids = sorted({s.get("user_id") for s in stores if s.get("user_id")})
+                    if user_ids:
+                        uph = ",".join(["%s"] * len(user_ids))
+                        cursor2 = conn.cursor(dictionary=True)
+                        cursor2.execute(
+                            f"SELECT id, username, role FROM users WHERE id IN ({uph})",
+                            tuple(user_ids),
+                        )
+                        user_info = {u["id"]: u for u in cursor2.fetchall()}
             finally:
                 conn.close()
+
+        # Enhance stores with counts (single pass)
+        enhanced_stores = []
+        for store in stores:
+            sid = store["id"]
+            store_with_counts = dict(store)
+            store_with_counts["feedback_count"] = feedback_counts.get(sid, 0)
+            store_with_counts["staff_count"] = staff_counts.get(sid, 0)
+            enhanced_stores.append(store_with_counts)
+
+        # Group enhanced stores by user for dev/admin/superadmin
+        stores_by_user_enhanced = None
+        if user['role'] != 'user' and enhanced_stores:
+            stores_by_user_enhanced = {}
+            for store in enhanced_stores:
+                uid = store.get("user_id") or "unassigned"
+                stores_by_user_enhanced.setdefault(uid, []).append(store)
 
         selected_store_id_param = request.args.get("store_id")
         selected_store_id = None
@@ -2873,37 +2894,9 @@ def create_app() -> Flask:
             public_url = get_store_public_url(store_id=int(selected_store["id"]))
             qr_data_uri = generate_qr_data_uri(public_url)
 
-        # Enhance stores with real feedback and staff counts
-        stores_with_counts = []
-        for store in stores:
-            store_id = store["id"]
-            feedback_count = get_feedback_count_for_store(store_id)
-            staff_count = get_staff_count_for_store(store_id)
-            store_with_counts = dict(store)
-            store_with_counts["feedback_count"] = feedback_count
-            store_with_counts["staff_count"] = staff_count
-            stores_with_counts.append(store_with_counts)
-        
-        # Group enhanced stores by user for dev/admin/superadmin
-        stores_by_user_enhanced = None
-        if stores_by_user:
-            stores_by_user_enhanced = {}
-            for uid, store_list in stores_by_user.items():
-                # Enhance each store in the group
-                enhanced_list = []
-                for store in store_list:
-                    store_id = store["id"]
-                    feedback_count = get_feedback_count_for_store(store_id)
-                    staff_count = get_staff_count_for_store(store_id)
-                    store_with_counts = dict(store)
-                    store_with_counts["feedback_count"] = feedback_count
-                    store_with_counts["staff_count"] = staff_count
-                    enhanced_list.append(store_with_counts)
-                stores_by_user_enhanced[uid] = enhanced_list
-
         return render_template(
             "manage_stores/stores.html",
-            stores=stores_with_counts if user['role'] == 'user' else None,
+            stores=enhanced_stores if user['role'] == 'user' else None,
             stores_by_user=stores_by_user_enhanced if user['role'] != 'user' else None,
             user_info=user_info if user['role'] != 'user' else None,
             selected_store=selected_store,
