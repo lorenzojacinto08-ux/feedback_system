@@ -598,12 +598,21 @@ def create_app() -> Flask:
             flash("Failed to update ticket.", "danger")
         return redirect(url_for("admin_tickets"))
 
-    # Initialize schema on startup
-    init_schema()
-    
+    # Initialize schema on startup (non-fatal — app still starts if DB is temporarily unavailable)
+    try:
+        init_schema()
+    except Exception as e:
+        logger.error(f"Schema initialization failed, will retry on first request: {e}")
+
+    @app.route("/health")
+    def health_check():
+        return jsonify({"status": "ok"}), 200
+
     return app
 
+# Module-level app instance for gunicorn compatibility (supports both "app:app" and "app:create_app()")
+app = create_app()
+
 if __name__ == "__main__":
-    app = create_app()
     port = int(os.getenv("PORT", 8081))
     app.run(host="0.0.0.0", port=port)
