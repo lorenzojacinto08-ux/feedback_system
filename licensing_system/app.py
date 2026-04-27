@@ -100,6 +100,26 @@ def create_app() -> Flask:
                     )
                 """)
                 
+                # Create support_tickets table
+                cursor.execute("""
+                    CREATE TABLE IF NOT EXISTS support_tickets (
+                        id INT AUTO_INCREMENT PRIMARY KEY,
+                        license_id INT NULL,
+                        license_key VARCHAR(255) NULL,
+                        company_name VARCHAR(255) NOT NULL,
+                        contact_email VARCHAR(255) NOT NULL,
+                        subject VARCHAR(255) NOT NULL,
+                        message TEXT NOT NULL,
+                        ticket_type ENUM('general', 'renewal', 'bug', 'feature') DEFAULT 'general',
+                        status ENUM('open', 'in_progress', 'resolved', 'closed') DEFAULT 'open',
+                        priority ENUM('low', 'medium', 'high') DEFAULT 'medium',
+                        admin_reply TEXT NULL,
+                        replied_at TIMESTAMP NULL,
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+                    )
+                """)
+                
                 conn.commit()
                 logger.info("Licensing database schema initialized successfully")
                 return
@@ -382,12 +402,168 @@ def create_app() -> Flask:
         
         return redirect(url_for("index"))
     
-    @app.route("/api/validate/<license_key>")
+    # ── Ticket helpers ──────────────────────────────────────────────
+    def get_all_tickets():
+        conn = get_db_connection()
+        try:
+            cursor = conn.cursor(dictionary=True)
+            cursor.execute("SELECT * FROM support_tickets ORDER BY FIELD(status,'open','in_progress','resolved','closed'), created_at DESC")
+            return cursor.fetchall()
+        finally:
+            conn.close()
+
+    def get_tickets_by_license(license_key):
+        conn = get_db_connection()
+        try:
+            cursor = conn.cursor(dictionary=True)
+            cursor.execute("SELECT * FROM support_tickets WHERE license_key = %s ORDER BY created_at DESC", (license_key,))
+            return cursor.fetchall()
+        finally:
+            conn.close()
+
+    def create_ticket(license_key, company_name, contact_email, subject, message, ticket_type='general'):
+        try:
+            license_data = get_license_by_key(license_key) if license_key else None
+            license_id = license_data['id'] if license_data else None
+            with get_db_connection_with_transaction() as conn:
+                cursor = conn.cursor()
+                cursor.execute(
+                    """INSERT INTO support_tickets
+                       (license_id, license_key, company_name, contact_email, subject, message, ticket_type)
+                       VALUES (%s, %s, %s, %s, %s, %s, %s)""",
+                    (license_id, license_key, company_name, contact_email, subject, message, ticket_type)
+                )
+            return True
+        except Exception as e:
+            logger.error(f"Error creating ticket: {e}")
+            return False
+
+    # ── API routes ────────────────────────────────────────────────
+    @app.route("/api/validate/<license_key>", methods=["GET", "POST"])
     def api_validate(license_key):
         """API endpoint for validating licenses"""
         result = validate_license_key(license_key)
         return jsonify(result)
-    
+
+    # ── Client support portal ────────────────────────────────────
+    @app.route("/support")
+    def support_portal():
+        return render_template("licensing/support.html")
+
+    @app.route("/support/lookup", methods=["GET", "POST"])
+    def support_lookup():
+        if request.method == "POST":
+            license_key = request.form.get("license_key", "").strip()
+        else:
+            license_key = request.args.get("license_key", "").strip()
+        if not license_key:
+            flash("Please enter a license key.", "danger")
+            return redirect(url_for("support_portal"))
+        license_data = get_license_by_key(license_key)
+        if not license_data:
+            flash("License key not found.", "danger")
+            return redirect(url_for("support_portal"))
+        # Check expiry
+        is_expired = False
+        if license_data.get("expiry_date"):
+            if isinstance(license_data["expiry_date"], date):
+                is_expired = datetime.now().date() > license_data["expiry_date"]
+            else:
+                is_expired = datetime.now().date() > datetime.strptime(license_data["expiry_date"], "%Y-%m-%d").date()
+        tickets = get_tickets_by_license(license_key)
+        return render_template("licensing/support.html",
+                               license=license_data, is_expired=is_expired,
+                               tickets=tickets, license_key=license_key)
+
+    @app.route("/support/ticket", methods=["POST"])
+    def support_submit_ticket():
+        license_key = request.form.get("license_key", "").strip()
+        subject = request.form.get("subject", "").strip()
+        message = request.form.get("message", "").strip()
+        ticket_type = request.form.get("ticket_type", "general")
+        contact_email = request.form.get("contact_email", "").strip()
+
+        if not subject or not message or not contact_email:
+            flash("Subject, message, and email are required.", "danger")
+            return redirect(url_for("support_portal"))
+
+        license_data = get_license_by_key(license_key) if license_key else None
+        company_name = license_data["company_name"] if license_data else "Unknown"
+
+        if create_ticket(license_key, company_name, contact_email, subject, message, ticket_type):
+            flash("Ticket submitted successfully. We'll get back to you soon.", "success")
+        else:
+            flash("Failed to submit ticket. Please try again.", "danger")
+
+        if license_key:
+            return redirect(url_for("support_lookup", license_key=license_key))
+        return redirect(url_for("support_portal"))
+
+    @app.route("/support/renew-request", methods=["POST"])
+    def support_renew_request():
+        license_key = request.form.get("license_key", "").strip()
+        contact_email = request.form.get("contact_email", "").strip()
+
+        if not license_key:
+            flash("License key is required.", "danger")
+            return redirect(url_for("support_portal"))
+
+        license_data = get_license_by_key(license_key)
+        if not license_data:
+            flash("License key not found.", "danger")
+            return redirect(url_for("support_portal"))
+
+        company_name = license_data["company_name"]
+        email = contact_email or license_data.get("contact_email", "")
+        subject = f"License Renewal Request - {company_name}"
+        message = f"Requesting renewal for license belonging to {company_name}. Current expiry: {license_data.get('expiry_date', 'N/A')}."
+
+        if create_ticket(license_key, company_name, email, subject, message, 'renewal'):
+            flash("Renewal request submitted. Our team will process it shortly.", "success")
+        else:
+            flash("Failed to submit renewal request.", "danger")
+
+        return redirect(url_for("support_lookup", license_key=license_key))
+
+    # ── Admin ticket management ──────────────────────────────────
+    @app.route("/tickets")
+    def admin_tickets():
+        tickets = get_all_tickets()
+        return render_template("licensing/tickets.html", tickets=tickets)
+
+    @app.route("/ticket/<int:ticket_id>/reply", methods=["POST"])
+    def admin_reply_ticket(ticket_id):
+        reply = request.form.get("admin_reply", "").strip()
+        new_status = request.form.get("status", "in_progress")
+        if not reply:
+            flash("Reply cannot be empty.", "danger")
+            return redirect(url_for("admin_tickets"))
+        try:
+            with get_db_connection_with_transaction() as conn:
+                cursor = conn.cursor()
+                cursor.execute(
+                    "UPDATE support_tickets SET admin_reply = %s, status = %s, replied_at = NOW() WHERE id = %s",
+                    (reply, new_status, ticket_id)
+                )
+            flash("Reply sent successfully.", "success")
+        except Exception as e:
+            logger.error(f"Error replying to ticket: {e}")
+            flash("Failed to send reply.", "danger")
+        return redirect(url_for("admin_tickets"))
+
+    @app.route("/ticket/<int:ticket_id>/status", methods=["POST"])
+    def admin_update_ticket_status(ticket_id):
+        new_status = request.form.get("status", "open")
+        try:
+            with get_db_connection_with_transaction() as conn:
+                cursor = conn.cursor()
+                cursor.execute("UPDATE support_tickets SET status = %s WHERE id = %s", (new_status, ticket_id))
+            flash(f"Ticket status updated to {new_status}.", "success")
+        except Exception as e:
+            logger.error(f"Error updating ticket status: {e}")
+            flash("Failed to update ticket.", "danger")
+        return redirect(url_for("admin_tickets"))
+
     # Initialize schema on startup
     init_schema()
     
