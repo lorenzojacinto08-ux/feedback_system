@@ -34,7 +34,7 @@
             <i class="bi bi-people me-2" style="color: white !important;"></i>Users
           </a>
           {% endif %}
-          {% if session.get('role') != 'user' %}
+          {% if session.get('role') in ['admin', 'superadmin'] %}
           <div class="border-start border-2 mx-2 flex-shrink-0" style="border-color: rgba(255, 255, 255, 0.3); height: 20px; align-self: center;"></div>
           <a href="{{ url_for('admin_license_config') }}" class="text-decoration-none topnav-link px-3 py-2 rounded-2 text-nowrap {% if request.endpoint == 'admin_license_config' %}active{% endif %}">
             <i class="bi bi-key me-2" style="color: white !important;"></i>License
