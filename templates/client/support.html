@@ -3,11 +3,88 @@
 {% block title %}Support · Feedback System{% endblock %}
 
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4">
+<style>
+  /* Tickets slide-in drawer */
+  .tickets-drawer-backdrop {
+    position: fixed; inset: 0;
+    background: rgba(15, 23, 42, 0.45);
+    backdrop-filter: blur(2px);
+    opacity: 0; visibility: hidden;
+    transition: opacity .25s ease, visibility 0s linear .25s;
+    z-index: 1090;
+  }
+  .tickets-drawer-backdrop.open {
+    opacity: 1; visibility: visible;
+    transition: opacity .25s ease, visibility 0s linear 0s;
+  }
+  .tickets-drawer {
+    position: fixed; top: 0; right: 0; bottom: 0;
+    width: min(560px, 100%);
+    background: #fff;
+    box-shadow: -10px 0 40px rgba(15, 23, 42, .25);
+    transform: translateX(100%);
+    transition: transform .3s cubic-bezier(.4,.0,.2,1);
+    display: flex; flex-direction: column;
+    z-index: 1100;
+  }
+  .tickets-drawer.open { transform: translateX(0); }
+  .tickets-drawer-header {
+    padding: 18px 22px;
+    border-bottom: 1px solid var(--neutral-200);
+    display: flex; align-items: center; gap: 12px;
+    background: linear-gradient(135deg, #1f2937 0%, #4A90E2 100%);
+    color: #fff;
+  }
+  .tickets-drawer-header .drawer-icon {
+    width: 38px; height: 38px; border-radius: 10px;
+    background: rgba(255,255,255,.15);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.1rem;
+  }
+  .tickets-drawer-body {
+    flex: 1; overflow-y: auto;
+    padding: 20px 22px;
+  }
+  .tickets-drawer-close {
+    margin-left: auto;
+    background: rgba(255,255,255,.15);
+    border: none; color: #fff;
+    width: 32px; height: 32px; border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    transition: background .15s ease;
+    cursor: pointer;
+  }
+  .tickets-drawer-close:hover { background: rgba(255,255,255,.25); }
+
+  .ticket-card {
+    border: 1px solid var(--neutral-200);
+    border-radius: 12px;
+    padding: 14px 16px;
+    margin-bottom: 12px;
+    background: #fff;
+    transition: box-shadow .15s ease, transform .15s ease;
+  }
+  .ticket-card:hover { box-shadow: 0 6px 18px rgba(15,23,42,.06); transform: translateY(-1px); }
+  .ticket-reply {
+    margin-top: 10px;
+    padding: 10px 12px;
+    border-radius: 8px;
+    background: rgba(74,144,226,.06);
+    border-left: 3px solid var(--accent-500);
+    font-size: .82rem;
+    line-height: 1.5;
+  }
+</style>
+
+<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
   <div>
     <h2 class="page-title mb-1">Support</h2>
     <p class="page-subtitle mb-0">View your license status, request renewals, or submit a support ticket</p>
   </div>
+  <button type="button" class="btn btn-outline-primary" id="open-tickets-drawer">
+    <i class="bi bi-clock-history me-2"></i>My Tickets
+    <span class="badge bg-primary ms-2 d-none" id="tickets-count-badge">0</span>
+  </button>
 </div>
 
 <div class="row g-4">
@@ -126,34 +203,33 @@
   </div>
 </div>
 
-<!-- Ticket History -->
-<div class="card border-0 shadow-lg">
-  <div class="card-body p-4">
-    <div class="d-flex align-items-center gap-2 mb-3 pb-3" style="border-bottom:1px solid var(--neutral-200);">
-      <div style="background:linear-gradient(135deg, rgba(100,116,139,.12) 0%, rgba(100,116,139,.2) 100%); width:40px; height:40px; border-radius:10px; display:flex; align-items:center; justify-content:center;">
-        <i class="bi bi-clock-history" style="color:var(--neutral-600) !important;opacity:1; font-size:1.1rem;"></i>
-      </div>
-      <div>
-        <h6 class="mb-0 fw-bold" style="font-size:1rem;">Your Tickets</h6>
-        <small class="text-muted" style="font-size:.75rem;">Track your support requests</small>
-      </div>
+<!-- Tickets slide-in drawer -->
+<div class="tickets-drawer-backdrop" id="tickets-backdrop"></div>
+<aside class="tickets-drawer" id="tickets-drawer" aria-hidden="true" aria-labelledby="tickets-drawer-title">
+  <div class="tickets-drawer-header">
+    <div class="drawer-icon"><i class="bi bi-clock-history"></i></div>
+    <div class="flex-grow-1">
+      <h6 class="mb-0 fw-bold" id="tickets-drawer-title">Your Tickets</h6>
+      <small style="opacity:.85; font-size:.78rem;">Track your support requests</small>
     </div>
-
-    <div id="tickets-area">
-      {% if license_key %}
-      <div class="text-center py-3" id="tickets-loading">
-        <div class="spinner-border spinner-border-sm text-muted" role="status"></div>
-        <p class="small text-muted mt-2 mb-0">Loading tickets...</p>
-      </div>
-      {% else %}
-      <div class="text-center py-4">
-        <i class="bi bi-inbox text-muted" style="font-size:2.5rem; opacity:.3;"></i>
-        <p class="text-muted mt-2 mb-0">Configure your license to view tickets.</p>
-      </div>
-      {% endif %}
-    </div>
+    <button type="button" class="tickets-drawer-close" id="close-tickets-drawer" aria-label="Close">
+      <i class="bi bi-x-lg"></i>
+    </button>
   </div>
-</div>
+  <div class="tickets-drawer-body" id="tickets-area">
+    {% if license_key %}
+    <div class="text-center py-3" id="tickets-loading">
+      <div class="spinner-border spinner-border-sm text-muted" role="status"></div>
+      <p class="small text-muted mt-2 mb-0">Loading tickets...</p>
+    </div>
+    {% else %}
+    <div class="text-center py-4">
+      <i class="bi bi-inbox text-muted" style="font-size:2.5rem; opacity:.3;"></i>
+      <p class="text-muted mt-2 mb-0">Configure your license to view tickets.</p>
+    </div>
+    {% endif %}
+  </div>
+</aside>
 {% endblock %}
 
 {% block scripts %}
@@ -168,6 +244,32 @@ function toggleEditLicense() {
   const f = document.getElementById('edit_license_form');
   if (f) f.classList.toggle('d-none');
 }
+
+// Tickets drawer open/close
+(function() {
+  const drawer = document.getElementById('tickets-drawer');
+  const backdrop = document.getElementById('tickets-backdrop');
+  const openBtn = document.getElementById('open-tickets-drawer');
+  const closeBtn = document.getElementById('close-tickets-drawer');
+  if (!drawer || !backdrop) return;
+
+  function openDrawer() {
+    drawer.classList.add('open');
+    backdrop.classList.add('open');
+    drawer.setAttribute('aria-hidden', 'false');
+    document.body.style.overflow = 'hidden';
+  }
+  function closeDrawer() {
+    drawer.classList.remove('open');
+    backdrop.classList.remove('open');
+    drawer.setAttribute('aria-hidden', 'true');
+    document.body.style.overflow = '';
+  }
+  if (openBtn) openBtn.addEventListener('click', openDrawer);
+  if (closeBtn) closeBtn.addEventListener('click', closeDrawer);
+  backdrop.addEventListener('click', closeDrawer);
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeDrawer(); });
+})();
 </script>
 {% if license_key %}
 <script>
@@ -254,8 +356,18 @@ function toggleEditLicense() {
 
   function renderTickets(tickets) {
     const area = document.getElementById('tickets-area');
+    const badge = document.getElementById('tickets-count-badge');
+    if (badge) {
+      if (tickets.length) {
+        badge.textContent = tickets.length;
+        badge.classList.remove('d-none');
+      } else {
+        badge.classList.add('d-none');
+      }
+    }
+
     if (!tickets.length) {
-      area.innerHTML = `<div class="text-center py-4"><i class="bi bi-inbox text-muted" style="font-size:2.5rem;opacity:.3;"></i><p class="text-muted mt-2 mb-0">No tickets yet. Submit a ticket above if you need help.</p></div>`;
+      area.innerHTML = `<div class="text-center py-5"><i class="bi bi-inbox text-muted" style="font-size:3rem;opacity:.3;"></i><p class="text-muted mt-3 mb-0">No tickets yet.</p><p class="text-muted small mb-0">Submit a ticket from the form on the left if you need help.</p></div>`;
       return;
     }
 
@@ -267,33 +379,33 @@ function toggleEditLicense() {
         closed: ['secondary', 'Closed']
       };
       const [color, label] = map[s] || ['secondary', s];
-      return `<span class="badge bg-${color} bg-opacity-10 text-${color}" style="font-size:.75rem;">${label}</span>`;
+      return `<span class="badge bg-${color} bg-opacity-10 text-${color}" style="font-size:.7rem;">${label}</span>`;
     };
 
-    const rows = tickets.map(t => `
-      <tr>
-        <td>${statusBadge(t.status)}</td>
-        <td><span class="badge bg-light text-dark border" style="font-size:.7rem;text-transform:uppercase;">${t.ticket_type || ''}</span></td>
-        <td class="fw-semibold">${t.subject || ''}</td>
-        <td class="text-muted" style="font-size:.8rem;">${t.created_at ? new Date(t.created_at).toLocaleDateString('en-US', {month:'short',day:'numeric',year:'numeric'}) : ''}</td>
-        <td>${t.admin_reply
-          ? `<div class="p-2 rounded" style="background:rgba(74,144,226,.06);border-left:3px solid var(--accent-500);font-size:.8rem;">${t.admin_reply}</div>`
-          : '<span class="text-muted" style="font-size:.8rem;">Awaiting reply</span>'}</td>
-      </tr>`).join('');
+    const cards = tickets.map(t => {
+      const dateStr = t.created_at
+        ? new Date(t.created_at).toLocaleDateString('en-US', {month:'short',day:'numeric',year:'numeric'})
+        : '';
+      const reply = t.admin_reply
+        ? `<div class="ticket-reply"><div class="d-flex align-items-center gap-1 mb-1"><i class="bi bi-reply-fill" style="color:var(--accent-500); font-size:.75rem;"></i><small class="fw-semibold text-primary" style="font-size:.7rem;text-transform:uppercase;letter-spacing:.05em;">Admin reply</small></div>${t.admin_reply}</div>`
+        : `<div class="mt-2"><small class="text-muted fst-italic" style="font-size:.78rem;"><i class="bi bi-hourglass-split me-1"></i>Awaiting reply</small></div>`;
+      return `
+        <div class="ticket-card">
+          <div class="d-flex align-items-start justify-content-between gap-2 mb-2">
+            <div class="flex-grow-1">
+              <div class="d-flex align-items-center gap-2 mb-1 flex-wrap">
+                ${statusBadge(t.status)}
+                <span class="badge bg-light text-dark border" style="font-size:.65rem;text-transform:uppercase;letter-spacing:.04em;">${t.ticket_type || ''}</span>
+              </div>
+              <h6 class="mb-0 fw-semibold" style="font-size:.92rem;">${t.subject || ''}</h6>
+            </div>
+            <small class="text-muted text-nowrap" style="font-size:.72rem;">${dateStr}</small>
+          </div>
+          ${reply}
+        </div>`;
+    }).join('');
 
-    area.innerHTML = `
-      <div class="table-responsive">
-        <table class="table table-hover align-middle mb-0" style="font-size:.875rem;">
-          <thead><tr class="text-muted" style="font-size:.75rem;text-transform:uppercase;letter-spacing:.04em;">
-            <th class="border-0 fw-semibold">Status</th>
-            <th class="border-0 fw-semibold">Type</th>
-            <th class="border-0 fw-semibold">Subject</th>
-            <th class="border-0 fw-semibold">Date</th>
-            <th class="border-0 fw-semibold">Reply</th>
-          </tr></thead>
-          <tbody>${rows}</tbody>
-        </table>
-      </div>`;
+    area.innerHTML = cards;
   }
 })();
 </script>
