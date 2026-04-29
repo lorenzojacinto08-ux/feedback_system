@@ -2488,7 +2488,7 @@ def create_app() -> Flask:
     @app.route("/account/password", methods=["GET", "POST"])
     @login_required
     def account_change_password():
-        """Allow any logged-in user to change their own password."""
+        """Self-service account settings: change username and/or password."""
         user_id = session.get('user_id')
         if not user_id:
             return redirect(url_for('login'))
@@ -2505,12 +2505,66 @@ def create_app() -> Flask:
                 return redirect(url_for('login'))
 
             if request.method == "POST":
+                form_type = request.form.get("form_type", "password")
+
+                if form_type == "username":
+                    new_username = request.form.get("new_username", "").strip()
+                    current_password = request.form.get("current_password", "")
+
+                    if not new_username or not current_password:
+                        flash("New username and current password are required.", "danger")
+                        return redirect(url_for("account_change_password"))
+
+                    if len(new_username) < 2:
+                        flash("Username must be at least 2 characters long.", "danger")
+                        return redirect(url_for("account_change_password"))
+
+                    if new_username == user['username']:
+                        flash("New username must be different from your current username.", "warning")
+                        return redirect(url_for("account_change_password"))
+
+                    if not verify_password(current_password, user['password_hash']):
+                        flash("Current password is incorrect.", "danger")
+                        return redirect(url_for("account_change_password"))
+
+                    # Uniqueness check
+                    cursor.execute(
+                        "SELECT id FROM users WHERE username = %s AND id != %s",
+                        (new_username, user_id)
+                    )
+                    if cursor.fetchone():
+                        flash("That username is already taken.", "danger")
+                        return redirect(url_for("account_change_password"))
+
+                    cursor.execute(
+                        "UPDATE users SET username = %s WHERE id = %s",
+                        (new_username, user_id)
+                    )
+                    conn.commit()
+                    session['username'] = new_username
+
+                    try:
+                        log_audit(
+                            entity_type="user",
+                            entity_id=user_id,
+                            action="username_changed",
+                            old_values=user['username'],
+                            new_values=new_username,
+                            user_id=user_id
+                        )
+                    except Exception:
+                        pass
+
+                    flash(f"Username changed to {new_username}.", "success")
+                    return redirect(url_for("account_change_password"))
+
+                # Password change (default)
                 current_password = request.form.get("current_password", "")
                 new_password = request.form.get("new_password", "")
                 confirm_password = request.form.get("confirm_password", "")
 
                 if not current_password or not new_password or not confirm_password:
-                    flash("All fields are required.", "danger")
+                    flash("All password fields are required.", "danger")
                     return redirect(url_for("account_change_password"))
 
                 if not verify_password(current_password, user['password_hash']):
@@ -2552,8 +2606,8 @@ def create_app() -> Flask:
 
             return render_template("account/change_password.html", user=user)
         except Exception as e:
-            logger.error(f"Error changing password: {e}")
-            flash(f"Error changing password: {e}", "danger")
+            logger.error(f"Error in account settings: {e}")
+            flash(f"Error updating account: {e}", "danger")
             return redirect(url_for("admin_dashboard"))
         finally:
             conn.close()
