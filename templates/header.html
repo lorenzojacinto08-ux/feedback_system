@@ -49,12 +49,26 @@
               0
             </span>
           </button>
-          <ul class="dropdown-menu dropdown-menu-end shadow-lg border-0 mt-3 p-0 overflow-hidden" aria-labelledby="notificationDropdown" style="width: 320px; border-radius: 12px; transform: translateX(10px);">
+          <ul class="dropdown-menu dropdown-menu-end shadow-lg border-0 mt-3 p-0 overflow-hidden" aria-labelledby="notificationDropdown" style="width: 340px; border-radius: 12px; transform: translateX(10px);">
             <li class="px-3 py-3 bg-white border-bottom d-flex justify-content-between align-items-center">
               <h6 class="fw-bold mb-0 text-dark" style="font-size: 0.9rem;">Notifications</h6>
               <span id="unread-count-text" class="badge bg-primary bg-opacity-10 text-primary rounded-pill fw-bold" style="font-size: 0.75rem;">0 New</span>
             </li>
-            <div id="notification-list" style="max-height: 80vh; overflow-y: auto;">
+            <li class="bg-white border-bottom">
+              <ul class="nav nav-tabs nav-fill border-0 px-2 pt-2" id="notification-tabs" role="tablist" style="gap: 4px;">
+                <li class="nav-item" role="presentation">
+                  <button class="nav-link active notification-tab-btn" id="tab-unseen" data-tab="unseen" type="button" style="font-size: 0.8rem; padding: 6px 8px;">
+                    Unseen <span id="unseen-count" class="badge bg-danger ms-1" style="font-size: 0.65rem;">0</span>
+                  </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                  <button class="nav-link notification-tab-btn" id="tab-seen" data-tab="seen" type="button" style="font-size: 0.8rem; padding: 6px 8px;">
+                    Seen <span id="seen-count" class="badge bg-secondary ms-1" style="font-size: 0.65rem;">0</span>
+                  </button>
+                </li>
+              </ul>
+            </li>
+            <div id="notification-list" style="max-height: 70vh; overflow-y: auto;">
               <!-- Notifications will be loaded here -->
               <li class="px-3 py-5 text-center text-muted">
                 <div class="rounded-circle bg-light d-inline-flex p-3 mb-3">

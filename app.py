@@ -5077,18 +5077,18 @@ def create_app() -> Flask:
                 JOIN stores s ON r.store_id = s.id
                 WHERE s.store_name IS NOT NULL
                 ORDER BY r.submitted_at DESC
-                LIMIT 10
+                LIMIT 50
                 """
             )
             feedback_notifications = cursor.fetchall()
 
-            # Fetch latest system notifications (last 10, regardless of read status)
+            # Fetch latest system notifications (last 50, regardless of read status)
             cursor.execute(
                 """
                 SELECT id, message, type, created_at, is_read, 'system' as notification_type, NULL as user_email, NULL as store_name, NULL as store_id
                 FROM system_notifications
                 ORDER BY created_at DESC
-                LIMIT 10
+                LIMIT 50
                 """
             )
             system_notifications = cursor.fetchall()
@@ -5098,7 +5098,7 @@ def create_app() -> Flask:
                 feedback_notifications + system_notifications,
                 key=lambda x: x['created_at'],
                 reverse=True
-            )[:10] # Take top 10 after sorting
+            )[:50] # Take top 50 after sorting
 
             # Count total unread from both types
             cursor.execute("SELECT COUNT(*) as count FROM responses WHERE is_read = FALSE")
