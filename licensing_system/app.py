@@ -126,6 +126,39 @@ def create_app() -> Flask:
                         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
                     )
                 """)
+
+                # Create client_conversations table for messaging system
+                cursor.execute("""
+                    CREATE TABLE IF NOT EXISTS client_conversations (
+                        id INT AUTO_INCREMENT PRIMARY KEY,
+                        client_identifier VARCHAR(255) NOT NULL UNIQUE,
+                        company_name VARCHAR(255) NOT NULL,
+                        license_key VARCHAR(255) NULL,
+                        contact_email VARCHAR(255) NOT NULL,
+                        last_message_at TIMESTAMP NULL,
+                        last_message_preview TEXT NULL,
+                        unread_count INT DEFAULT 0,
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                        INDEX idx_client_identifier (client_identifier),
+                        INDEX idx_last_message_at (last_message_at)
+                    )
+                """)
+
+                # Create messages table for individual messages in conversations
+                cursor.execute("""
+                    CREATE TABLE IF NOT EXISTS messages (
+                        id INT AUTO_INCREMENT PRIMARY KEY,
+                        conversation_id INT NOT NULL,
+                        sender_type ENUM('client', 'admin') NOT NULL,
+                        sender_name VARCHAR(255) NOT NULL,
+                        message TEXT NOT NULL,
+                        is_read BOOLEAN DEFAULT FALSE,
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        FOREIGN KEY (conversation_id) REFERENCES client_conversations(id) ON DELETE CASCADE,
+                        INDEX idx_conversation_created (conversation_id, created_at)
+                    )
+                """)
                 
                 conn.commit()
                 logger.info("Licensing database schema initialized successfully")
@@ -468,7 +501,38 @@ def create_app() -> Flask:
         license_data = get_license_by_key(license_key) if license_key else None
         company_name = license_data["company_name"] if license_data else "Unknown"
 
+        # Create ticket
         if create_ticket(license_key, company_name, contact_email, subject, message, ticket_type):
+            # Also create conversation and message for messaging system
+            try:
+                conv = get_or_create_conversation(license_key, company_name, contact_email)
+                conn = get_db_connection()
+                try:
+                    cursor = conn.cursor()
+                    # Add client message to conversation
+                    full_message = f"[{ticket_type.upper()}] {subject}\n\n{message}"
+                    cursor.execute(
+                        """
+                        INSERT INTO messages (conversation_id, sender_type, sender_name, message)
+                        VALUES (%s, 'client', %s, %s)
+                        """,
+                        (conv['id'], contact_email, full_message)
+                    )
+                    # Update conversation
+                    cursor.execute(
+                        """
+                        UPDATE client_conversations
+                        SET last_message_at = NOW(), last_message_preview = %s, unread_count = unread_count + 1, updated_at = NOW()
+                        WHERE id = %s
+                        """,
+                        (full_message[:100] if len(full_message) > 100 else full_message, conv['id'])
+                    )
+                    conn.commit()
+                finally:
+                    conn.close()
+            except Exception as e:
+                logger.error(f"Error creating conversation for ticket: {e}")
+                # Don't fail the ticket creation if conversation creation fails
             return jsonify({"success": True}), 201
         return jsonify({"error": "Failed to create ticket"}), 500
 
@@ -485,6 +549,144 @@ def create_app() -> Flask:
                     row[k] = v.isoformat()
             serialized.append(row)
         return jsonify({"tickets": serialized})
+
+    # ── Messaging system ─────────────────────────────────────────
+    def get_or_create_conversation(license_key, company_name, contact_email):
+        """Get or create a conversation for a client"""
+        client_identifier = license_key or contact_email
+        conn = get_db_connection()
+        try:
+            cursor = conn.cursor(dictionary=True)
+            cursor.execute(
+                "SELECT * FROM client_conversations WHERE client_identifier = %s",
+                (client_identifier,)
+            )
+            conv = cursor.fetchone()
+            if not conv:
+                cursor.execute(
+                    """
+                    INSERT INTO client_conversations (client_identifier, company_name, license_key, contact_email)
+                    VALUES (%s, %s, %s, %s)
+                    """,
+                    (client_identifier, company_name, license_key, contact_email)
+                )
+                conn.commit()
+                cursor.execute(
+                    "SELECT * FROM client_conversations WHERE client_identifier = %s",
+                    (client_identifier,)
+                )
+                conv = cursor.fetchone()
+            return conv
+        finally:
+            conn.close()
+
+    @app.route("/messages")
+    def admin_messages():
+        """Messages page with client selector and message threads"""
+        conn = get_db_connection()
+        try:
+            cursor = conn.cursor(dictionary=True)
+            cursor.execute(
+                "SELECT * FROM client_conversations ORDER BY last_message_at DESC, created_at DESC"
+            )
+            conversations = cursor.fetchall()
+            return render_template("licensing/messages.html", conversations=conversations)
+        finally:
+            conn.close()
+
+    @app.route("/api/conversations")
+    def api_get_conversations():
+        """API endpoint to get all conversations"""
+        conn = get_db_connection()
+        try:
+            cursor = conn.cursor(dictionary=True)
+            cursor.execute(
+                "SELECT * FROM client_conversations ORDER BY last_message_at DESC, created_at DESC"
+            )
+            conversations = cursor.fetchall()
+            # Convert datetime objects for JSON serialization
+            for conv in conversations:
+                for k, v in conv.items():
+                    if hasattr(v, 'isoformat'):
+                        conv[k] = v.isoformat()
+            return jsonify({"conversations": conversations})
+        finally:
+            conn.close()
+
+    @app.route("/api/conversations/<int:conversation_id>/messages")
+    def api_get_conversation_messages(conversation_id):
+        """API endpoint to get messages for a conversation"""
+        conn = get_db_connection()
+        try:
+            cursor = conn.cursor(dictionary=True)
+            # Mark messages as read
+            cursor.execute(
+                "UPDATE messages SET is_read = TRUE WHERE conversation_id = %s AND sender_type = 'client'",
+                (conversation_id,)
+            )
+            conn.commit()
+            # Update unread count
+            cursor.execute(
+                "UPDATE client_conversations SET unread_count = 0 WHERE id = %s",
+                (conversation_id,)
+            )
+            conn.commit()
+
+            cursor.execute(
+                "SELECT * FROM messages WHERE conversation_id = %s ORDER BY created_at ASC",
+                (conversation_id,)
+            )
+            messages = cursor.fetchall()
+            # Convert datetime objects for JSON serialization
+            for msg in messages:
+                for k, v in msg.items():
+                    if hasattr(v, 'isoformat'):
+                        msg[k] = v.isoformat()
+            return jsonify({"messages": messages})
+        finally:
+            conn.close()
+
+    @app.route("/api/conversations/<int:conversation_id>/send", methods=["POST"])
+    def api_send_message(conversation_id):
+        """API endpoint to send a message to a conversation"""
+        data = request.get_json() or {}
+        message = data.get("message", "").strip()
+        if not message:
+            return jsonify({"error": "Message is required"}), 400
+
+        conn = get_db_connection()
+        try:
+            cursor = conn.cursor(dictionary=True)
+            # Get conversation details
+            cursor.execute("SELECT * FROM client_conversations WHERE id = %s", (conversation_id,))
+            conv = cursor.fetchone()
+            if not conv:
+                return jsonify({"error": "Conversation not found"}), 404
+
+            # Insert message
+            cursor.execute(
+                """
+                INSERT INTO messages (conversation_id, sender_type, sender_name, message)
+                VALUES (%s, 'admin', 'Support Team', %s)
+                """,
+                (conversation_id, message)
+            )
+            # Update conversation
+            cursor.execute(
+                """
+                UPDATE client_conversations
+                SET last_message_at = NOW(), last_message_preview = %s, updated_at = NOW()
+                WHERE id = %s
+                """,
+                (message[:100] if len(message) > 100 else message, conversation_id)
+            )
+            conn.commit()
+            return jsonify({"success": True})
+        except Exception as e:
+            logger.error(f"Error sending message: {e}")
+            return jsonify({"error": "Failed to send message"}), 500
+        finally:
+            conn.close()
 
     # ── Admin ticket management ──────────────────────────────────
     @app.route("/tickets")
