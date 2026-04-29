@@ -2507,6 +2507,50 @@ def create_app() -> Flask:
             if request.method == "POST":
                 form_type = request.form.get("form_type", "password")
 
+                if form_type == "email":
+                    new_email = request.form.get("new_email", "").strip()
+
+                    if not new_email:
+                        flash("Email is required.", "danger")
+                        return redirect(url_for("account_change_password"))
+
+                    if "@" not in new_email or "." not in new_email.split("@")[-1]:
+                        flash("Please enter a valid email address.", "danger")
+                        return redirect(url_for("account_change_password"))
+
+                    if new_email == user['email']:
+                        flash("New email must be different from your current email.", "warning")
+                        return redirect(url_for("account_change_password"))
+
+                    cursor.execute(
+                        "SELECT id FROM users WHERE email = %s AND id != %s",
+                        (new_email, user_id)
+                    )
+                    if cursor.fetchone():
+                        flash("That email is already in use by another account.", "danger")
+                        return redirect(url_for("account_change_password"))
+
+                    cursor.execute(
+                        "UPDATE users SET email = %s WHERE id = %s",
+                        (new_email, user_id)
+                    )
+                    conn.commit()
+
+                    try:
+                        log_audit(
+                            entity_type="user",
+                            entity_id=user_id,
+                            action="email_changed",
+                            old_values=user['email'],
+                            new_values=new_email,
+                            user_id=user_id
+                        )
+                    except Exception:
+                        pass
+
+                    flash(f"Email updated to {new_email}.", "success")
+                    return redirect(url_for("account_change_password"))
+
                 if form_type == "username":
                     new_username = request.form.get("new_username", "").strip()
 
@@ -5638,6 +5682,7 @@ def create_app() -> Flask:
             return {"success": False, "error": str(e)}, 500
 
     @app.route("/api/notifications/unread")
+    @login_required
     def get_unread_notifications():
         """Fetch feedback notifications for the bell icon, combining feedback and system notifications.
 
@@ -5674,17 +5719,39 @@ def create_app() -> Flask:
             seen = []
             seen_total = 0
 
+            # Get user's assigned stores (applies to all users except superadmin)
+            user_id = session.get('user_id')
+            user_role = session.get('role')
+            assigned_store_ids = []
+            if user_id and user_role != 'superadmin':
+                cursor.execute(
+                    "SELECT store_id FROM user_stores WHERE user_id = %s",
+                    (user_id,)
+                )
+                assigned_store_ids = [row['store_id'] for row in cursor.fetchall()]
+
+            # Build WHERE clause for store filtering
+            store_filter = ""
+            if assigned_store_ids:
+                placeholders = ','.join(['%s'] * len(assigned_store_ids))
+                store_filter = f"AND r.store_id IN ({placeholders})"
+            elif user_role != 'superadmin':
+                # Non-superadmin with no assigned stores - show no feedback notifications
+                store_filter = "AND 1=0"
+
             if status in ('all', 'unseen'):
                 # Fetch ALL unseen feedback responses (no cap so user always sees them)
-                cursor.execute(
-                    """
+                query = f"""
                     SELECT r.id, r.user_email, r.submitted_at as created_at, s.store_name, s.id as store_id, r.is_read, 'feedback' as notification_type, NULL as message, NULL as type
                     FROM responses r
                     JOIN stores s ON r.store_id = s.id
-                    WHERE s.store_name IS NOT NULL AND r.is_read = FALSE
+                    WHERE s.store_name IS NOT NULL AND r.is_read = FALSE {store_filter}
                     ORDER BY r.submitted_at DESC
                     """
-                )
+                if assigned_store_ids:
+                    cursor.execute(query, assigned_store_ids)
+                else:
+                    cursor.execute(query)
                 unseen_feedback = cursor.fetchall()
 
                 cursor.execute(
@@ -5716,12 +5783,28 @@ def create_app() -> Flask:
 
                 # Total seen count (for "load more" UI), respecting cleared cutoff
                 if cleared_dt:
-                    cursor.execute(
-                        "SELECT COUNT(*) as count FROM responses r JOIN stores s ON r.store_id = s.id WHERE s.store_name IS NOT NULL AND r.is_read = TRUE AND r.submitted_at > %s",
-                        (cleared_dt,)
-                    )
+                    if assigned_store_ids:
+                        placeholders = ','.join(['%s'] * len(assigned_store_ids))
+                        cursor.execute(
+                            f"SELECT COUNT(*) as count FROM responses r JOIN stores s ON r.store_id = s.id WHERE s.store_name IS NOT NULL AND r.is_read = TRUE AND r.submitted_at > %s AND r.store_id IN ({placeholders})",
+                            [cleared_dt] + assigned_store_ids
+                        )
+                    else:
+                        cursor.execute(
+                            "SELECT COUNT(*) as count FROM responses r JOIN stores s ON r.store_id = s.id WHERE s.store_name IS NOT NULL AND r.is_read = TRUE AND r.submitted_at > %s" + (" AND 1=0" if user_role != 'superadmin' else ""),
+                            (cleared_dt,)
+                        )
                 else:
-                    cursor.execute("SELECT COUNT(*) as count FROM responses r JOIN stores s ON r.store_id = s.id WHERE s.store_name IS NOT NULL AND r.is_read = TRUE")
+                    if assigned_store_ids:
+                        placeholders = ','.join(['%s'] * len(assigned_store_ids))
+                        cursor.execute(
+                            f"SELECT COUNT(*) as count FROM responses r JOIN stores s ON r.store_id = s.id WHERE s.store_name IS NOT NULL AND r.is_read = TRUE AND r.store_id IN ({placeholders})",
+                            assigned_store_ids
+                        )
+                    else:
+                        cursor.execute(
+                            "SELECT COUNT(*) as count FROM responses r JOIN stores s ON r.store_id = s.id WHERE s.store_name IS NOT NULL AND r.is_read = TRUE" + (" AND 1=0" if user_role != 'superadmin' else "")
+                        )
                 seen_feedback_total = cursor.fetchone()['count']
 
                 if cleared_dt:
@@ -5736,55 +5819,63 @@ def create_app() -> Flask:
 
                 # Fetch a window of seen notifications. Over-fetch from each table then merge,
                 # so the merged page reflects true chronological order across both sources.
-                window = seen_offset + seen_limit
+                window = seen_limit + 1  # fetch one extra to detect if there's more
+
+                # Fetch seen feedback responses with store filter
                 if cleared_dt:
-                    cursor.execute(
-                        """
-                        SELECT r.id, r.user_email, r.submitted_at as created_at, s.store_name, s.id as store_id, r.is_read, 'feedback' as notification_type, NULL as message, NULL as type
-                        FROM responses r
-                        JOIN stores s ON r.store_id = s.id
-                        WHERE s.store_name IS NOT NULL AND r.is_read = TRUE AND r.submitted_at > %s
-                        ORDER BY r.submitted_at DESC
-                        LIMIT %s
-                        """,
-                        (cleared_dt, window)
-                    )
+                    try:
+                        cleared_dt_parsed = datetime.fromisoformat(cleared_at)
+                        query = f"""
+                            SELECT r.id, r.user_email, r.submitted_at as created_at, s.store_name, s.id as store_id, r.is_read, 'feedback' as notification_type, NULL as message, NULL as type
+                            FROM responses r
+                            JOIN stores s ON r.store_id = s.id
+                            WHERE s.store_name IS NOT NULL AND r.is_read = TRUE AND r.submitted_at > %s {store_filter}
+                            ORDER BY r.submitted_at DESC
+                            LIMIT %s
+                            """
+                        if assigned_store_ids:
+                            cursor.execute(query, [cleared_dt_parsed] + assigned_store_ids + [window])
+                        else:
+                            cursor.execute(query, [cleared_dt_parsed, window])
+                    except ValueError:
+                        cleared_dt = None
+                        query = f"""
+                            SELECT r.id, r.user_email, r.submitted_at as created_at, s.store_name, s.id as store_id, r.is_read, 'feedback' as notification_type, NULL as message, NULL as type
+                            FROM responses r
+                            JOIN stores s ON r.store_id = s.id
+                            WHERE s.store_name IS NOT NULL AND r.is_read = TRUE {store_filter}
+                            ORDER BY r.submitted_at DESC
+                            LIMIT %s
+                            """
+                        if assigned_store_ids:
+                            cursor.execute(query, assigned_store_ids + [window])
+                        else:
+                            cursor.execute(query, [window])
                 else:
-                    cursor.execute(
-                        """
+                    query = f"""
                         SELECT r.id, r.user_email, r.submitted_at as created_at, s.store_name, s.id as store_id, r.is_read, 'feedback' as notification_type, NULL as message, NULL as type
                         FROM responses r
                         JOIN stores s ON r.store_id = s.id
-                        WHERE s.store_name IS NOT NULL AND r.is_read = TRUE
+                        WHERE s.store_name IS NOT NULL AND r.is_read = TRUE {store_filter}
                         ORDER BY r.submitted_at DESC
                         LIMIT %s
-                        """,
-                        (window,)
-                    )
+                        """
+                    if assigned_store_ids:
+                        cursor.execute(query, assigned_store_ids + [window])
+                    else:
+                        cursor.execute(query, [window])
                 seen_feedback = cursor.fetchall()
 
-                if cleared_dt:
-                    cursor.execute(
-                        """
-                        SELECT id, message, type, created_at, is_read, 'system' as notification_type, NULL as user_email, NULL as store_name, NULL as store_id
-                        FROM system_notifications
-                        WHERE is_read = TRUE AND created_at > %s
-                        ORDER BY created_at DESC
-                        LIMIT %s
-                        """,
-                        (cleared_dt, window)
-                    )
-                else:
-                    cursor.execute(
-                        """
-                        SELECT id, message, type, created_at, is_read, 'system' as notification_type, NULL as user_email, NULL as store_name, NULL as store_id
-                        FROM system_notifications
-                        WHERE is_read = TRUE
-                        ORDER BY created_at DESC
-                        LIMIT %s
-                        """,
-                        (window,)
-                    )
+                cursor.execute(
+                    """
+                    SELECT id, message, type, created_at, is_read, 'system' as notification_type, NULL as user_email, NULL as store_name, NULL as store_id
+                    FROM system_notifications
+                    WHERE is_read = TRUE
+                    ORDER BY created_at DESC
+                    LIMIT %s
+                    """,
+                    (window,)
+                )
                 seen_system = cursor.fetchall()
 
                 merged_seen = sorted(
@@ -5795,8 +5886,21 @@ def create_app() -> Flask:
                 seen = merged_seen[seen_offset:seen_offset + seen_limit]
                 _format(seen)
 
-            # Total unread count (always returned)
-            cursor.execute("SELECT COUNT(*) as count FROM responses WHERE is_read = FALSE")
+            # Total unread count (always returned) - filter by assigned stores for view-only users
+            if assigned_store_ids:
+                placeholders = ','.join(['%s'] * len(assigned_store_ids))
+                cursor.execute(
+                    f"SELECT COUNT(*) as count FROM responses r JOIN stores s ON r.store_id = s.id WHERE s.store_name IS NOT NULL AND r.is_read = FALSE AND r.store_id IN ({placeholders})",
+                    assigned_store_ids
+                )
+            elif user_role != 'superadmin':
+                cursor.execute(
+                    "SELECT COUNT(*) as count FROM responses r JOIN stores s ON r.store_id = s.id WHERE s.store_name IS NOT NULL AND r.is_read = FALSE AND 1=0"
+                )
+            else:
+                cursor.execute(
+                    "SELECT COUNT(*) as count FROM responses r JOIN stores s ON r.store_id = s.id WHERE s.store_name IS NOT NULL AND r.is_read = FALSE"
+                )
             unread_feedback_count = cursor.fetchone()['count']
             cursor.execute("SELECT COUNT(*) as count FROM system_notifications WHERE is_read = FALSE")
             unread_system_count = cursor.fetchone()['count']
