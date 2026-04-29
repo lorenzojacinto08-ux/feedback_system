@@ -527,7 +527,7 @@ def create_app() -> Flask:
                             username VARCHAR(100) NOT NULL UNIQUE,
                             email VARCHAR(255) NOT NULL UNIQUE,
                             password_hash VARCHAR(255) NOT NULL,
-                            role ENUM('dev', 'superadmin', 'admin', 'user') DEFAULT 'user',
+                            role ENUM('superadmin', 'admin', 'user') DEFAULT 'admin',
                             is_active BOOLEAN DEFAULT TRUE,
                             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
@@ -551,17 +551,46 @@ def create_app() -> Flask:
                         """)
                         conn.commit()
                     
-                    # Create default dev user
+                    # Create default superadmin user (was 'dev')
                     import bcrypt
                     default_password = "dev123"
                     password_hash = bcrypt.hashpw(default_password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
                     cursor.execute(
                         "INSERT INTO users (username, email, password_hash, role) VALUES (%s, %s, %s, %s)",
-                        ("dev", "dev@tugon.com", password_hash, "dev")
+                        ("dev", "dev@tugon.com", password_hash, "superadmin")
                     )
                     conn.commit()
-                    logger.info("Created default dev user (username: dev, password: dev123)")
+                    logger.info("Created default superadmin user (username: dev, password: dev123)")
                 
+                # ----------------------------------------------------------------
+                # Role hierarchy migration (legacy -> new):
+                #   dev   -> superadmin    (internal/full access)
+                #   admin -> superadmin    (legacy admin had full access too)
+                #   user  -> admin         ('admin' is now the client role)
+                #   user  (new)            view-only (no rows yet)
+                # ----------------------------------------------------------------
+                try:
+                    cursor.execute("SHOW COLUMNS FROM users LIKE 'role'")
+                    role_col = cursor.fetchone()
+                    role_type = (role_col[1] if role_col else '') or ''
+                    if 'dev' in role_type.lower():
+                        logger.info("Migrating user roles to new hierarchy (superadmin/admin/user)...")
+                        # Allow temporary widening so updates don't fail
+                        cursor.execute(
+                            "ALTER TABLE users MODIFY COLUMN role "
+                            "ENUM('dev','superadmin','admin','user') DEFAULT 'user'"
+                        )
+                        cursor.execute("UPDATE users SET role='superadmin' WHERE role IN ('dev','admin')")
+                        cursor.execute("UPDATE users SET role='admin' WHERE role='user'")
+                        cursor.execute(
+                            "ALTER TABLE users MODIFY COLUMN role "
+                            "ENUM('superadmin','admin','user') DEFAULT 'admin'"
+                        )
+                        conn.commit()
+                        logger.info("Role migration complete.")
+                except Exception as e:
+                    logger.error(f"Role migration error: {e}")
+
                 # Check for users table columns - add max_stores and license_key for client licensing
                 cursor.execute("SHOW COLUMNS FROM users LIKE 'max_stores'")
                 if not cursor.fetchone():
@@ -678,7 +707,7 @@ def create_app() -> Flask:
                 if stores_without_user:
                     logger.info(f"Assigning user_id to {len(stores_without_user)} existing stores...")
                     # Get the first admin/dev user to assign as owner
-                    cursor.execute("SELECT id FROM users WHERE role IN ('admin', 'dev', 'superadmin') LIMIT 1")
+                    cursor.execute("SELECT id FROM users WHERE role = 'superadmin' LIMIT 1")
                     admin_user = cursor.fetchone()
                     if admin_user:
                         admin_id = admin_user[0]
@@ -777,7 +806,7 @@ def create_app() -> Flask:
     def debug_env():
         """Route to see available environment variable keys (NOT values)"""
         user = get_user_by_id(session['user_id'])
-        if user['role'] not in ['dev', 'superadmin']:
+        if user['role'] != 'superadmin':
             return jsonify({"error": "Unauthorized"}), 403
         return jsonify({
             "available_keys": list(os.environ.keys()),
@@ -2276,7 +2305,7 @@ def create_app() -> Flask:
             return f"Dashboard Error: {e}<br><pre>{error_details}</pre>", 500
 
     @app.route("/admin/users")
-    @role_required('dev', 'superadmin')
+    @role_required('superadmin')
     def admin_users():
         """User management page"""
         conn = get_db_connection()
@@ -2289,7 +2318,7 @@ def create_app() -> Flask:
             conn.close()
 
     @app.route("/admin/users/add", methods=["POST"])
-    @role_required('dev', 'superadmin')
+    @role_required('superadmin')
     def admin_add_user():
         """Add a new user"""
         username = request.form.get("username", "").strip()
@@ -2302,7 +2331,7 @@ def create_app() -> Flask:
             flash("Username, email, and password are required.", "danger")
             return redirect(url_for("admin_users"))
         
-        if role not in ['dev', 'superadmin', 'admin', 'user']:
+        if role not in ['superadmin', 'admin', 'user']:
             flash("Invalid role.", "danger")
             return redirect(url_for("admin_users"))
         
@@ -2320,12 +2349,12 @@ def create_app() -> Flask:
             password_hash = hash_password(password)
             cursor.execute(
                 "INSERT INTO users (username, email, password_hash, role, max_stores, license_key) VALUES (%s, %s, %s, %s, %s, %s)",
-                (username, email, password_hash, role, max_stores if role == 'user' else 0, None)
+                (username, email, password_hash, role, max_stores if role == 'admin' else 0, None)
             )
             conn.commit()
             conn.close()
             
-            if role == 'user':
+            if role == 'admin':
                 flash(f"Client account created successfully. Please create a license in the licensing portal and give the license key to the client.", "success")
                 log_audit(
                     entity_type="user",
@@ -2348,7 +2377,7 @@ def create_app() -> Flask:
         return redirect(url_for("admin_users"))
 
     @app.route("/admin/users/<int:user_id>/toggle", methods=["POST"])
-    @role_required('dev', 'superadmin')
+    @role_required('superadmin')
     def admin_toggle_user(user_id: int):
         """Toggle user active status"""
         try:
@@ -2450,7 +2479,7 @@ def create_app() -> Flask:
             conn.close()
 
     @app.route("/admin/users/<int:user_id>/edit", methods=["GET", "POST"])
-    @role_required('dev', 'superadmin')
+    @role_required('superadmin')
     def admin_edit_user(user_id: int):
         """Edit an existing user."""
         conn = get_db_connection()
@@ -2478,13 +2507,8 @@ def create_app() -> Flask:
                     flash("Username and email are required.", "danger")
                     return redirect(url_for("admin_edit_user", user_id=user_id))
 
-                if role not in ['dev', 'superadmin', 'admin', 'user']:
+                if role not in ['superadmin', 'admin', 'user']:
                     flash("Invalid role.", "danger")
-                    return redirect(url_for("admin_edit_user", user_id=user_id))
-
-                # Only 'dev' can assign 'dev' role
-                if role == 'dev' and session.get('role') != 'dev':
-                    flash("Only dev users can assign the dev role.", "danger")
                     return redirect(url_for("admin_edit_user", user_id=user_id))
 
                 # Don't allow demoting/deactivating yourself
@@ -2522,7 +2546,7 @@ def create_app() -> Flask:
                         is_active = %s
                     WHERE id = %s
                     """,
-                    (username, email, role, max_stores if role == 'user' else 0, is_active, user_id)
+                    (username, email, role, max_stores if role == 'admin' else 0, is_active, user_id)
                 )
 
                 # Optional password reset
@@ -2541,7 +2565,7 @@ def create_app() -> Flask:
 
                 new_values = {
                     'username': username, 'email': email, 'role': role,
-                    'max_stores': max_stores if role == 'user' else 0,
+                    'max_stores': max_stores if role == 'admin' else 0,
                     'is_active': is_active,
                     'password_changed': bool(new_password),
                 }
@@ -2569,7 +2593,7 @@ def create_app() -> Flask:
             conn.close()
 
     @app.route("/admin/users/<int:user_id>/delete", methods=["POST"])
-    @role_required('dev')
+    @role_required('superadmin')
     def admin_delete_user(user_id: int):
         """Delete a user"""
         try:
@@ -2610,7 +2634,7 @@ def create_app() -> Flask:
             cursor.execute("""
                 SELECT id, username, email, role, max_stores, created_at, is_active
                 FROM users
-                WHERE role IN ('admin', 'user')
+                WHERE role = 'admin'
                 ORDER BY created_at DESC
             """)
             users = cursor.fetchall()
@@ -2623,7 +2647,7 @@ def create_app() -> Flask:
 
     @app.route("/admin/license-config")
     @login_required
-    @role_required('dev', 'superadmin')
+    @role_required('superadmin')
     def admin_license_config():
         """License configuration page"""
         conn = get_db_connection()
@@ -2666,7 +2690,7 @@ def create_app() -> Flask:
             conn.close()
 
     @app.route("/admin/license-config/save", methods=["POST"])
-    @role_required('dev', 'superadmin')
+    @role_required('superadmin')
     def admin_save_license_config():
         """Save license configuration"""
         license_key = request.form.get("license_key", "").strip()
@@ -2782,7 +2806,7 @@ def create_app() -> Flask:
     def client_support():
         """Client support page — renders instantly, data loads via AJAX"""
         user = get_user_by_id(session['user_id'])
-        if user['role'] not in ('user', 'admin', 'superadmin', 'dev'):
+        if user['role'] not in ('user', 'admin', 'superadmin'):
             flash("Access denied.", "danger")
             return redirect(url_for("admin_dashboard"))
 
@@ -2903,7 +2927,7 @@ def create_app() -> Flask:
         return redirect(url_for("client_support"))
 
     @app.route("/admin/reset-database", methods=["POST"])
-    @role_required('dev')
+    @role_required('superadmin')
     def admin_reset_database():
         """Reset all data in the database (keeps users)"""
         try:
@@ -3071,8 +3095,10 @@ def create_app() -> Flask:
     @login_required
     def stores_management():
         user = get_user_by_id(session['user_id'])
-        # For client users, only show their own stores
-        user_id = session['user_id'] if user['role'] == 'user' else None
+        # For client accounts (admin role), only show their own stores.
+        # 'user' role is view-only and currently sees nothing scoped to them
+        # (per-store assignment is a future feature).
+        user_id = session['user_id'] if user['role'] in ('admin', 'user') else None
         logger.info(f"User {session['user_id']} (role: {user['role']}) viewing stores. Filtering by user_id: {user_id}")
         stores = fetch_stores(user_id=user_id)
         logger.info(f"User {session['user_id']} sees {len(stores)} stores")
@@ -3099,7 +3125,7 @@ def create_app() -> Flask:
                 )
                 staff_counts = {row[0]: int(row[1]) for row in cursor.fetchall()}
 
-                if user['role'] != 'user':
+                if user['role'] == 'superadmin':
                     user_ids = sorted({s.get("user_id") for s in stores if s.get("user_id")})
                     if user_ids:
                         uph = ",".join(["%s"] * len(user_ids))
@@ -3121,9 +3147,9 @@ def create_app() -> Flask:
             store_with_counts["staff_count"] = staff_counts.get(sid, 0)
             enhanced_stores.append(store_with_counts)
 
-        # Group enhanced stores by user for dev/admin/superadmin
+        # Group enhanced stores by client (admin) for superadmin only
         stores_by_user_enhanced = None
-        if user['role'] != 'user' and enhanced_stores:
+        if user['role'] == 'superadmin' and enhanced_stores:
             stores_by_user_enhanced = {}
             for store in enhanced_stores:
                 uid = store.get("user_id") or "unassigned"
@@ -3152,9 +3178,9 @@ def create_app() -> Flask:
 
         return render_template(
             "manage_stores/stores.html",
-            stores=enhanced_stores if user['role'] == 'user' else None,
-            stores_by_user=stores_by_user_enhanced if user['role'] != 'user' else None,
-            user_info=user_info if user['role'] != 'user' else None,
+            stores=enhanced_stores if user['role'] != 'superadmin' else None,
+            stores_by_user=stores_by_user_enhanced if user['role'] == 'superadmin' else None,
+            user_info=user_info if user['role'] == 'superadmin' else None,
             selected_store=selected_store,
             public_url=public_url,
             qr_data_uri=qr_data_uri,
@@ -3950,7 +3976,7 @@ def create_app() -> Flask:
         # Check store limit based on user role and membership
         user = get_user_by_id(session['user_id'])
         
-        if user['role'] == 'user':
+        if user['role'] == 'admin':
             # Client account - check if license is configured
             if not user.get('license_key'):
                 flash("Please configure your license key first. Contact your administrator for your license key.", "danger")

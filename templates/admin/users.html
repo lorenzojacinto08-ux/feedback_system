@@ -122,12 +122,11 @@
           <div>
             <label class="form-label fw-medium" for="role">Role</label>
             <select class="form-select" id="role" name="role" required onchange="toggleMaxStoresField()">
-              <option value="user">User (Client)</option>
-              <option value="admin">Admin</option>
+              <option value="admin" selected>Admin (Client)</option>
+              <option value="user">User (View-only)</option>
               <option value="superadmin">Superadmin</option>
-              <option value="dev">Dev</option>
             </select>
-            <small class="text-muted">Dev: Full access | Superadmin: Admin + License | Admin: Stores/Questionnaires | User: Client account</small>
+            <small class="text-muted">Superadmin: Full system access | Admin: New client account | User: Per-store view only</small>
           </div>
           <div id="max_stores_field">
             <label class="form-label fw-medium" for="max_stores">Max Stores (Membership Tier)</label>
@@ -179,9 +178,7 @@
               </td>
               <td><small class="text-muted" style="font-size: 0.9rem;">{{ user.email }}</small></td>
               <td>
-                {% if user.role == 'dev' %}
-                <span class="badge rounded-pill" style="font-size:.7rem; background: linear-gradient(135deg, #4C1D95, #6D28D9); color: white; border: 1px solid rgba(139, 92, 246, 0.3); padding: 6px 12px;">Dev</span>
-                {% elif user.role == 'superadmin' %}
+                {% if user.role == 'superadmin' %}
                 <span class="badge rounded-pill" style="font-size:.7rem; background: linear-gradient(135deg, #854d0e, #a16207); color: white; border: 1px solid rgba(234, 179, 8, 0.3); padding: 6px 12px;">Superadmin</span>
                 {% elif user.role == 'admin' %}
                 <span class="badge rounded-pill badge-primary" style="font-size:.7rem; padding: 6px 12px;">Admin</span>
@@ -209,7 +206,7 @@
                       <i class="bi bi-{{ 'toggle-on' if user.is_active else 'toggle-off' }}"></i>
                     </button>
                   </form>
-                  {% if session.get('role') == 'dev' %}
+                  {% if session.get('role') == 'superadmin' %}
                   <form method="POST" action="{{ url_for('admin_delete_user', user_id=user.id) }}" onsubmit="return confirm('Are you sure you want to delete this user? This action cannot be undone.');">
                     <button class="btn btn-sm btn-outline-danger action-btn" type="submit" title="Delete user">
                       <i class="bi bi-trash"></i>
@@ -239,11 +236,8 @@
 function toggleMaxStoresField() {
   const role = document.getElementById('role').value;
   const maxStoresField = document.getElementById('max_stores_field');
-  if (role === 'user') {
-    maxStoresField.style.display = 'block';
-  } else {
-    maxStoresField.style.display = 'none';
-  }
+  // Max stores applies only to client accounts (admin role)
+  maxStoresField.style.display = (role === 'admin') ? 'block' : 'none';
 }
 
 // Initialize on page load

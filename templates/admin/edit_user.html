@@ -18,7 +18,6 @@
     border-radius: 999px;
     font-weight: 600;
   }
-  .role-badge.dev { background: linear-gradient(135deg, #4C1D95, #6D28D9); color: white; }
   .role-badge.superadmin { background: linear-gradient(135deg, #854d0e, #a16207); color: white; }
   .role-badge.admin { background: linear-gradient(135deg, #4A90E2, #2563eb); color: white; }
   .role-badge.user { background: var(--neutral-200); color: var(--neutral-700); }
@@ -96,18 +95,15 @@
             <label class="form-label fw-medium" for="role">Role</label>
             <select class="form-select" id="role" name="role" onchange="toggleMaxStoresField()"
                     {% if user.id == session.get('user_id') %}disabled{% endif %}>
-              <option value="user" {% if user.role == 'user' %}selected{% endif %}>User (Client)</option>
-              <option value="admin" {% if user.role == 'admin' %}selected{% endif %}>Admin</option>
+              <option value="admin" {% if user.role == 'admin' %}selected{% endif %}>Admin (Client)</option>
+              <option value="user" {% if user.role == 'user' %}selected{% endif %}>User (View-only)</option>
               <option value="superadmin" {% if user.role == 'superadmin' %}selected{% endif %}>Superadmin</option>
-              {% if session.get('role') == 'dev' %}
-              <option value="dev" {% if user.role == 'dev' %}selected{% endif %}>Dev</option>
-              {% endif %}
             </select>
             {% if user.id == session.get('user_id') %}
               <input type="hidden" name="role" value="{{ user.role }}">
               <small class="field-hint">You cannot change your own role.</small>
             {% else %}
-              <small class="field-hint">Dev: Full access · Superadmin: Admin + License · Admin: Stores/Questionnaires · User: Client account</small>
+              <small class="field-hint">Superadmin: Full system access · Admin: Client account (manages own stores) · User: Per-store view only</small>
             {% endif %}
           </div>
 
@@ -153,7 +149,7 @@
     </div>
   </div>
 
-  {% if session.get('role') == 'dev' and user.id != session.get('user_id') %}
+  {% if session.get('role') == 'superadmin' and user.id != session.get('user_id') %}
   <div class="card border-0 shadow-sm danger-zone mb-4">
     <div class="card-body p-4">
       <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
@@ -180,7 +176,8 @@
     const role = document.getElementById('role').value;
     const field = document.getElementById('max_stores_field');
     if (!field) return;
-    field.style.display = (role === 'user') ? 'block' : 'none';
+    // Max stores applies to client accounts (admin role)
+    field.style.display = (role === 'admin') ? 'block' : 'none';
   }
   toggleMaxStoresField();
 </script>
