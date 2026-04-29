@@ -651,6 +651,8 @@ def create_app() -> Flask:
         """API endpoint to send a message to a conversation"""
         data = request.get_json() or {}
         message = data.get("message", "").strip()
+        sender_type = data.get("sender_type", "admin")
+        sender_name = data.get("sender_name", "Support Team")
         if not message:
             return jsonify({"error": "Message is required"}), 400
 
@@ -667,24 +669,113 @@ def create_app() -> Flask:
             cursor.execute(
                 """
                 INSERT INTO messages (conversation_id, sender_type, sender_name, message)
-                VALUES (%s, 'admin', 'Support Team', %s)
+                VALUES (%s, %s, %s, %s)
                 """,
-                (conversation_id, message)
+                (conversation_id, sender_type, sender_name, message)
             )
             # Update conversation
             cursor.execute(
                 """
                 UPDATE client_conversations
-                SET last_message_at = NOW(), last_message_preview = %s, updated_at = NOW()
+                SET last_message_at = NOW(), last_message_preview = %s, unread_count = unread_count + 1, updated_at = NOW()
                 WHERE id = %s
                 """,
                 (message[:100] if len(message) > 100 else message, conversation_id)
             )
             conn.commit()
+
+            # If admin message, sync to main feedback system
+            if sender_type == 'admin' and conv['license_key']:
+                try:
+                    # Get main feedback system URL from environment or use default
+                    main_system_url = os.getenv("MAIN_SYSTEM_URL", "http://localhost:5000")
+                    import requests as http_requests
+                    http_requests.post(f"{main_system_url}/api/portal/sync/message", json={
+                        "client_identifier": conv['client_identifier'],
+                        "message": message,
+                        "sender_type": "admin",
+                        "sender_name": sender_name
+                    }, timeout=5)
+                except Exception as e:
+                    logger.error(f"Failed to sync admin message to main system: {e}")
+
             return jsonify({"success": True})
         except Exception as e:
             logger.error(f"Error sending message: {e}")
             return jsonify({"error": "Failed to send message"}), 500
+        finally:
+            conn.close()
+
+    @app.route("/api/conversations/by-identifier/<client_identifier>", methods=["GET"])
+    def api_get_conversation_by_identifier(client_identifier):
+        """API endpoint to get conversation by client identifier (license_key or email)"""
+        conn = get_db_connection()
+        try:
+            cursor = conn.cursor(dictionary=True)
+            cursor.execute(
+                "SELECT * FROM client_conversations WHERE client_identifier = %s",
+                (client_identifier,)
+            )
+            conv = cursor.fetchone()
+            if not conv:
+                return jsonify({"error": "Conversation not found"}), 404
+            # Convert datetime objects for JSON serialization
+            for k, v in conv.items():
+                if hasattr(v, 'isoformat'):
+                    conv[k] = v.isoformat()
+            return jsonify({"conversation": conv})
+        finally:
+            conn.close()
+
+    @app.route("/api/conversations/create", methods=["POST"])
+    def api_create_conversation():
+        """API endpoint to create a conversation from external system"""
+        data = request.get_json() or {}
+        client_identifier = data.get("client_identifier", "").strip()
+        company_name = data.get("company_name", "").strip()
+        license_key = data.get("license_key", "").strip()
+        contact_email = data.get("contact_email", "").strip()
+
+        if not client_identifier or not contact_email:
+            return jsonify({"error": "client_identifier and contact_email are required"}), 400
+
+        conn = get_db_connection()
+        try:
+            cursor = conn.cursor(dictionary=True)
+            # Check if conversation already exists
+            cursor.execute(
+                "SELECT * FROM client_conversations WHERE client_identifier = %s",
+                (client_identifier,)
+            )
+            conv = cursor.fetchone()
+            if conv:
+                # Return existing conversation
+                for k, v in conv.items():
+                    if hasattr(v, 'isoformat'):
+                        conv[k] = v.isoformat()
+                return jsonify({"conversation": conv, "existing": True})
+
+            # Create new conversation
+            cursor.execute(
+                """
+                INSERT INTO client_conversations (client_identifier, company_name, license_key, contact_email)
+                VALUES (%s, %s, %s, %s)
+                """,
+                (client_identifier, company_name, license_key, contact_email)
+            )
+            conn.commit()
+            cursor.execute(
+                "SELECT * FROM client_conversations WHERE client_identifier = %s",
+                (client_identifier,)
+            )
+            conv = cursor.fetchone()
+            for k, v in conv.items():
+                if hasattr(v, 'isoformat'):
+                    conv[k] = v.isoformat()
+            return jsonify({"conversation": conv, "existing": False})
+        except Exception as e:
+            logger.error(f"Error creating conversation: {e}")
+            return jsonify({"error": "Failed to create conversation"}), 500
         finally:
             conn.close()
 

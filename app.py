@@ -553,6 +553,7 @@ def create_app() -> Flask:
                             company_name VARCHAR(255),
                             license_key VARCHAR(255),
                             contact_email VARCHAR(255),
+                            portal_conversation_id INT NULL,
                             last_message_at TIMESTAMP NULL,
                             last_message_preview TEXT NULL,
                             unread_count INT DEFAULT 0,
@@ -563,6 +564,13 @@ def create_app() -> Flask:
                         )
                     """)
                     conn.commit()
+                else:
+                    # Check if portal_conversation_id column exists, add if missing
+                    cursor.execute("SHOW COLUMNS FROM client_conversations LIKE 'portal_conversation_id'")
+                    if not cursor.fetchone():
+                        logger.info("Adding 'portal_conversation_id' column to client_conversations table...")
+                        cursor.execute("ALTER TABLE client_conversations ADD COLUMN portal_conversation_id INT NULL AFTER contact_email")
+                        conn.commit()
 
                 # Create messages table for individual messages in conversations
                 cursor.execute("SHOW TABLES LIKE 'client_messages'")
@@ -3311,6 +3319,39 @@ def create_app() -> Flask:
             )
             conv = cursor.fetchone()
             if not conv:
+                # Try to sync with licensing portal first
+                try:
+                    config = get_license_config()
+                    portal_url = (config.get("licensing_portal_url") if config else None) or DEFAULT_PORTAL_URL
+                    import requests as http_requests
+                    resp = http_requests.post(f"{portal_url}/api/conversations/create", json={
+                        "client_identifier": client_identifier,
+                        "license_key": license_key,
+                        "contact_email": contact_email
+                    }, timeout=5)
+                    if resp.status_code in (200, 201):
+                        portal_conv = resp.json().get('conversation')
+                        if portal_conv:
+                            # Store portal conversation ID for syncing
+                            portal_conv_id = portal_conv.get('id')
+                            cursor.execute(
+                                """
+                                INSERT INTO client_conversations (client_identifier, license_key, contact_email, company_name, portal_conversation_id)
+                                VALUES (%s, %s, %s, %s, %s)
+                                """,
+                                (client_identifier, license_key, contact_email, portal_conv.get('company_name'), portal_conv_id)
+                            )
+                            conn.commit()
+                            cursor.execute(
+                                "SELECT * FROM client_conversations WHERE client_identifier = %s",
+                                (client_identifier,)
+                            )
+                            conv = cursor.fetchone()
+                            return conv
+                except Exception as e:
+                    logger.error(f"Failed to sync with portal: {e}")
+
+                # Create local conversation if portal sync fails
                 cursor.execute(
                     """
                     INSERT INTO client_conversations (client_identifier, license_key, contact_email)
@@ -3414,9 +3455,35 @@ def create_app() -> Flask:
             try:
                 portal_url = (config.get("licensing_portal_url") if config else None) or DEFAULT_PORTAL_URL
                 import requests as http_requests
-                http_requests.post(f"{portal_url}/api/conversations/{conv['id']}/send", json={
-                    "message": message
-                }, timeout=5)
+                # Use portal_conversation_id if available, otherwise try to get conversation by identifier
+                portal_conv_id = conv.get('portal_conversation_id')
+                if portal_conv_id:
+                    http_requests.post(f"{portal_url}/api/conversations/{portal_conv_id}/send", json={
+                        "message": message,
+                        "sender_type": "client",
+                        "sender_name": contact_email
+                    }, timeout=5)
+                else:
+                    # Try to get portal conversation by identifier
+                    resp = http_requests.get(f"{portal_url}/api/conversations/by-identifier/{conv['client_identifier']}", timeout=5)
+                    if resp.status_code == 200:
+                        portal_conv = resp.json().get('conversation')
+                        if portal_conv:
+                            portal_conv_id = portal_conv.get('id')
+                            # Update local conversation with portal_conversation_id
+                            conn = get_db_connection()
+                            try:
+                                cursor = conn.cursor()
+                                cursor.execute("UPDATE client_conversations SET portal_conversation_id = %s WHERE id = %s", (portal_conv_id, conv['id']))
+                                conn.commit()
+                            finally:
+                                conn.close()
+                            # Send message to portal
+                            http_requests.post(f"{portal_url}/api/conversations/{portal_conv_id}/send", json={
+                                "message": message,
+                                "sender_type": "client",
+                                "sender_name": contact_email
+                            }, timeout=5)
             except Exception as e:
                 logger.error(f"Failed to sync message to portal: {e}")
 
@@ -3448,6 +3515,55 @@ def create_app() -> Flask:
             )
             result = cursor.fetchone()
             return jsonify({"unread_count": result['unread_count'] if result else 0})
+        finally:
+            conn.close()
+
+    @app.route("/api/portal/sync/message", methods=["POST"])
+    def api_receive_portal_message():
+        """API endpoint to receive messages from licensing portal (webhook)"""
+        data = request.get_json() or {}
+        client_identifier = data.get("client_identifier", "").strip()
+        message = data.get("message", "").strip()
+        sender_type = data.get("sender_type", "admin")
+        sender_name = data.get("sender_name", "Support Team")
+
+        if not client_identifier or not message:
+            return jsonify({"error": "client_identifier and message are required"}), 400
+
+        conn = get_db_connection()
+        try:
+            cursor = conn.cursor(dictionary=True)
+            # Get or create conversation
+            cursor.execute(
+                "SELECT * FROM client_conversations WHERE client_identifier = %s",
+                (client_identifier,)
+            )
+            conv = cursor.fetchone()
+            if not conv:
+                return jsonify({"error": "Conversation not found"}), 404
+
+            # Insert message
+            cursor.execute(
+                """
+                INSERT INTO client_messages (conversation_id, sender_type, sender_name, message)
+                VALUES (%s, %s, %s, %s)
+                """,
+                (conv['id'], sender_type, sender_name, message)
+            )
+            # Update conversation
+            cursor.execute(
+                """
+                UPDATE client_conversations
+                SET last_message_at = NOW(), last_message_preview = %s, unread_count = unread_count + 1, updated_at = NOW()
+                WHERE id = %s
+                """,
+                (message[:100] if len(message) > 100 else message, conv['id'])
+            )
+            conn.commit()
+            return jsonify({"success": True})
+        except Exception as e:
+            logger.error(f"Error receiving portal message: {e}")
+            return jsonify({"error": "Failed to receive message"}), 500
         finally:
             conn.close()
 
