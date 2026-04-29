@@ -541,6 +541,47 @@ def create_app() -> Flask:
                         )
                     """)
                     conn.commit()
+
+                # Create client_conversations table for messaging system
+                cursor.execute("SHOW TABLES LIKE 'client_conversations'")
+                if not cursor.fetchone():
+                    logger.info("Creating client_conversations table...")
+                    cursor.execute("""
+                        CREATE TABLE client_conversations (
+                            id INT AUTO_INCREMENT PRIMARY KEY,
+                            client_identifier VARCHAR(255) NOT NULL UNIQUE,
+                            company_name VARCHAR(255),
+                            license_key VARCHAR(255),
+                            contact_email VARCHAR(255),
+                            last_message_at TIMESTAMP NULL,
+                            last_message_preview TEXT NULL,
+                            unread_count INT DEFAULT 0,
+                            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                            INDEX idx_client_identifier (client_identifier),
+                            INDEX idx_last_message_at (last_message_at)
+                        )
+                    """)
+                    conn.commit()
+
+                # Create messages table for individual messages in conversations
+                cursor.execute("SHOW TABLES LIKE 'client_messages'")
+                if not cursor.fetchone():
+                    logger.info("Creating client_messages table...")
+                    cursor.execute("""
+                        CREATE TABLE client_messages (
+                            id INT AUTO_INCREMENT PRIMARY KEY,
+                            conversation_id INT NOT NULL,
+                            sender_type ENUM('client', 'admin') NOT NULL,
+                            sender_name VARCHAR(255),
+                            message TEXT NOT NULL,
+                            is_read BOOLEAN DEFAULT FALSE,
+                            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                            FOREIGN KEY (conversation_id) REFERENCES client_conversations(id) ON DELETE CASCADE,
+                            INDEX idx_conversation_created (conversation_id, created_at)
+                        )
+                    """)
+                    conn.commit()
                 
                 # Create users table
                 cursor.execute("SHOW TABLES LIKE 'users'")
@@ -3256,6 +3297,159 @@ def create_app() -> Flask:
             flash("Unable to reach support. Please try again later.", "danger")
 
         return redirect(url_for("client_support"))
+
+    # ── Client Messaging System ───────────────────────────────────────
+    def get_or_create_client_conversation(license_key, contact_email):
+        """Get or create a conversation for a client"""
+        client_identifier = license_key or contact_email
+        conn = get_db_connection()
+        try:
+            cursor = conn.cursor(dictionary=True)
+            cursor.execute(
+                "SELECT * FROM client_conversations WHERE client_identifier = %s",
+                (client_identifier,)
+            )
+            conv = cursor.fetchone()
+            if not conv:
+                cursor.execute(
+                    """
+                    INSERT INTO client_conversations (client_identifier, license_key, contact_email)
+                    VALUES (%s, %s, %s)
+                    """,
+                    (client_identifier, license_key, contact_email)
+                )
+                conn.commit()
+                cursor.execute(
+                    "SELECT * FROM client_conversations WHERE client_identifier = %s",
+                    (client_identifier,)
+                )
+                conv = cursor.fetchone()
+            return conv
+        finally:
+            conn.close()
+
+    @app.route("/api/client/messages", methods=["GET"])
+    @login_required
+    def api_get_client_messages():
+        """Get messages for the current user's conversation"""
+        user = get_user_by_id(session['user_id'])
+        config = get_license_config()
+        license_key = user.get('license_key') or (config.get('license_key') if config else None)
+        contact_email = user.get('email', '')
+
+        if not license_key and not contact_email:
+            return jsonify({"error": "No license key or email found"}), 400
+
+        conv = get_or_create_client_conversation(license_key, contact_email)
+
+        conn = get_db_connection()
+        try:
+            cursor = conn.cursor(dictionary=True)
+            # Mark messages as read
+            cursor.execute(
+                "UPDATE client_messages SET is_read = TRUE WHERE conversation_id = %s AND sender_type = 'admin'",
+                (conv['id'],)
+            )
+            conn.commit()
+            # Update unread count
+            cursor.execute(
+                "UPDATE client_conversations SET unread_count = 0 WHERE id = %s",
+                (conv['id'],)
+            )
+            conn.commit()
+
+            cursor.execute(
+                "SELECT * FROM client_messages WHERE conversation_id = %s ORDER BY created_at ASC",
+                (conv['id'],)
+            )
+            messages = cursor.fetchall()
+            # Convert datetime objects for JSON serialization
+            for msg in messages:
+                for k, v in msg.items():
+                    if hasattr(v, 'isoformat'):
+                        msg[k] = v.isoformat()
+            return jsonify({"messages": messages, "conversation_id": conv['id']})
+        finally:
+            conn.close()
+
+    @app.route("/api/client/messages/send", methods=["POST"])
+    @login_required
+    def api_send_client_message():
+        """Send a message from client to admin"""
+        user = get_user_by_id(session['user_id'])
+        config = get_license_config()
+        license_key = user.get('license_key') or (config.get('license_key') if config else None)
+        contact_email = user.get('email', '')
+
+        data = request.get_json() or {}
+        message = data.get("message", "").strip()
+        if not message:
+            return jsonify({"error": "Message is required"}), 400
+
+        conv = get_or_create_client_conversation(license_key, contact_email)
+
+        conn = get_db_connection()
+        try:
+            cursor = conn.cursor(dictionary=True)
+            # Insert message
+            cursor.execute(
+                """
+                INSERT INTO client_messages (conversation_id, sender_type, sender_name, message)
+                VALUES (%s, 'client', %s, %s)
+                """,
+                (conv['id'], contact_email, message)
+            )
+            # Update conversation
+            cursor.execute(
+                """
+                UPDATE client_conversations
+                SET last_message_at = NOW(), last_message_preview = %s, updated_at = NOW()
+                WHERE id = %s
+                """,
+                (message[:100] if len(message) > 100 else message, conv['id'])
+            )
+            conn.commit()
+
+            # Also sync to licensing portal if configured
+            try:
+                portal_url = (config.get("licensing_portal_url") if config else None) or DEFAULT_PORTAL_URL
+                import requests as http_requests
+                http_requests.post(f"{portal_url}/api/conversations/{conv['id']}/send", json={
+                    "message": message
+                }, timeout=5)
+            except Exception as e:
+                logger.error(f"Failed to sync message to portal: {e}")
+
+            return jsonify({"success": True})
+        except Exception as e:
+            logger.error(f"Error sending message: {e}")
+            return jsonify({"error": "Failed to send message"}), 500
+        finally:
+            conn.close()
+
+    @app.route("/api/client/messages/unread-count", methods=["GET"])
+    @login_required
+    def api_get_unread_count():
+        """Get unread message count for the current user"""
+        user = get_user_by_id(session['user_id'])
+        config = get_license_config()
+        license_key = user.get('license_key') or (config.get('license_key') if config else None)
+        contact_email = user.get('email', '')
+
+        if not license_key and not contact_email:
+            return jsonify({"unread_count": 0})
+
+        conn = get_db_connection()
+        try:
+            cursor = conn.cursor(dictionary=True)
+            cursor.execute(
+                "SELECT unread_count FROM client_conversations WHERE client_identifier = %s",
+                (license_key or contact_email,)
+            )
+            result = cursor.fetchone()
+            return jsonify({"unread_count": result['unread_count'] if result else 0})
+        finally:
+            conn.close()
 
     @app.route("/admin/reset-database", methods=["POST"])
     @role_required('superadmin')

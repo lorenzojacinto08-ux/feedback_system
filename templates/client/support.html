@@ -44,6 +44,61 @@
   .tickets-drawer-body {
     flex: 1; overflow-y: auto;
     padding: 20px 22px;
+    display: flex;
+    flex-direction: column;
+  }
+  .messages-container {
+    flex: 1;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding-bottom: 16px;
+  }
+  .message-bubble {
+    max-width: 85%;
+    padding: 12px 16px;
+    border-radius: 16px;
+    position: relative;
+    line-height: 1.5;
+  }
+  .message-bubble.client {
+    align-self: flex-start;
+    background: var(--neutral-100);
+    border: 1px solid var(--neutral-200);
+    border-bottom-left-radius: 4px;
+  }
+  .message-bubble.admin {
+    align-self: flex-end;
+    background: linear-gradient(135deg, #4A90E2 0%, #357ABD 100%);
+    color: #fff;
+    border-bottom-right-radius: 4px;
+  }
+  .message-sender {
+    font-size: 0.75rem;
+    font-weight: 600;
+    margin-bottom: 4px;
+    opacity: 0.9;
+  }
+  .message-time {
+    font-size: 0.7rem;
+    margin-top: 6px;
+    opacity: 0.7;
+  }
+  .message-input-area {
+    padding-top: 16px;
+    border-top: 1px solid var(--neutral-200);
+  }
+  .message-input-wrapper {
+    display: flex;
+    gap: 12px;
+    align-items: end;
+  }
+  .message-input-wrapper textarea {
+    flex: 1;
+    min-height: 44px;
+    max-height: 120px;
+    resize: none;
   }
   .tickets-drawer-close {
     margin-left: auto;
@@ -207,10 +262,10 @@
 <div class="tickets-drawer-backdrop" id="tickets-backdrop"></div>
 <aside class="tickets-drawer" id="tickets-drawer" aria-hidden="true" aria-labelledby="tickets-drawer-title">
   <div class="tickets-drawer-header">
-    <div class="drawer-icon"><i class="bi bi-clock-history"></i></div>
+    <div class="drawer-icon"><i class="bi bi-chat-dots"></i></div>
     <div class="flex-grow-1">
-      <h6 class="mb-0 fw-bold" id="tickets-drawer-title">Your Tickets</h6>
-      <small style="opacity:.85; font-size:.78rem;">Track your support requests</small>
+      <h6 class="mb-0 fw-bold" id="tickets-drawer-title">Support Chat</h6>
+      <small style="opacity:.85; font-size:.78rem;">Message our support team</small>
     </div>
     <button type="button" class="tickets-drawer-close" id="close-tickets-drawer" aria-label="Close">
       <i class="bi bi-x-lg"></i>
@@ -218,14 +273,24 @@
   </div>
   <div class="tickets-drawer-body" id="tickets-area">
     {% if license_key %}
-    <div class="text-center py-3" id="tickets-loading">
-      <div class="spinner-border spinner-border-sm text-muted" role="status"></div>
-      <p class="small text-muted mt-2 mb-0">Loading tickets...</p>
+    <div class="messages-container" id="messages-container">
+      <div class="text-center py-3" id="messages-loading">
+        <div class="spinner-border spinner-border-sm text-muted" role="status"></div>
+        <p class="small text-muted mt-2 mb-0">Loading messages...</p>
+      </div>
+    </div>
+    <div class="message-input-area">
+      <form class="message-input-wrapper" onsubmit="sendMessage(event)">
+        <textarea class="form-control" id="message-input" placeholder="Type your message..." rows="1"></textarea>
+        <button type="submit" class="btn btn-primary" id="send-btn">
+          <i class="bi bi-send"></i>
+        </button>
+      </form>
     </div>
     {% else %}
     <div class="text-center py-4">
       <i class="bi bi-inbox text-muted" style="font-size:2.5rem; opacity:.3;"></i>
-      <p class="text-muted mt-2 mb-0">Configure your license to view tickets.</p>
+      <p class="text-muted mt-2 mb-0">Configure your license to start chatting.</p>
     </div>
     {% endif %}
   </div>
@@ -276,12 +341,13 @@ function toggleEditLicense() {
 (function() {
   const licenseKey = "{{ license_key }}";
   const userEmail = "{{ user.email or '' }}";
+  let conversationId = null;
 
   fetch('/api/support/status')
     .then(r => r.json())
     .then(data => {
       renderLicenseStatus(data);
-      renderTickets(data.tickets || []);
+      loadMessages();
     })
     .catch(() => {
       document.getElementById('license-status-area').innerHTML = `
@@ -290,11 +356,6 @@ function toggleEditLicense() {
             <i class="bi bi-exclamation-triangle text-danger"></i>
             <span class="small text-danger fw-semibold">Unable to reach licensing portal</span>
           </div>
-        </div>`;
-      document.getElementById('tickets-area').innerHTML = `
-        <div class="text-center py-4">
-          <i class="bi bi-inbox text-muted" style="font-size:2.5rem; opacity:.3;"></i>
-          <p class="text-muted mt-2 mb-0">Unable to load tickets.</p>
         </div>`;
     });
 
@@ -354,58 +415,98 @@ function toggleEditLicense() {
     }
   }
 
-  function renderTickets(tickets) {
-    const area = document.getElementById('tickets-area');
-    const badge = document.getElementById('tickets-count-badge');
-    if (badge) {
-      if (tickets.length) {
-        badge.textContent = tickets.length;
-        badge.classList.remove('d-none');
-      } else {
-        badge.classList.add('d-none');
-      }
-    }
+  function loadMessages() {
+    const container = document.getElementById('messages-container');
+    container.innerHTML = '<div class="text-center py-3"><div class="spinner-border spinner-border-sm text-muted"></div><p class="small text-muted mt-2 mb-0">Loading messages...</p></div>';
 
-    if (!tickets.length) {
-      area.innerHTML = `<div class="text-center py-5"><i class="bi bi-inbox text-muted" style="font-size:3rem;opacity:.3;"></i><p class="text-muted mt-3 mb-0">No tickets yet.</p><p class="text-muted small mb-0">Submit a ticket from the form on the left if you need help.</p></div>`;
+    fetch('/api/client/messages')
+      .then(r => r.json())
+      .then(data => {
+        conversationId = data.conversation_id;
+        renderMessages(data.messages || []);
+      })
+      .catch(err => {
+        console.error(err);
+        container.innerHTML = '<div class="text-center py-4"><i class="bi bi-exclamation-triangle text-muted"></i><p class="text-muted mt-2 mb-0">Failed to load messages.</p></div>';
+      });
+  }
+
+  function renderMessages(messages) {
+    const container = document.getElementById('messages-container');
+    if (!messages.length) {
+      container.innerHTML = '<div class="text-center py-5"><i class="bi bi-chat-dots text-muted" style="font-size:3rem;opacity:.3;"></i><p class="text-muted mt-3 mb-0">No messages yet.</p><p class="text-muted small mb-0">Start a conversation with our support team!</p></div>';
       return;
     }
 
-    const statusBadge = s => {
-      const map = {
-        open: ['success', 'Open'],
-        in_progress: ['warning', 'In Progress'],
-        resolved: ['info', 'Resolved'],
-        closed: ['secondary', 'Closed']
-      };
-      const [color, label] = map[s] || ['secondary', s];
-      return `<span class="badge bg-${color} bg-opacity-10 text-${color}" style="font-size:.7rem;">${label}</span>`;
-    };
-
-    const cards = tickets.map(t => {
-      const dateStr = t.created_at
-        ? new Date(t.created_at).toLocaleDateString('en-US', {month:'short',day:'numeric',year:'numeric'})
-        : '';
-      const reply = t.admin_reply
-        ? `<div class="ticket-reply"><div class="d-flex align-items-center gap-1 mb-1"><i class="bi bi-reply-fill" style="color:var(--accent-500); font-size:.75rem;"></i><small class="fw-semibold text-primary" style="font-size:.7rem;text-transform:uppercase;letter-spacing:.05em;">Admin reply</small></div>${t.admin_reply}</div>`
-        : `<div class="mt-2"><small class="text-muted fst-italic" style="font-size:.78rem;"><i class="bi bi-hourglass-split me-1"></i>Awaiting reply</small></div>`;
+    const bubbles = messages.map(msg => {
+      const timeStr = new Date(msg.created_at).toLocaleString('en-US', {month:'short',day:'numeric',hour:'numeric',minute:'2-digit'});
+      const isClient = msg.sender_type === 'client';
       return `
-        <div class="ticket-card">
-          <div class="d-flex align-items-start justify-content-between gap-2 mb-2">
-            <div class="flex-grow-1">
-              <div class="d-flex align-items-center gap-2 mb-1 flex-wrap">
-                ${statusBadge(t.status)}
-                <span class="badge bg-light text-dark border" style="font-size:.65rem;text-transform:uppercase;letter-spacing:.04em;">${t.ticket_type || ''}</span>
-              </div>
-              <h6 class="mb-0 fw-semibold" style="font-size:.92rem;">${t.subject || ''}</h6>
-            </div>
-            <small class="text-muted text-nowrap" style="font-size:.72rem;">${dateStr}</small>
-          </div>
-          ${reply}
+        <div class="message-bubble ${isClient ? 'client' : 'admin'}">
+          <div class="message-sender">${isClient ? 'You' : 'Support Team'}</div>
+          <div>${msg.message.replace(/\n/g, '<br>')}</div>
+          <div class="message-time">${timeStr}</div>
         </div>`;
     }).join('');
 
-    area.innerHTML = cards;
+    container.innerHTML = bubbles;
+    container.scrollTop = container.scrollHeight;
+  }
+
+  function sendMessage(event) {
+    event.preventDefault();
+    const input = document.getElementById('message-input');
+    const message = input.value.trim();
+    if (!message) return;
+
+    const btn = document.getElementById('send-btn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+
+    fetch('/api/client/messages/send', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message })
+    })
+    .then(r => r.json())
+    .then(data => {
+      if (data.success) {
+        input.value = '';
+        loadMessages();
+      } else {
+        alert(data.error || 'Failed to send message');
+      }
+    })
+    .catch(err => {
+      alert('Failed to send message');
+      console.error(err);
+    })
+    .finally(() => {
+      btn.disabled = false;
+      btn.innerHTML = '<i class="bi bi-send"></i>';
+    });
+  }
+
+  // Auto-resize textarea
+  const textarea = document.getElementById('message-input');
+  if (textarea) {
+    textarea.addEventListener('input', function() {
+      this.style.height = 'auto';
+      this.style.height = Math.min(this.scrollHeight, 120) + 'px';
+    });
+  }
+
+  // Load messages when drawer opens
+  const drawer = document.getElementById('tickets-drawer');
+  if (drawer) {
+    const observer = new MutationObserver((mutations) => {
+      mutations.forEach((mutation) => {
+        if (mutation.target.classList.contains('open') && !document.getElementById('messages-container').querySelector('.message-bubble')) {
+          loadMessages();
+        }
+      });
+    });
+    observer.observe(drawer, { attributes: true, attributeFilter: ['class'] });
   }
 })();
 </script>
