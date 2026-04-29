@@ -2509,10 +2509,9 @@ def create_app() -> Flask:
 
                 if form_type == "username":
                     new_username = request.form.get("new_username", "").strip()
-                    current_password = request.form.get("current_password", "")
 
-                    if not new_username or not current_password:
-                        flash("New username and current password are required.", "danger")
+                    if not new_username:
+                        flash("New username is required.", "danger")
                         return redirect(url_for("account_change_password"))
 
                     if len(new_username) < 2:
@@ -2521,10 +2520,6 @@ def create_app() -> Flask:
 
                     if new_username == user['username']:
                         flash("New username must be different from your current username.", "warning")
-                        return redirect(url_for("account_change_password"))
-
-                    if not verify_password(current_password, user['password_hash']):
-                        flash("Current password is incorrect.", "danger")
                         return redirect(url_for("account_change_password"))
 
                     # Uniqueness check
