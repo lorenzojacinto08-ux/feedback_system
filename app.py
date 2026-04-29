@@ -5724,11 +5724,21 @@ def create_app() -> Flask:
             user_role = session.get('role')
             assigned_store_ids = []
             if user_id and user_role != 'superadmin':
+                # Get stores assigned via user_stores table
                 cursor.execute(
                     "SELECT store_id FROM user_stores WHERE user_id = %s",
                     (user_id,)
                 )
                 assigned_store_ids = [row['store_id'] for row in cursor.fetchall()]
+
+                # Also include stores where the user is the owner (stores.user_id)
+                cursor.execute(
+                    "SELECT id FROM stores WHERE user_id = %s",
+                    (user_id,)
+                )
+                owned_store_ids = [row['id'] for row in cursor.fetchall()]
+                # Combine and deduplicate
+                assigned_store_ids = list(set(assigned_store_ids + owned_store_ids))
 
             # Build WHERE clause for store filtering
             store_filter = ""
