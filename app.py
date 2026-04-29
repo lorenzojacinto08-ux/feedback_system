@@ -3311,281 +3311,93 @@ def create_app() -> Flask:
 
         return redirect(url_for("client_support"))
 
-    # ── Client Messaging System ───────────────────────────────────────
-    def get_or_create_client_conversation(license_key, contact_email):
-        """Get or create a conversation for a client"""
-        client_identifier = license_key or contact_email
-        conn = get_db_connection()
-        try:
-            cursor = conn.cursor(dictionary=True)
-            cursor.execute(
-                "SELECT * FROM client_conversations WHERE client_identifier = %s",
-                (client_identifier,)
-            )
-            conv = cursor.fetchone()
-            if not conv:
-                # Try to sync with licensing portal first
-                try:
-                    config = get_license_config()
-                    portal_url = (config.get("licensing_portal_url") if config else None) or DEFAULT_PORTAL_URL
-                    import requests as http_requests
-                    resp = http_requests.post(f"{portal_url}/api/conversations/create", json={
-                        "client_identifier": client_identifier,
-                        "license_key": license_key,
-                        "contact_email": contact_email
-                    }, timeout=5)
-                    if resp.status_code in (200, 201):
-                        portal_conv = resp.json().get('conversation')
-                        if portal_conv:
-                            # Store portal conversation ID for syncing
-                            portal_conv_id = portal_conv.get('id')
-                            cursor.execute(
-                                """
-                                INSERT INTO client_conversations (client_identifier, license_key, contact_email, company_name, portal_conversation_id)
-                                VALUES (%s, %s, %s, %s, %s)
-                                """,
-                                (client_identifier, license_key, contact_email, portal_conv.get('company_name'), portal_conv_id)
-                            )
-                            conn.commit()
-                            cursor.execute(
-                                "SELECT * FROM client_conversations WHERE client_identifier = %s",
-                                (client_identifier,)
-                            )
-                            conv = cursor.fetchone()
-                            return conv
-                except Exception as e:
-                    logger.error(f"Failed to sync with portal: {e}")
+    # ── Client Messaging System (proxies to licensing portal) ────────
+    def _get_portal_url():
+        config = get_license_config()
+        return (config.get("licensing_portal_url") if config else None) or DEFAULT_PORTAL_URL
 
-                # Create local conversation if portal sync fails
-                cursor.execute(
-                    """
-                    INSERT INTO client_conversations (client_identifier, license_key, contact_email)
-                    VALUES (%s, %s, %s)
-                    """,
-                    (client_identifier, license_key, contact_email)
-                )
-                conn.commit()
-                cursor.execute(
-                    "SELECT * FROM client_conversations WHERE client_identifier = %s",
-                    (client_identifier,)
-                )
-                conv = cursor.fetchone()
-            return conv
-        finally:
-            conn.close()
+    def _ensure_portal_conversation(license_key, contact_email, company_name=""):
+        """Ensure conversation exists on portal and return its ID"""
+        client_identifier = license_key or contact_email
+        portal_url = _get_portal_url()
+        import requests as http_requests
+        try:
+            resp = http_requests.post(f"{portal_url}/api/conversations/create", json={
+                "client_identifier": client_identifier,
+                "license_key": license_key or "",
+                "contact_email": contact_email,
+                "company_name": company_name or contact_email
+            }, timeout=10)
+            if resp.status_code in (200, 201):
+                return resp.json().get('conversation', {}).get('id')
+        except Exception as e:
+            logger.error(f"Failed to ensure portal conversation: {e}")
+        return None
 
     @app.route("/api/client/messages", methods=["GET"])
     @login_required
     def api_get_client_messages():
-        """Get messages for the current user's conversation"""
+        """Get messages for the current user from licensing portal"""
         user = get_user_by_id(session['user_id'])
         config = get_license_config()
         license_key = user.get('license_key') or (config.get('license_key') if config else None)
-        contact_email = user.get('email', '')
+        contact_email = user.get('email', '') or user.get('username', '')
 
         if not license_key and not contact_email:
             return jsonify({"error": "No license key or email found"}), 400
 
-        conv = get_or_create_client_conversation(license_key, contact_email)
+        # Ensure conversation exists on portal
+        conv_id = _ensure_portal_conversation(license_key, contact_email, user.get('username', ''))
+        if not conv_id:
+            return jsonify({"messages": [], "conversation_id": None, "error": "Portal unavailable"})
 
-        conn = get_db_connection()
+        # Fetch messages from portal
+        portal_url = _get_portal_url()
         try:
-            cursor = conn.cursor(dictionary=True)
-            # Mark messages as read
-            cursor.execute(
-                "UPDATE client_messages SET is_read = TRUE WHERE conversation_id = %s AND sender_type = 'admin'",
-                (conv['id'],)
-            )
-            conn.commit()
-            # Update unread count
-            cursor.execute(
-                "UPDATE client_conversations SET unread_count = 0 WHERE id = %s",
-                (conv['id'],)
-            )
-            conn.commit()
-
-            cursor.execute(
-                "SELECT * FROM client_messages WHERE conversation_id = %s ORDER BY created_at ASC",
-                (conv['id'],)
-            )
-            messages = cursor.fetchall()
-            # Convert datetime objects for JSON serialization
-            for msg in messages:
-                for k, v in msg.items():
-                    if hasattr(v, 'isoformat'):
-                        msg[k] = v.isoformat()
-            return jsonify({"messages": messages, "conversation_id": conv['id']})
-        finally:
-            conn.close()
+            import requests as http_requests
+            resp = http_requests.get(f"{portal_url}/api/conversations/{conv_id}/messages", timeout=10)
+            if resp.status_code == 200:
+                data = resp.json()
+                return jsonify({"messages": data.get('messages', []), "conversation_id": conv_id})
+        except Exception as e:
+            logger.error(f"Failed to fetch messages from portal: {e}")
+        return jsonify({"messages": [], "conversation_id": conv_id})
 
     @app.route("/api/client/messages/send", methods=["POST"])
     @login_required
     def api_send_client_message():
-        """Send a message from client to admin"""
+        """Send a client message directly to licensing portal"""
         user = get_user_by_id(session['user_id'])
         config = get_license_config()
         license_key = user.get('license_key') or (config.get('license_key') if config else None)
-        contact_email = user.get('email', '')
+        contact_email = user.get('email', '') or user.get('username', '')
 
         data = request.get_json() or {}
         message = data.get("message", "").strip()
         if not message:
             return jsonify({"error": "Message is required"}), 400
 
-        conv = get_or_create_client_conversation(license_key, contact_email)
+        # Ensure conversation exists on portal
+        conv_id = _ensure_portal_conversation(license_key, contact_email, user.get('username', ''))
+        if not conv_id:
+            return jsonify({"error": "Failed to reach licensing portal"}), 500
 
-        conn = get_db_connection()
+        # Send message to portal
+        portal_url = _get_portal_url()
         try:
-            cursor = conn.cursor(dictionary=True)
-            # Insert message
-            cursor.execute(
-                """
-                INSERT INTO client_messages (conversation_id, sender_type, sender_name, message)
-                VALUES (%s, 'client', %s, %s)
-                """,
-                (conv['id'], contact_email, message)
-            )
-            # Update conversation
-            cursor.execute(
-                """
-                UPDATE client_conversations
-                SET last_message_at = NOW(), last_message_preview = %s, updated_at = NOW()
-                WHERE id = %s
-                """,
-                (message[:100] if len(message) > 100 else message, conv['id'])
-            )
-            conn.commit()
-
-            # Also sync to licensing portal if configured
-            try:
-                portal_url = (config.get("licensing_portal_url") if config else None) or DEFAULT_PORTAL_URL
-                import requests as http_requests
-                logger.info(f"Syncing client message to portal at {portal_url}")
-                # Use portal_conversation_id if available, otherwise try to get conversation by identifier
-                portal_conv_id = conv.get('portal_conversation_id')
-                if portal_conv_id:
-                    logger.info(f"Using portal_conversation_id: {portal_conv_id}")
-                    resp = http_requests.post(f"{portal_url}/api/conversations/{portal_conv_id}/send", json={
-                        "message": message,
-                        "sender_type": "client",
-                        "sender_name": contact_email
-                    }, timeout=5)
-                    if resp.status_code in (200, 201):
-                        logger.info("Successfully synced client message to portal")
-                    else:
-                        logger.error(f"Failed to sync client message: {resp.status_code} - {resp.text}")
-                else:
-                    # Try to get portal conversation by identifier
-                    logger.info(f"No portal_conversation_id, fetching by identifier: {conv['client_identifier']}")
-                    resp = http_requests.get(f"{portal_url}/api/conversations/by-identifier/{conv['client_identifier']}", timeout=5)
-                    if resp.status_code == 200:
-                        portal_conv = resp.json().get('conversation')
-                        if portal_conv:
-                            portal_conv_id = portal_conv.get('id')
-                            logger.info(f"Found portal conversation: {portal_conv_id}")
-                            # Update local conversation with portal_conversation_id
-                            conn = get_db_connection()
-                            try:
-                                cursor = conn.cursor()
-                                cursor.execute("UPDATE client_conversations SET portal_conversation_id = %s WHERE id = %s", (portal_conv_id, conv['id']))
-                                conn.commit()
-                                logger.info(f"Updated portal_conversation_id to {portal_conv_id}")
-                            finally:
-                                conn.close()
-                            # Send message to portal
-                            resp = http_requests.post(f"{portal_url}/api/conversations/{portal_conv_id}/send", json={
-                                "message": message,
-                                "sender_type": "client",
-                                "sender_name": contact_email
-                            }, timeout=5)
-                            if resp.status_code in (200, 201):
-                                logger.info("Successfully synced client message to portal")
-                            else:
-                                logger.error(f"Failed to sync client message: {resp.status_code} - {resp.text}")
-                    else:
-                        logger.error(f"Portal conversation not found for identifier: {resp.status_code}")
-            except Exception as e:
-                logger.error(f"Failed to sync message to portal: {e}")
-
-            return jsonify({"success": True})
-        except Exception as e:
-            logger.error(f"Error sending message: {e}")
+            import requests as http_requests
+            resp = http_requests.post(f"{portal_url}/api/conversations/{conv_id}/send", json={
+                "message": message,
+                "sender_type": "client",
+                "sender_name": contact_email or user.get('username', 'Client')
+            }, timeout=10)
+            if resp.status_code in (200, 201):
+                return jsonify({"success": True})
+            logger.error(f"Failed to send message to portal: {resp.status_code} - {resp.text}")
             return jsonify({"error": "Failed to send message"}), 500
-        finally:
-            conn.close()
-
-    @app.route("/api/client/messages/unread-count", methods=["GET"])
-    @login_required
-    def api_get_unread_count():
-        """Get unread message count for the current user"""
-        user = get_user_by_id(session['user_id'])
-        config = get_license_config()
-        license_key = user.get('license_key') or (config.get('license_key') if config else None)
-        contact_email = user.get('email', '')
-
-        if not license_key and not contact_email:
-            return jsonify({"unread_count": 0})
-
-        conn = get_db_connection()
-        try:
-            cursor = conn.cursor(dictionary=True)
-            cursor.execute(
-                "SELECT unread_count FROM client_conversations WHERE client_identifier = %s",
-                (license_key or contact_email,)
-            )
-            result = cursor.fetchone()
-            return jsonify({"unread_count": result['unread_count'] if result else 0})
-        finally:
-            conn.close()
-
-    @app.route("/api/portal/sync/message", methods=["POST"])
-    def api_receive_portal_message():
-        """API endpoint to receive messages from licensing portal (webhook)"""
-        data = request.get_json() or {}
-        client_identifier = data.get("client_identifier", "").strip()
-        message = data.get("message", "").strip()
-        sender_type = data.get("sender_type", "admin")
-        sender_name = data.get("sender_name", "Support Team")
-
-        if not client_identifier or not message:
-            return jsonify({"error": "client_identifier and message are required"}), 400
-
-        conn = get_db_connection()
-        try:
-            cursor = conn.cursor(dictionary=True)
-            # Get or create conversation
-            cursor.execute(
-                "SELECT * FROM client_conversations WHERE client_identifier = %s",
-                (client_identifier,)
-            )
-            conv = cursor.fetchone()
-            if not conv:
-                return jsonify({"error": "Conversation not found"}), 404
-
-            # Insert message
-            cursor.execute(
-                """
-                INSERT INTO client_messages (conversation_id, sender_type, sender_name, message)
-                VALUES (%s, %s, %s, %s)
-                """,
-                (conv['id'], sender_type, sender_name, message)
-            )
-            # Update conversation
-            cursor.execute(
-                """
-                UPDATE client_conversations
-                SET last_message_at = NOW(), last_message_preview = %s, unread_count = unread_count + 1, updated_at = NOW()
-                WHERE id = %s
-                """,
-                (message[:100] if len(message) > 100 else message, conv['id'])
-            )
-            conn.commit()
-            return jsonify({"success": True})
         except Exception as e:
-            logger.error(f"Error receiving portal message: {e}")
-            return jsonify({"error": "Failed to receive message"}), 500
-        finally:
-            conn.close()
+            logger.error(f"Error sending message to portal: {e}")
+            return jsonify({"error": "Failed to send message"}), 500
 
     # ── Admin Messaging Interface ───────────────────────────────────────
     @app.route("/admin/messages")
