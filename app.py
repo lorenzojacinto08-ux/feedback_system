@@ -12,7 +12,7 @@ import json
 import re
 import mysql.connector
 from mysql.connector import MySQLConnection, Error
-from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, session
+from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, session, send_file
 from flask_mail import Mail, Message
 import qrcode
 from email_config import EmailConfig
@@ -4191,78 +4191,141 @@ def create_app() -> Flask:
 
     @app.route("/admin/backup/csv", methods=["GET"])
     def backup_csv_route():
-        """Export all data to CSV for backup purposes."""
+        """Export all data to a CSV organized by store.
+
+        Layout:
+          # FEEDBACK SYSTEM BACKUP
+          # Generated: <timestamp>
+          # Total stores: N
+
+          === STORES SUMMARY ===
+          <stores table>
+
+          === STORE: <name> (id=<id>) ===
+            -- Staff --
+            <staff for this store>
+            -- Feedback --
+            <responses joined with answers, one row per question>
+            -- Commendations --
+            <commendations for this store>
+          (repeat per store)
+        """
         conn = get_db_connection()
         try:
             cursor = conn.cursor(dictionary=True)
 
-            # Fetch all data
-            cursor.execute("SELECT * FROM stores")
+            cursor.execute("SELECT * FROM stores ORDER BY id")
             stores = cursor.fetchall()
 
-            cursor.execute("SELECT * FROM responses")
-            responses = cursor.fetchall()
-
-            cursor.execute("SELECT * FROM answers")
-            answers = cursor.fetchall()
-
-            cursor.execute("SELECT * FROM staff")
-            staff = cursor.fetchall()
-
-            cursor.execute("SELECT * FROM staff_commendations")
-            commendations = cursor.fetchall()
-
-            # Create in-memory CSV
             output = io.StringIO()
+            # UTF-8 BOM so Excel opens it correctly with special characters
+            output.write('\ufeff')
             writer = csv.writer(output)
 
-            # Write stores
-            writer.writerow(["--- STORES ---"])
+            timestamp_human = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            writer.writerow(["# FEEDBACK SYSTEM BACKUP"])
+            writer.writerow([f"# Generated: {timestamp_human}"])
+            writer.writerow([f"# Total stores: {len(stores)}"])
+            writer.writerow([])
+
+            # ---- Stores summary ----
+            writer.writerow(["=== STORES SUMMARY ==="])
             if stores:
-                writer.writerow(stores[0].keys())
-                for row in stores:
-                    writer.writerow(row.values())
+                # Counts per store for quick overview
+                cursor.execute("SELECT store_id, COUNT(*) AS cnt FROM responses GROUP BY store_id")
+                resp_counts = {r['store_id']: r['cnt'] for r in cursor.fetchall()}
+                cursor.execute("SELECT store_id, COUNT(*) AS cnt FROM staff GROUP BY store_id")
+                staff_counts = {r['store_id']: r['cnt'] for r in cursor.fetchall()}
+
+                summary_cols = list(stores[0].keys()) + ["total_responses", "total_staff"]
+                writer.writerow(summary_cols)
+                for s in stores:
+                    row = list(s.values()) + [
+                        resp_counts.get(s['id'], 0),
+                        staff_counts.get(s['id'], 0),
+                    ]
+                    writer.writerow(row)
+            else:
+                writer.writerow(["(no stores)"])
+            writer.writerow([])
             writer.writerow([])
 
-            # Write responses
-            writer.writerow(["--- RESPONSES ---"])
-            if responses:
-                writer.writerow(responses[0].keys())
-                for row in responses:
-                    writer.writerow(row.values())
-            writer.writerow([])
+            # ---- Per-store sections ----
+            for store in stores:
+                store_id = store['id']
+                store_name = store.get('store_name') or f"Store #{store_id}"
 
-            # Write answers
-            writer.writerow(["--- ANSWERS ---"])
-            if answers:
-                writer.writerow(answers[0].keys())
-                for row in answers:
-                    writer.writerow(row.values())
-            writer.writerow([])
+                writer.writerow([f"=== STORE: {store_name} (id={store_id}) ==="])
 
-            # Write staff
-            writer.writerow(["--- STAFF ---"])
-            if staff:
-                writer.writerow(staff[0].keys())
-                for row in staff:
-                    writer.writerow(row.values())
-            writer.writerow([])
+                # Staff
+                cursor.execute("SELECT * FROM staff WHERE store_id = %s ORDER BY id", (store_id,))
+                staff_rows = cursor.fetchall()
+                writer.writerow(["-- Staff --"])
+                if staff_rows:
+                    writer.writerow(staff_rows[0].keys())
+                    for r in staff_rows:
+                        writer.writerow(r.values())
+                else:
+                    writer.writerow(["(no staff)"])
+                writer.writerow([])
 
-            # Write commendations
-            writer.writerow(["--- STAFF COMMENDATIONS ---"])
-            if commendations:
-                writer.writerow(commendations[0].keys())
-                for row in commendations:
-                    writer.writerow(row.values())
+                # Feedback (responses joined with answers)
+                cursor.execute(
+                    """
+                    SELECT r.id AS response_id,
+                           r.user_email,
+                           r.submitted_at,
+                           r.is_read,
+                           r.status,
+                           a.id AS answer_id,
+                           a.question_id,
+                           a.answer_text,
+                           a.rating_value
+                    FROM responses r
+                    LEFT JOIN answers a ON a.response_id = r.id
+                    WHERE r.store_id = %s
+                    ORDER BY r.submitted_at DESC, r.id, a.id
+                    """,
+                    (store_id,)
+                )
+                feedback_rows = cursor.fetchall()
+                writer.writerow(["-- Feedback --"])
+                if feedback_rows:
+                    writer.writerow(feedback_rows[0].keys())
+                    for r in feedback_rows:
+                        writer.writerow(r.values())
+                else:
+                    writer.writerow(["(no feedback)"])
+                writer.writerow([])
+
+                # Commendations for this store's staff
+                cursor.execute(
+                    """
+                    SELECT c.*
+                    FROM staff_commendations c
+                    JOIN staff s ON c.staff_id = s.id
+                    WHERE s.store_id = %s
+                    ORDER BY c.id
+                    """,
+                    (store_id,)
+                )
+                commend_rows = cursor.fetchall()
+                writer.writerow(["-- Commendations --"])
+                if commend_rows:
+                    writer.writerow(commend_rows[0].keys())
+                    for r in commend_rows:
+                        writer.writerow(r.values())
+                else:
+                    writer.writerow(["(no commendations)"])
+                writer.writerow([])
+                writer.writerow([])
 
             output.seek(0)
             csv_data = output.getvalue()
 
-            # Generate filename with timestamp
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             filename = f"feedback_system_backup_{timestamp}.csv"
 
-            # Send as downloadable file
             return send_file(
                 io.BytesIO(csv_data.encode('utf-8')),
                 mimetype='text/csv',
