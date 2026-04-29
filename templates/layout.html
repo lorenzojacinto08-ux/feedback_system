@@ -518,52 +518,147 @@ PURPOSE: This is the main "shell" for all Admin pages. It contains the
         const unseenCountEl = document.getElementById('unseen-count');
         const seenCountEl = document.getElementById('seen-count');
         const tabButtons = document.querySelectorAll('.notification-tab-btn');
-        let lastCount = -1; // Initialize with -1 to trigger update on first load
-        let cachedNotifications = [];
+        const SEEN_PAGE_SIZE = 20;
+        let lastCount = -1;
+        let unseenList = [];
+        let seenList = [];
+        let seenTotal = 0;
+        let seenHasMore = false;
         let activeTab = 'unseen';
+        let loadingMore = false;
+
+        function renderItem(n) {
+          return `
+            <li>
+              <a href="/admin/stores/${n.store_id}/feedback?mark_read=${n.id}"
+                 class="dropdown-item px-3 py-3 border-bottom ${n.is_read ? 'opacity-60 grayscale' : 'bg-primary-light'}"
+                 style="transition: all 0.2s ease; ${n.is_read ? '' : 'border-left: 3px solid var(--primary-500);'}">
+                <div class="d-flex align-items-center">
+                  <div class="rounded-circle ${n.is_read ? 'bg-light' : 'bg-primary bg-opacity-10'} p-2 me-3 flex-shrink-0">
+                    <i class="bi ${n.is_read ? 'bi-chat-square-text' : 'bi-chat-square-text-fill'} ${n.is_read ? 'text-muted' : 'text-primary'} small"></i>
+                  </div>
+                  <div class="flex-grow-1 min-width-0">
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                      <span class="${n.is_read ? 'text-muted' : 'fw-bold text-dark'} text-truncate" style="font-size: 0.85rem; max-width: 140px;">${(n.user_email && n.user_email !== 'undefined') ? n.user_email : 'Anonymous'}</span>
+                      <small class="text-muted flex-shrink-0" style="font-size: 0.7rem;">${n.created_at || ''}</small>
+                    </div>
+                    <p class="mb-0 text-muted small text-truncate" style="font-size: 0.8rem;">
+                      ${n.store_name ? `Feedback for <span class="${n.is_read ? 'text-muted' : 'fw-bold text-dark'}">${n.store_name}</span>` : 'Feedback submission'}
+                    </p>
+                  </div>
+                </div>
+              </a>
+            </li>
+          `;
+        }
+
+        function emptyState(msg) {
+          return `
+            <li class="px-3 py-5 text-center text-muted">
+              <div class="rounded-circle bg-light d-inline-flex p-3 mb-3">
+                <i class="bi bi-bell-slash fs-4 opacity-50"></i>
+              </div>
+              <p class="small mb-0 fw-medium">${msg}</p>
+            </li>
+          `;
+        }
 
         function renderNotifications() {
-          const filtered = cachedNotifications.filter(n =>
-            activeTab === 'unseen' ? !n.is_read : n.is_read
-          );
+          const items = activeTab === 'unseen' ? unseenList : seenList;
 
-          if (filtered.length > 0) {
-            list.innerHTML = filtered.map(n => `
-              <li>
-                <a href="/admin/stores/${n.store_id}/feedback?mark_read=${n.id}"
-                   class="dropdown-item px-3 py-3 border-bottom ${n.is_read ? 'opacity-60 grayscale' : 'bg-primary-light'}"
-                   style="transition: all 0.2s ease; ${n.is_read ? '' : 'border-left: 3px solid var(--primary-500);'}">
-                  <div class="d-flex align-items-center">
-                    <div class="rounded-circle ${n.is_read ? 'bg-light' : 'bg-primary bg-opacity-10'} p-2 me-3 flex-shrink-0">
-                      <i class="bi ${n.is_read ? 'bi-chat-square-text' : 'bi-chat-square-text-fill'} ${n.is_read ? 'text-muted' : 'text-primary'} small"></i>
-                    </div>
-                    <div class="flex-grow-1 min-width-0">
-                      <div class="d-flex justify-content-between align-items-center mb-1">
-                        <span class="${n.is_read ? 'text-muted' : 'fw-bold text-dark'} text-truncate" style="font-size: 0.85rem; max-width: 140px;">${(n.user_email && n.user_email !== 'undefined') ? n.user_email : 'Anonymous'}</span>
-                        <small class="text-muted flex-shrink-0" style="font-size: 0.7rem;">${n.created_at || n.submitted_at || ''}</small>
-                      </div>
-                      <p class="mb-0 text-muted small text-truncate" style="font-size: 0.8rem;">
-                        ${n.store_name ? `Feedback for <span class="${n.is_read ? 'text-muted' : 'fw-bold text-dark'}">${n.store_name}</span>` : 'Feedback submission'}
-                      </p>
-                    </div>
-                  </div>
-                </a>
-              </li>
-            `).join('');
-          } else {
-            const emptyMsg = activeTab === 'unseen' ? 'No new feedback' : 'No seen notifications';
-            list.innerHTML = `
-              <li class="px-3 py-5 text-center text-muted">
-                <div class="rounded-circle bg-light d-inline-flex p-3 mb-3">
-                  <i class="bi bi-bell-slash fs-4 opacity-50"></i>
-                </div>
-                <p class="small mb-0 fw-medium">${emptyMsg}</p>
+          if (items.length === 0) {
+            list.innerHTML = emptyState(activeTab === 'unseen' ? 'No new feedback' : 'No seen notifications');
+            return;
+          }
+
+          let html = '';
+
+          if (activeTab === 'seen') {
+            html += `
+              <li class="px-3 py-2 bg-light border-bottom d-flex justify-content-between align-items-center">
+                <small class="text-muted">${seenTotal} seen notification${seenTotal === 1 ? '' : 's'}</small>
+                <button id="clear-seen-btn" type="button" class="btn btn-sm btn-link text-danger text-decoration-none p-0" style="font-size: 0.8rem;">
+                  <i class="bi bi-trash3 me-1"></i>Clear all
+                </button>
               </li>
             `;
           }
+
+          html += items.map(renderItem).join('');
+
+          if (activeTab === 'seen' && seenHasMore) {
+            html += `
+              <li class="px-3 py-2 text-center border-top">
+                <button id="load-more-seen" type="button" class="btn btn-sm btn-link text-decoration-none fw-medium">
+                  <i class="bi bi-arrow-down-circle me-1"></i>Load more (${seenTotal - seenList.length} remaining)
+                </button>
+              </li>
+            `;
+          }
+
+          list.innerHTML = html;
+
+          const loadBtn = document.getElementById('load-more-seen');
+          if (loadBtn) {
+            loadBtn.addEventListener('click', (e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              loadMoreSeen();
+            });
+          }
+
+          const clearBtn = document.getElementById('clear-seen-btn');
+          if (clearBtn) {
+            clearBtn.addEventListener('click', (e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              clearSeenNotifications();
+            });
+          }
         }
 
-        // Tab switching
+        async function clearSeenNotifications() {
+          if (seenTotal === 0) return;
+          if (!confirm(`Clear all ${seenTotal} seen notification${seenTotal === 1 ? '' : 's'}? They will be hidden from this view.`)) return;
+          try {
+            const res = await fetch('/api/notifications/clear-seen', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' }
+            });
+            const data = await res.json();
+            if (data.success) {
+              seenList = [];
+              seenTotal = 0;
+              seenHasMore = false;
+              if (seenCountEl) seenCountEl.textContent = 0;
+              renderNotifications();
+            }
+          } catch (err) {
+            console.error('Failed to clear seen notifications:', err);
+          }
+        }
+
+        async function loadMoreSeen() {
+          if (loadingMore || !seenHasMore) return;
+          loadingMore = true;
+          const btn = document.getElementById('load-more-seen');
+          if (btn) btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Loading...';
+          try {
+            const res = await fetch(`/api/notifications/unread?status=seen&seen_offset=${seenList.length}&seen_limit=${SEEN_PAGE_SIZE}`);
+            const data = await res.json();
+            if (data.success) {
+              seenList = seenList.concat(data.seen || []);
+              seenHasMore = !!data.seen_has_more;
+              seenTotal = data.seen_total ?? seenTotal;
+              renderNotifications();
+            }
+          } catch (err) {
+            console.error('Failed to load more seen notifications:', err);
+          } finally {
+            loadingMore = false;
+          }
+        }
+
         tabButtons.forEach(btn => {
           btn.addEventListener('click', (e) => {
             e.preventDefault();
@@ -577,30 +672,27 @@ PURPOSE: This is the main "shell" for all Admin pages. It contains the
 
         async function updateNotifications() {
           try {
-            const response = await fetch('/api/notifications/unread');
+            const response = await fetch(`/api/notifications/unread?status=all&seen_limit=${SEEN_PAGE_SIZE}`);
             const data = await response.json();
 
             if (data.success) {
               const count = data.total_unread;
-              cachedNotifications = data.notifications || [];
+              unseenList = data.unseen || [];
+              seenList = data.seen || [];
+              seenTotal = data.seen_total || 0;
+              seenHasMore = !!data.seen_has_more;
 
-              // Update tab counts
-              const unseenList = cachedNotifications.filter(n => !n.is_read);
-              const seenList = cachedNotifications.filter(n => n.is_read);
               if (unseenCountEl) unseenCountEl.textContent = unseenList.length;
-              if (seenCountEl) seenCountEl.textContent = seenList.length;
+              if (seenCountEl) seenCountEl.textContent = seenTotal;
 
-              // Update badge
               if (count > 0) {
                 badge.textContent = count > 99 ? '99+' : count;
                 badge.classList.remove('d-none');
                 countText.textContent = `${count} New`;
-                
-                // Animate bell if new feedback arrived
+
                 if (lastCount !== -1 && count > lastCount) {
                   bellIcon.classList.add('bi-bell-fill', 'text-danger');
                   bellIcon.classList.remove('bi-bell', 'text-muted');
-                  // Add a subtle shake animation if we wanted to be fancy
                   setTimeout(() => {
                     bellIcon.classList.add('bi-bell');
                     bellIcon.classList.remove('bi-bell-fill', 'text-danger');

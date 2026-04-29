@@ -5064,71 +5064,198 @@ def create_app() -> Flask:
 
     @app.route("/api/notifications/unread")
     def get_unread_notifications():
-        """Fetch feedback notifications for the bell icon, combining feedback and system notifications."""
+        """Fetch feedback notifications for the bell icon, combining feedback and system notifications.
+
+        Query params:
+          - status: 'unseen' (default returns both for initial load) | 'seen' to fetch a page of seen
+          - seen_offset: int, offset into the seen list (default 0)
+          - seen_limit: int, page size for seen (default 20, max 50)
+        """
+        try:
+            status = request.args.get('status', 'all')
+            seen_offset = max(int(request.args.get('seen_offset', 0)), 0)
+            seen_limit = min(max(int(request.args.get('seen_limit', 20)), 1), 50)
+        except ValueError:
+            status = 'all'
+            seen_offset = 0
+            seen_limit = 20
+
+        def _format(rows):
+            for n in rows:
+                if n.get('created_at'):
+                    n['created_at'] = n['created_at'].strftime('%b %d, %H:%M')
+                else:
+                    n['created_at'] = 'N/A'
+                if n.get('notification_type') == 'system':
+                    n['system_id'] = n['id']
+                    n['id'] = None
+            return rows
+
         conn = get_db_connection()
         try:
             cursor = conn.cursor(dictionary=True)
-            
-            # Fetch latest feedback responses (last 10, regardless of read status)
-            cursor.execute(
-                """
-                SELECT r.id, r.user_email, r.submitted_at as created_at, s.store_name, s.id as store_id, r.is_read, 'feedback' as notification_type, NULL as message, NULL as type
-                FROM responses r
-                JOIN stores s ON r.store_id = s.id
-                WHERE s.store_name IS NOT NULL
-                ORDER BY r.submitted_at DESC
-                LIMIT 50
-                """
-            )
-            feedback_notifications = cursor.fetchall()
 
-            # Fetch latest system notifications (last 50, regardless of read status)
-            cursor.execute(
-                """
-                SELECT id, message, type, created_at, is_read, 'system' as notification_type, NULL as user_email, NULL as store_name, NULL as store_id
-                FROM system_notifications
-                ORDER BY created_at DESC
-                LIMIT 50
-                """
-            )
-            system_notifications = cursor.fetchall()
+            unseen = []
+            seen = []
+            seen_total = 0
 
-            # Combine and sort all notifications by created_at
-            all_notifications = sorted(
-                feedback_notifications + system_notifications,
-                key=lambda x: x['created_at'],
-                reverse=True
-            )[:50] # Take top 50 after sorting
+            if status in ('all', 'unseen'):
+                # Fetch ALL unseen feedback responses (no cap so user always sees them)
+                cursor.execute(
+                    """
+                    SELECT r.id, r.user_email, r.submitted_at as created_at, s.store_name, s.id as store_id, r.is_read, 'feedback' as notification_type, NULL as message, NULL as type
+                    FROM responses r
+                    JOIN stores s ON r.store_id = s.id
+                    WHERE s.store_name IS NOT NULL AND r.is_read = FALSE
+                    ORDER BY r.submitted_at DESC
+                    """
+                )
+                unseen_feedback = cursor.fetchall()
 
-            # Count total unread from both types
+                cursor.execute(
+                    """
+                    SELECT id, message, type, created_at, is_read, 'system' as notification_type, NULL as user_email, NULL as store_name, NULL as store_id
+                    FROM system_notifications
+                    WHERE is_read = FALSE
+                    ORDER BY created_at DESC
+                    """
+                )
+                unseen_system = cursor.fetchall()
+
+                unseen = sorted(
+                    unseen_feedback + unseen_system,
+                    key=lambda x: x['created_at'] or datetime.min,
+                    reverse=True,
+                )
+                _format(unseen)
+
+            if status in ('all', 'seen'):
+                # Optional cutoff: hide seen notifications submitted at or before this time
+                cleared_at = session.get('notifications_cleared_at')
+                cleared_dt = None
+                if cleared_at:
+                    try:
+                        cleared_dt = datetime.fromisoformat(cleared_at)
+                    except (ValueError, TypeError):
+                        cleared_dt = None
+
+                # Total seen count (for "load more" UI), respecting cleared cutoff
+                if cleared_dt:
+                    cursor.execute(
+                        "SELECT COUNT(*) as count FROM responses r JOIN stores s ON r.store_id = s.id WHERE s.store_name IS NOT NULL AND r.is_read = TRUE AND r.submitted_at > %s",
+                        (cleared_dt,)
+                    )
+                else:
+                    cursor.execute("SELECT COUNT(*) as count FROM responses r JOIN stores s ON r.store_id = s.id WHERE s.store_name IS NOT NULL AND r.is_read = TRUE")
+                seen_feedback_total = cursor.fetchone()['count']
+
+                if cleared_dt:
+                    cursor.execute(
+                        "SELECT COUNT(*) as count FROM system_notifications WHERE is_read = TRUE AND created_at > %s",
+                        (cleared_dt,)
+                    )
+                else:
+                    cursor.execute("SELECT COUNT(*) as count FROM system_notifications WHERE is_read = TRUE")
+                seen_system_total = cursor.fetchone()['count']
+                seen_total = seen_feedback_total + seen_system_total
+
+                # Fetch a window of seen notifications. Over-fetch from each table then merge,
+                # so the merged page reflects true chronological order across both sources.
+                window = seen_offset + seen_limit
+                if cleared_dt:
+                    cursor.execute(
+                        """
+                        SELECT r.id, r.user_email, r.submitted_at as created_at, s.store_name, s.id as store_id, r.is_read, 'feedback' as notification_type, NULL as message, NULL as type
+                        FROM responses r
+                        JOIN stores s ON r.store_id = s.id
+                        WHERE s.store_name IS NOT NULL AND r.is_read = TRUE AND r.submitted_at > %s
+                        ORDER BY r.submitted_at DESC
+                        LIMIT %s
+                        """,
+                        (cleared_dt, window)
+                    )
+                else:
+                    cursor.execute(
+                        """
+                        SELECT r.id, r.user_email, r.submitted_at as created_at, s.store_name, s.id as store_id, r.is_read, 'feedback' as notification_type, NULL as message, NULL as type
+                        FROM responses r
+                        JOIN stores s ON r.store_id = s.id
+                        WHERE s.store_name IS NOT NULL AND r.is_read = TRUE
+                        ORDER BY r.submitted_at DESC
+                        LIMIT %s
+                        """,
+                        (window,)
+                    )
+                seen_feedback = cursor.fetchall()
+
+                if cleared_dt:
+                    cursor.execute(
+                        """
+                        SELECT id, message, type, created_at, is_read, 'system' as notification_type, NULL as user_email, NULL as store_name, NULL as store_id
+                        FROM system_notifications
+                        WHERE is_read = TRUE AND created_at > %s
+                        ORDER BY created_at DESC
+                        LIMIT %s
+                        """,
+                        (cleared_dt, window)
+                    )
+                else:
+                    cursor.execute(
+                        """
+                        SELECT id, message, type, created_at, is_read, 'system' as notification_type, NULL as user_email, NULL as store_name, NULL as store_id
+                        FROM system_notifications
+                        WHERE is_read = TRUE
+                        ORDER BY created_at DESC
+                        LIMIT %s
+                        """,
+                        (window,)
+                    )
+                seen_system = cursor.fetchall()
+
+                merged_seen = sorted(
+                    seen_feedback + seen_system,
+                    key=lambda x: x['created_at'] or datetime.min,
+                    reverse=True,
+                )
+                seen = merged_seen[seen_offset:seen_offset + seen_limit]
+                _format(seen)
+
+            # Total unread count (always returned)
             cursor.execute("SELECT COUNT(*) as count FROM responses WHERE is_read = FALSE")
             unread_feedback_count = cursor.fetchone()['count']
             cursor.execute("SELECT COUNT(*) as count FROM system_notifications WHERE is_read = FALSE")
             unread_system_count = cursor.fetchone()['count']
             total_unread = unread_feedback_count + unread_system_count
-            
-            # Format dates for JSON and add a unique 'id' for system notifications
-            for n in all_notifications:
-                if n['created_at']:
-                    n['created_at'] = n['created_at'].strftime('%b %d, %H:%M')
-                else:
-                    n['created_at'] = 'N/A'
-                
-                # Ensure system notifications have a distinct ID for frontend handling
-                if n['notification_type'] == 'system':
-                    n['system_id'] = n['id'] # Use a different key to avoid conflict with response.id
-                    n['id'] = None # Clear original ID to prevent confusion
+
+            seen_has_more = (seen_offset + len(seen)) < seen_total
 
             return jsonify({
                 "success": True,
-                "notifications": all_notifications,
-                "total_unread": total_unread
+                "unseen": unseen,
+                "seen": seen,
+                "seen_total": seen_total,
+                "seen_has_more": seen_has_more,
+                "total_unread": total_unread,
+                # Backwards-compat: combined list (unseen first, then seen page)
+                "notifications": unseen + seen,
             })
         except Exception as e:
             logger.error(f"Error fetching notifications: {e}")
             return jsonify({"success": False, "error": str(e)}), 500
         finally:
             conn.close()
+
+    @app.route("/api/notifications/clear-seen", methods=["POST"])
+    def clear_seen_notifications():
+        """Clear (hide) all currently seen notifications for this session.
+        Stores a cutoff timestamp; any seen notifications with created_at <= cutoff
+        are excluded from the seen list returned by /api/notifications/unread."""
+        try:
+            session['notifications_cleared_at'] = datetime.now().isoformat()
+            return jsonify({"success": True})
+        except Exception as e:
+            logger.error(f"Error clearing seen notifications: {e}")
+            return jsonify({"success": False, "error": str(e)}), 500
 
     @app.route("/admin/responses/<int:response_id>/reply", methods=["POST"])
     def reply_to_feedback(response_id: int):
