@@ -159,6 +159,22 @@ def create_app() -> Flask:
                         INDEX idx_conversation_created (conversation_id, created_at)
                     )
                 """)
+
+                # Create system_config table for configuration values
+                cursor.execute("""
+                    CREATE TABLE IF NOT EXISTS system_config (
+                        id INT AUTO_INCREMENT PRIMARY KEY,
+                        config_key VARCHAR(255) NOT NULL UNIQUE,
+                        config_value TEXT NULL,
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+                    )
+                """)
+                # Insert default main_system_url if not exists
+                cursor.execute("SELECT config_value FROM system_config WHERE config_key = 'main_system_url'")
+                if not cursor.fetchone():
+                    cursor.execute("INSERT INTO system_config (config_key, config_value) VALUES ('main_system_url', NULL)")
+                    conn.commit()
                 
                 conn.commit()
                 logger.info("Licensing database schema initialized successfully")
@@ -173,6 +189,17 @@ def create_app() -> Flask:
                     conn.close()
     
     # Helper functions
+    def get_system_config(config_key):
+        """Get system configuration value from database"""
+        conn = get_db_connection()
+        try:
+            cursor = conn.cursor(dictionary=True)
+            cursor.execute("SELECT config_value FROM system_config WHERE config_key = %s", (config_key,))
+            result = cursor.fetchone()
+            return result['config_value'] if result else None
+        finally:
+            conn.close()
+
     def fetch_users_from_main_app():
         """Fetch users from the main application API"""
         import requests
@@ -687,10 +714,10 @@ def create_app() -> Flask:
             # If admin message, sync to main feedback system
             if sender_type == 'admin':
                 try:
-                    # Get main feedback system URL from environment
-                    main_system_url = os.getenv("MAIN_SYSTEM_URL")
+                    # Get main feedback system URL from database config or environment
+                    main_system_url = get_system_config('main_system_url') or os.getenv("MAIN_SYSTEM_URL")
                     if not main_system_url:
-                        logger.warning("MAIN_SYSTEM_URL not set, skipping sync to main system")
+                        logger.warning("MAIN_SYSTEM_URL not configured, skipping sync to main system")
                     else:
                         import requests as http_requests
                         logger.info(f"Syncing admin message to main system at {main_system_url}")
@@ -786,6 +813,28 @@ def create_app() -> Flask:
             return jsonify({"error": "Failed to create conversation"}), 500
         finally:
             conn.close()
+
+    @app.route("/api/config/main_system_url", methods=["GET", "POST"])
+    @login_required
+    def api_config_main_system_url():
+        """API endpoint to get or set main system URL configuration"""
+        if request.method == "GET":
+            main_system_url = get_system_config('main_system_url')
+            return jsonify({"main_system_url": main_system_url})
+        else:
+            data = request.get_json() or {}
+            main_system_url = data.get("main_system_url", "").strip()
+            conn = get_db_connection()
+            try:
+                cursor = conn.cursor()
+                cursor.execute(
+                    "UPDATE system_config SET config_value = %s, updated_at = NOW() WHERE config_key = 'main_system_url'",
+                    (main_system_url,)
+                )
+                conn.commit()
+                return jsonify({"success": True, "main_system_url": main_system_url})
+            finally:
+                conn.close()
 
     # ── Admin ticket management ──────────────────────────────────
     @app.route("/tickets")

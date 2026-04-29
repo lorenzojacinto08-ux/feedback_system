@@ -157,7 +157,12 @@ def create_app() -> Flask:
         try:
             cursor = conn.cursor(dictionary=True)
             # Create table if it doesn't exist
-            cursor.execute("CREATE TABLE IF NOT EXISTS license_config (id INT AUTO_INCREMENT PRIMARY KEY, license_key VARCHAR(255) NOT NULL, api_key VARCHAR(255) NOT NULL, licensing_portal_url VARCHAR(255) DEFAULT 'https://feedbacklicensing-production.up.railway.app', created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP)")
+            cursor.execute("CREATE TABLE IF NOT EXISTS license_config (id INT AUTO_INCREMENT PRIMARY KEY, license_key VARCHAR(255) NOT NULL, api_key VARCHAR(255) NOT NULL, licensing_portal_url VARCHAR(255) DEFAULT 'https://feedbacklicensing-production.up.railway.app', main_system_url VARCHAR(255) NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP)")
+            # Check if main_system_url column exists
+            cursor.execute("SHOW COLUMNS FROM license_config LIKE 'main_system_url'")
+            if not cursor.fetchone():
+                cursor.execute("ALTER TABLE license_config ADD COLUMN main_system_url VARCHAR(255) NULL AFTER licensing_portal_url")
+                conn.commit()
             cursor.execute("SELECT * FROM license_config ORDER BY id DESC LIMIT 1")
             return cursor.fetchone()
         finally:
@@ -3610,9 +3615,12 @@ def create_app() -> Flask:
         portal_url = (config.get("licensing_portal_url") if config else None) or DEFAULT_PORTAL_URL
         try:
             import requests as http_requests
+            logger.info(f"Fetching conversations from portal at {portal_url}")
             resp = http_requests.get(f"{portal_url}/api/conversations", timeout=5)
             if resp.status_code == 200:
+                logger.info(f"Successfully fetched {len(resp.json().get('conversations', []))} conversations from portal")
                 return jsonify(resp.json())
+            logger.error(f"Failed to fetch conversations: {resp.status_code}")
             return jsonify({"conversations": []})
         except Exception as e:
             logger.error(f"Failed to fetch conversations from portal: {e}")
