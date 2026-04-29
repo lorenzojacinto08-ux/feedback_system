@@ -2376,6 +2376,125 @@ def create_app() -> Flask:
         
         return redirect(url_for("admin_users"))
 
+    @app.route("/admin/users/<int:user_id>/edit", methods=["GET", "POST"])
+    @role_required('dev', 'superadmin')
+    def admin_edit_user(user_id: int):
+        """Edit an existing user."""
+        conn = get_db_connection()
+        try:
+            cursor = conn.cursor(dictionary=True)
+            cursor.execute("SELECT * FROM users WHERE id = %s", (user_id,))
+            user = cursor.fetchone()
+
+            if not user:
+                flash("User not found.", "danger")
+                return redirect(url_for("admin_users"))
+
+            if request.method == "POST":
+                username = request.form.get("username", "").strip()
+                email = request.form.get("email", "").strip()
+                role = request.form.get("role", user['role'])
+                try:
+                    max_stores = int(request.form.get("max_stores", "0") or 0)
+                except ValueError:
+                    max_stores = 0
+                is_active = request.form.get("is_active") == "on"
+                new_password = request.form.get("new_password", "")
+
+                if not username or not email:
+                    flash("Username and email are required.", "danger")
+                    return redirect(url_for("admin_edit_user", user_id=user_id))
+
+                if role not in ['dev', 'superadmin', 'admin', 'user']:
+                    flash("Invalid role.", "danger")
+                    return redirect(url_for("admin_edit_user", user_id=user_id))
+
+                # Only 'dev' can assign 'dev' role
+                if role == 'dev' and session.get('role') != 'dev':
+                    flash("Only dev users can assign the dev role.", "danger")
+                    return redirect(url_for("admin_edit_user", user_id=user_id))
+
+                # Don't allow demoting/deactivating yourself
+                if user_id == session.get('user_id'):
+                    if role != user['role']:
+                        flash("You cannot change your own role.", "danger")
+                        return redirect(url_for("admin_edit_user", user_id=user_id))
+                    if not is_active:
+                        flash("You cannot deactivate your own account.", "danger")
+                        return redirect(url_for("admin_edit_user", user_id=user_id))
+
+                # Check uniqueness of username/email (excluding self)
+                cursor.execute(
+                    "SELECT id FROM users WHERE (username = %s OR email = %s) AND id != %s",
+                    (username, email, user_id)
+                )
+                if cursor.fetchone():
+                    flash("Username or email already in use by another user.", "danger")
+                    return redirect(url_for("admin_edit_user", user_id=user_id))
+
+                old_values = {
+                    'username': user['username'], 'email': user['email'],
+                    'role': user['role'], 'max_stores': user.get('max_stores', 0),
+                    'is_active': bool(user['is_active'])
+                }
+
+                # Update fields
+                cursor.execute(
+                    """
+                    UPDATE users
+                    SET username = %s,
+                        email = %s,
+                        role = %s,
+                        max_stores = %s,
+                        is_active = %s
+                    WHERE id = %s
+                    """,
+                    (username, email, role, max_stores if role == 'user' else 0, is_active, user_id)
+                )
+
+                # Optional password reset
+                if new_password:
+                    if len(new_password) < 4:
+                        flash("Password must be at least 4 characters.", "danger")
+                        conn.rollback()
+                        return redirect(url_for("admin_edit_user", user_id=user_id))
+                    password_hash = hash_password(new_password)
+                    cursor.execute(
+                        "UPDATE users SET password_hash = %s WHERE id = %s",
+                        (password_hash, user_id)
+                    )
+
+                conn.commit()
+
+                new_values = {
+                    'username': username, 'email': email, 'role': role,
+                    'max_stores': max_stores if role == 'user' else 0,
+                    'is_active': is_active,
+                    'password_changed': bool(new_password),
+                }
+                try:
+                    log_audit(
+                        entity_type="user",
+                        entity_id=user_id,
+                        action="updated",
+                        old_values=str(old_values),
+                        new_values=str(new_values),
+                        user_id=session.get('user_id')
+                    )
+                except Exception:
+                    pass
+
+                flash("User updated successfully.", "success")
+                return redirect(url_for("admin_users"))
+
+            return render_template("admin/edit_user.html", user=user)
+        except Exception as e:
+            logger.error(f"Error editing user: {e}")
+            flash(f"Error editing user: {e}", "danger")
+            return redirect(url_for("admin_users"))
+        finally:
+            conn.close()
+
     @app.route("/admin/users/<int:user_id>/delete", methods=["POST"])
     @role_required('dev')
     def admin_delete_user(user_id: int):

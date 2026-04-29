@@ -198,15 +198,20 @@
               </td>
               <td>
                 <div class="d-flex gap-2">
+                  <a href="{{ url_for('admin_edit_user', user_id=user.id) }}"
+                     class="btn btn-sm btn-outline-primary action-btn"
+                     title="Edit user">
+                    <i class="bi bi-pencil-square"></i>
+                  </a>
                   {% if user.id != session.get('user_id') %}
                   <form method="POST" action="{{ url_for('admin_toggle_user', user_id=user.id) }}" onsubmit="return confirm('Are you sure you want to toggle this user status?');">
-                    <button class="btn btn-sm btn-outline-{{ 'success' if user.is_active else 'secondary' }} action-btn" type="submit">
+                    <button class="btn btn-sm btn-outline-{{ 'success' if user.is_active else 'secondary' }} action-btn" type="submit" title="Toggle active">
                       <i class="bi bi-{{ 'toggle-on' if user.is_active else 'toggle-off' }}"></i>
                     </button>
                   </form>
                   {% if session.get('role') == 'dev' %}
                   <form method="POST" action="{{ url_for('admin_delete_user', user_id=user.id) }}" onsubmit="return confirm('Are you sure you want to delete this user? This action cannot be undone.');">
-                    <button class="btn btn-sm btn-outline-danger action-btn" type="submit">
+                    <button class="btn btn-sm btn-outline-danger action-btn" type="submit" title="Delete user">
                       <i class="bi bi-trash"></i>
                     </button>
                   </form>
