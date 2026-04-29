@@ -291,9 +291,8 @@ function sendMessage(event) {
     .then(data => {
         if (data.success) {
             input.value = '';
+            input.style.height = 'auto';
             loadMessages(currentConversationId);
-            // Reload page to update conversation list
-            location.reload();
         } else {
             alert(data.error || 'Failed to send message');
         }
