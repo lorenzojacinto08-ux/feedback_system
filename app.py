@@ -2496,7 +2496,7 @@ def create_app() -> Flask:
         conn = get_db_connection()
         try:
             cursor = conn.cursor(dictionary=True)
-            cursor.execute("SELECT id, username, email, role, password_hash FROM users WHERE id = %s", (user_id,))
+            cursor.execute("SELECT id, username, email, role, password_hash, created_at, is_active FROM users WHERE id = %s", (user_id,))
             user = cursor.fetchone()
 
             if not user:
