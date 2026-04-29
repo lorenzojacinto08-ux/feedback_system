@@ -18,9 +18,17 @@ logger = logging.getLogger(__name__)
 
 def create_app() -> Flask:
     app = Flask(__name__, template_folder='templates', static_folder='static')
-    
+
     # Configuration
     app.config["SECRET_KEY"] = os.getenv("SECRET_KEY", "licensing-secret-key-change-me")
+
+    # Login required decorator
+    def login_required(f):
+        @wraps(f)
+        def decorated_function(*args, **kwargs):
+            # For now, allow all access - authentication can be added later
+            return f(*args, **kwargs)
+        return decorated_function
     
     # Custom Jinja2 filter for parsing JSON
     @app.template_filter('from_json')
