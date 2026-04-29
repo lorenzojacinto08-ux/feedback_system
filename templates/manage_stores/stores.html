@@ -472,13 +472,18 @@ PURPOSE: "Store Management" page. Allows adding/editing stores, viewing
                     <button type="button" class="btn btn-sm p-0 border-0 bg-transparent text-muted" data-bs-toggle="dropdown" aria-expanded="false" style="line-height:1;">
                       <i class="bi bi-three-dots-vertical"></i>
                     </button>
-                    <ul class="dropdown-menu dropdown-menu-end shadow" style="min-width:150px;z-index:1080;">
+                    <ul class="dropdown-menu dropdown-menu-end shadow" style="min-width:170px;z-index:1080;">
                       <li><a class="dropdown-item py-2" href="#" onclick="editStore({{ store.id }})">
                         <i class="bi bi-pencil me-2"></i>Edit Store
                       </a></li>
                       <li><a class="dropdown-item py-2" href="#" onclick="copyDashboardLink({{ store.id }}, '{{ store.access_token }}', '{{ store.subdomain }}')">
                         <i class="bi bi-link-45deg me-2"></i>Copy Dashboard Link
                       </a></li>
+                      {% if session.get('role') in ('admin', 'superadmin') %}
+                      <li><a class="dropdown-item py-2" href="#" onclick="openViewersModal({{ store.id }}, '{{ store.store_name|e }}')">
+                        <i class="bi bi-eye me-2"></i>Manage Viewers
+                      </a></li>
+                      {% endif %}
                       <li><a class="dropdown-item py-2 text-danger" href="#" onclick="deleteStore({{ store.id }})">
                         <i class="bi bi-trash me-2"></i>Delete Store
                       </a></li>
@@ -596,13 +601,18 @@ PURPOSE: "Store Management" page. Allows adding/editing stores, viewing
                         <button type="button" class="btn btn-sm p-0 border-0 bg-transparent text-muted" data-bs-toggle="dropdown" aria-expanded="false" style="line-height:1;">
                           <i class="bi bi-three-dots-vertical"></i>
                         </button>
-                        <ul class="dropdown-menu dropdown-menu-end shadow" style="min-width:150px;z-index:1080;">
+                        <ul class="dropdown-menu dropdown-menu-end shadow" style="min-width:170px;z-index:1080;">
                           <li><a class="dropdown-item py-2" href="#" onclick="editStore({{ store.id }})">
                             <i class="bi bi-pencil me-2"></i>Edit Store
                           </a></li>
                           <li><a class="dropdown-item py-2" href="#" onclick="copyDashboardLink({{ store.id }}, '{{ store.access_token }}', '{{ store.subdomain }}')">
                             <i class="bi bi-link-45deg me-2"></i>Copy Dashboard Link
                           </a></li>
+                          {% if session.get('role') in ('admin', 'superadmin') %}
+                          <li><a class="dropdown-item py-2" href="#" onclick="openViewersModal({{ store.id }}, '{{ store.store_name|e }}')">
+                            <i class="bi bi-eye me-2"></i>Manage Viewers
+                          </a></li>
+                          {% endif %}
                           <li><a class="dropdown-item py-2 text-danger" href="#" onclick="deleteStore({{ store.id }})">
                             <i class="bi bi-trash me-2"></i>Delete Store
                           </a></li>
@@ -683,6 +693,52 @@ PURPOSE: "Store Management" page. Allows adding/editing stores, viewing
         <strong>No stores found.</strong> Add your first store to get started with the feedback system.
       </div>
     </div>
+  {% endif %}
+
+  {% if session.get('role') in ('admin', 'superadmin') %}
+  <!-- Manage Viewers Modal -->
+  <div class="modal fade" id="viewersModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+      <div class="modal-content border-0 shadow-lg" style="border-radius:14px;">
+        <div class="modal-header" style="background: linear-gradient(135deg, #4A90E2 0%, #212529 100%); color: white; border-radius:14px 14px 0 0;">
+          <h5 class="modal-title fw-bold">
+            <i class="bi bi-eye me-2"></i>Manage Store Viewers
+          </h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body p-4">
+          <div class="mb-3 pb-3" style="border-bottom: 1px solid var(--neutral-200);">
+            <small class="text-muted text-uppercase fw-semibold" style="font-size:.7rem; letter-spacing:.1em;">Store</small>
+            <h6 class="mb-0 fw-bold" id="viewersStoreName">—</h6>
+          </div>
+
+          <h6 class="fw-semibold mb-2">
+            <i class="bi bi-person-check me-1 text-success"></i>Assigned view-only users
+          </h6>
+          <div id="viewersAssignedList" class="mb-4">
+            <div class="text-muted small">Loading…</div>
+          </div>
+
+          <h6 class="fw-semibold mb-2">
+            <i class="bi bi-person-plus me-1 text-primary"></i>Add a viewer
+          </h6>
+          <form id="viewerAddForm" method="POST" class="d-flex gap-2 align-items-stretch">
+            <select id="viewerSelect" name="user_id" class="form-select" required>
+              <option value="">— Select an active view-only user —</option>
+            </select>
+            <button class="btn btn-primary" type="submit">
+              <i class="bi bi-plus-lg me-1"></i>Assign
+            </button>
+          </form>
+          <small class="text-muted d-block mt-2">
+            <i class="bi bi-info-circle me-1"></i>
+            Only accounts with the <strong>User (View-only)</strong> role appear here.
+            Create them in <a href="{{ url_for('admin_users') }}">User Management</a> if needed.
+          </small>
+        </div>
+      </div>
+    </div>
+  </div>
   {% endif %}
 {% endblock %}
 
@@ -1908,5 +1964,79 @@ document.addEventListener('DOMContentLoaded', function() {
     console.log('QRCode library loaded:', typeof QRCode);
     console.log('Stores data:', storesData);
 });
+
+/* ============================================================
+   Manage Viewers Modal — assign per-store view-only users
+   ============================================================ */
+let viewersCurrentStoreId = null;
+
+function escapeHtml(str) {
+  return String(str || '').replace(/[&<>"']/g, c => ({
+    '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;'
+  }[c]));
+}
+
+async function openViewersModal(storeId, storeName) {
+  viewersCurrentStoreId = storeId;
+  const modalEl = document.getElementById('viewersModal');
+  if (!modalEl) return;
+
+  document.getElementById('viewersStoreName').textContent = storeName || ('Store #' + storeId);
+  document.getElementById('viewersAssignedList').innerHTML = '<div class="text-muted small">Loading…</div>';
+  document.getElementById('viewerSelect').innerHTML = '<option value="">— Loading…</option>';
+  const form = document.getElementById('viewerAddForm');
+  form.action = `/admin/stores/${storeId}/viewers/add`;
+
+  const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+  modal.show();
+
+  try {
+    const res = await fetch(`/admin/stores/${storeId}/viewers`, { headers: { 'Accept': 'application/json' } });
+    const data = await res.json();
+    if (!data.success) throw new Error(data.error || 'Failed to load viewers');
+
+    // Render assigned list
+    const assignedEl = document.getElementById('viewersAssignedList');
+    if (!data.assigned || data.assigned.length === 0) {
+      assignedEl.innerHTML = '<div class="text-muted small fst-italic">No view-only users assigned yet.</div>';
+    } else {
+      assignedEl.innerHTML = data.assigned.map(u => `
+        <div class="d-flex align-items-center justify-content-between py-2 px-2 mb-1 rounded" style="background: var(--neutral-100);">
+          <div class="d-flex align-items-center gap-2">
+            <div class="rounded-circle d-flex align-items-center justify-content-center"
+                 style="width:32px;height:32px;background:linear-gradient(135deg,#4A90E2,#7ba8ff);color:white;font-weight:700;font-size:.85rem;">
+              ${escapeHtml((u.username || '?')[0].toUpperCase())}
+            </div>
+            <div>
+              <div class="fw-semibold small">${escapeHtml(u.username)}</div>
+              <div class="text-muted" style="font-size:.7rem;">${escapeHtml(u.email || '')}</div>
+            </div>
+          </div>
+          <form method="POST" action="/admin/stores/${storeId}/viewers/${u.id}/remove"
+                onsubmit="return confirm('Remove ${escapeHtml(u.username).replace(/'/g, "&#39;")}\\'s access to this store?');" class="m-0">
+            <button type="submit" class="btn btn-sm btn-outline-danger" title="Remove access">
+              <i class="bi bi-x-lg"></i>
+            </button>
+          </form>
+        </div>
+      `).join('');
+    }
+
+    // Populate available dropdown
+    const select = document.getElementById('viewerSelect');
+    if (!data.available || data.available.length === 0) {
+      select.innerHTML = '<option value="">No unassigned view-only users available</option>';
+      select.disabled = true;
+    } else {
+      select.disabled = false;
+      select.innerHTML = '<option value="">— Select an active view-only user —</option>' +
+        data.available.map(u => `<option value="${u.id}">${escapeHtml(u.username)} (${escapeHtml(u.email)})</option>`).join('');
+    }
+  } catch (err) {
+    console.error(err);
+    document.getElementById('viewersAssignedList').innerHTML =
+      '<div class="text-danger small">Failed to load viewers. Please try again.</div>';
+  }
+}
 </script>
 {% endblock %}

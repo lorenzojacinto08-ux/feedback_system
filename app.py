@@ -287,6 +287,31 @@ def create_app() -> Flask:
             return decorated_function
         return decorator
 
+    # ── Global write-block for view-only users ──
+    # 'user' role is read-only. Block any non-GET requests, except a small
+    # whitelist of safe self-service endpoints (logout, password change).
+    READONLY_USER_WHITELIST = {
+        'logout',
+        'login',
+        'account_change_password',
+    }
+
+    @app.before_request
+    def _enforce_view_only_user():
+        if request.method in ('GET', 'HEAD', 'OPTIONS'):
+            return None
+        if session.get('role') != 'user':
+            return None
+        endpoint = request.endpoint or ''
+        if endpoint in READONLY_USER_WHITELIST:
+            return None
+        # Reject everything else for view-only accounts
+        if request.is_json or request.headers.get('Accept', '').startswith('application/json'):
+            return jsonify({"success": False, "error": "Read-only account"}), 403
+        flash("Your account is read-only and cannot make changes.", "warning")
+        # Redirect back to referrer if available, else dashboard
+        return redirect(request.referrer or url_for('admin_dashboard'))
+
     # Initialize SMTP email configuration
     email_config = EmailConfig()
     email_config.init_app(app)
@@ -573,9 +598,9 @@ def create_app() -> Flask:
                     cursor.execute("SHOW COLUMNS FROM users LIKE 'role'")
                     role_col = cursor.fetchone()
                     role_type = (role_col[1] if role_col else '') or ''
-                    if 'dev' in role_type.lower():
+                    needs_migration = 'dev' in role_type.lower()
+                    if needs_migration:
                         logger.info("Migrating user roles to new hierarchy (superadmin/admin/user)...")
-                        # Allow temporary widening so updates don't fail
                         cursor.execute(
                             "ALTER TABLE users MODIFY COLUMN role "
                             "ENUM('dev','superadmin','admin','user') DEFAULT 'user'"
@@ -588,8 +613,33 @@ def create_app() -> Flask:
                         )
                         conn.commit()
                         logger.info("Role migration complete.")
+                    else:
+                        # Defensive: even if ENUM is up-to-date, fix any stragglers with role='dev'
+                        cursor.execute("SELECT COUNT(*) FROM users WHERE role='dev'")
+                        leftover = cursor.fetchone()[0]
+                        if leftover:
+                            logger.warning(f"Found {leftover} legacy 'dev' user(s); promoting to superadmin.")
+                            cursor.execute("UPDATE users SET role='superadmin' WHERE role='dev'")
+                            conn.commit()
                 except Exception as e:
                     logger.error(f"Role migration error: {e}")
+
+                # Create user_stores link table for per-store view-only assignments
+                cursor.execute("SHOW TABLES LIKE 'user_stores'")
+                if not cursor.fetchone():
+                    logger.info("Creating user_stores table for per-store view-only access...")
+                    cursor.execute("""
+                        CREATE TABLE user_stores (
+                            id INT AUTO_INCREMENT PRIMARY KEY,
+                            user_id INT NOT NULL,
+                            store_id INT NOT NULL,
+                            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                            UNIQUE KEY uniq_user_store (user_id, store_id),
+                            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+                            FOREIGN KEY (store_id) REFERENCES stores(id) ON DELETE CASCADE
+                        )
+                    """)
+                    conn.commit()
 
                 # Check for users table columns - add max_stores and license_key for client licensing
                 cursor.execute("SHOW COLUMNS FROM users LIKE 'max_stores'")
@@ -815,12 +865,42 @@ def create_app() -> Flask:
             "python_version": sys.version
         })
 
-    def fetch_stores(user_id: int | None = None) -> List[Dict[str, Any]]:
+    def get_assigned_store_ids(user_id: int) -> List[int]:
+        """Return store ids a view-only user has been granted access to."""
+        conn = get_db_connection()
+        try:
+            cursor = conn.cursor()
+            cursor.execute("SELECT store_id FROM user_stores WHERE user_id = %s", (user_id,))
+            return [row[0] for row in cursor.fetchall()]
+        except Exception as e:
+            logger.error(f"Error fetching assigned stores for user {user_id}: {e}")
+            return []
+        finally:
+            conn.close()
+
+    def fetch_stores(user_id: int | None = None, assigned_store_ids: List[int] | None = None) -> List[Dict[str, Any]]:
         conn = get_db_connection()
         try:
             cursor = conn.cursor(dictionary=True)
-            
-            if user_id:
+
+            if assigned_store_ids is not None:
+                # View-only user: filter by explicit list of assigned store ids
+                if not assigned_store_ids:
+                    logger.info("Fetching stores for view-only user with no assignments -> []")
+                    return []
+                placeholders = ",".join(["%s"] * len(assigned_store_ids))
+                cursor.execute(
+                    f"""
+                    SELECT id, store_name, address, city, province, postal_code,
+                           contact_number, email, store_manager_name, manager_contact,
+                           store_type, status, created_at, access_token, subdomain, user_id
+                    FROM stores
+                    WHERE id IN ({placeholders})
+                    ORDER BY id ASC
+                    """,
+                    tuple(assigned_store_ids),
+                )
+            elif user_id:
                 # For client users, only show their own stores
                 logger.info(f"Fetching stores for user_id: {user_id}")
                 cursor.execute(
@@ -2507,13 +2587,20 @@ def create_app() -> Flask:
                     flash("Username and email are required.", "danger")
                     return redirect(url_for("admin_edit_user", user_id=user_id))
 
+                # Treat legacy 'dev' as superadmin (in case migration didn't run)
+                if role == 'dev':
+                    role = 'superadmin'
+
                 if role not in ['superadmin', 'admin', 'user']:
-                    flash("Invalid role.", "danger")
+                    flash(f"Invalid role: {role}", "danger")
                     return redirect(url_for("admin_edit_user", user_id=user_id))
+
+                # Normalize stored legacy role for self-edit comparison
+                stored_role = 'superadmin' if user['role'] in ('dev',) else user['role']
 
                 # Don't allow demoting/deactivating yourself
                 if user_id == session.get('user_id'):
-                    if role != user['role']:
+                    if role != stored_role:
                         flash("You cannot change your own role.", "danger")
                         return redirect(url_for("admin_edit_user", user_id=user_id))
                     if not is_active:
@@ -2562,6 +2649,11 @@ def create_app() -> Flask:
                     )
 
                 conn.commit()
+
+                # If editing self, refresh session so new username/role show immediately
+                if user_id == session.get('user_id'):
+                    session['username'] = username
+                    session['role'] = role
 
                 new_values = {
                     'username': username, 'email': email, 'role': role,
@@ -2619,6 +2711,152 @@ def create_app() -> Flask:
             logger.error(f"Error deleting user: {e}")
             flash(f"Error deleting user: {e}", "danger")
         return redirect(url_for("admin_users"))
+
+    # ── Per-store view-only viewers (admin/superadmin manage who can view a store) ──
+    def _user_can_manage_store(user: Dict[str, Any], store_id: int) -> bool:
+        """Superadmin can manage any store; admin (client) can manage only stores they own."""
+        if not user:
+            return False
+        if user['role'] == 'superadmin':
+            return True
+        if user['role'] != 'admin':
+            return False
+        # Verify ownership
+        conn = get_db_connection()
+        try:
+            cursor = conn.cursor()
+            cursor.execute("SELECT user_id FROM stores WHERE id = %s", (store_id,))
+            row = cursor.fetchone()
+            return bool(row and row[0] == user['id'])
+        finally:
+            conn.close()
+
+    @app.route("/admin/stores/<int:store_id>/viewers", methods=["GET"])
+    @role_required('admin', 'superadmin')
+    def store_viewers_list(store_id: int):
+        """Return JSON: list of view-only users assigned to a store + available users to assign."""
+        user = get_user_by_id(session['user_id'])
+        if not _user_can_manage_store(user, store_id):
+            return jsonify({"success": False, "error": "Forbidden"}), 403
+        conn = get_db_connection()
+        try:
+            cursor = conn.cursor(dictionary=True)
+            cursor.execute(
+                """
+                SELECT u.id, u.username, u.email, us.created_at
+                FROM user_stores us
+                JOIN users u ON u.id = us.user_id
+                WHERE us.store_id = %s
+                ORDER BY u.username
+                """,
+                (store_id,)
+            )
+            assigned = cursor.fetchall()
+            assigned_ids = [a['id'] for a in assigned]
+
+            # Available view-only users not yet assigned to this store
+            if assigned_ids:
+                ph = ",".join(["%s"] * len(assigned_ids))
+                cursor.execute(
+                    f"SELECT id, username, email FROM users "
+                    f"WHERE role='user' AND is_active=TRUE AND id NOT IN ({ph}) "
+                    f"ORDER BY username",
+                    tuple(assigned_ids)
+                )
+            else:
+                cursor.execute(
+                    "SELECT id, username, email FROM users "
+                    "WHERE role='user' AND is_active=TRUE ORDER BY username"
+                )
+            available = cursor.fetchall()
+            return jsonify({"success": True, "assigned": assigned, "available": available})
+        finally:
+            conn.close()
+
+    @app.route("/admin/stores/<int:store_id>/viewers/add", methods=["POST"])
+    @role_required('admin', 'superadmin')
+    def store_viewers_add(store_id: int):
+        """Assign an existing view-only user to a store."""
+        user = get_user_by_id(session['user_id'])
+        if not _user_can_manage_store(user, store_id):
+            flash("You don't have permission to manage viewers for this store.", "danger")
+            return redirect(url_for("stores_management"))
+
+        try:
+            target_user_id = int(request.form.get("user_id", "0") or 0)
+        except ValueError:
+            target_user_id = 0
+        if not target_user_id:
+            flash("Please choose a user to assign.", "danger")
+            return redirect(url_for("stores_management", store_id=store_id))
+
+        conn = get_db_connection()
+        try:
+            cursor = conn.cursor(dictionary=True)
+            cursor.execute("SELECT id, username, role FROM users WHERE id = %s", (target_user_id,))
+            target = cursor.fetchone()
+            if not target or target['role'] != 'user':
+                flash("Selected account must be a view-only user.", "danger")
+                return redirect(url_for("stores_management", store_id=store_id))
+
+            try:
+                cursor.execute(
+                    "INSERT INTO user_stores (user_id, store_id) VALUES (%s, %s)",
+                    (target_user_id, store_id)
+                )
+                conn.commit()
+                flash(f"{target['username']} can now view this store.", "success")
+                try:
+                    log_audit(
+                        entity_type="store",
+                        entity_id=store_id,
+                        action="viewer_added",
+                        new_values=f"user_id={target_user_id}",
+                        user_id=session.get('user_id')
+                    )
+                except Exception:
+                    pass
+            except Exception as e:
+                # Likely unique constraint (already assigned)
+                logger.info(f"Viewer add no-op: {e}")
+                flash("That user is already assigned to this store.", "warning")
+        finally:
+            conn.close()
+
+        return redirect(url_for("stores_management", store_id=store_id))
+
+    @app.route("/admin/stores/<int:store_id>/viewers/<int:user_id>/remove", methods=["POST"])
+    @role_required('admin', 'superadmin')
+    def store_viewers_remove(store_id: int, user_id: int):
+        """Remove a view-only user's access from a store."""
+        user = get_user_by_id(session['user_id'])
+        if not _user_can_manage_store(user, store_id):
+            flash("You don't have permission to manage viewers for this store.", "danger")
+            return redirect(url_for("stores_management"))
+
+        conn = get_db_connection()
+        try:
+            cursor = conn.cursor()
+            cursor.execute(
+                "DELETE FROM user_stores WHERE user_id = %s AND store_id = %s",
+                (user_id, store_id)
+            )
+            conn.commit()
+            flash("Viewer removed.", "success")
+            try:
+                log_audit(
+                    entity_type="store",
+                    entity_id=store_id,
+                    action="viewer_removed",
+                    new_values=f"user_id={user_id}",
+                    user_id=session.get('user_id')
+                )
+            except Exception:
+                pass
+        finally:
+            conn.close()
+
+        return redirect(url_for("stores_management", store_id=store_id))
 
     @app.route("/api/licensing/users", methods=["GET"])
     def api_licensing_users():
@@ -3095,12 +3333,19 @@ def create_app() -> Flask:
     @login_required
     def stores_management():
         user = get_user_by_id(session['user_id'])
-        # For client accounts (admin role), only show their own stores.
-        # 'user' role is view-only and currently sees nothing scoped to them
-        # (per-store assignment is a future feature).
-        user_id = session['user_id'] if user['role'] in ('admin', 'user') else None
-        logger.info(f"User {session['user_id']} (role: {user['role']}) viewing stores. Filtering by user_id: {user_id}")
-        stores = fetch_stores(user_id=user_id)
+        # Role-based store visibility:
+        #   superadmin -> all stores
+        #   admin (client) -> own stores (filtered by user_id ownership)
+        #   user (view-only) -> only stores explicitly assigned via user_stores
+        if user['role'] == 'user':
+            assigned_ids = get_assigned_store_ids(session['user_id'])
+            logger.info(f"View-only user {session['user_id']} assigned to stores: {assigned_ids}")
+            stores = fetch_stores(assigned_store_ids=assigned_ids)
+            user_id = session['user_id']
+        else:
+            user_id = session['user_id'] if user['role'] == 'admin' else None
+            logger.info(f"User {session['user_id']} (role: {user['role']}) viewing stores. Filtering by user_id: {user_id}")
+            stores = fetch_stores(user_id=user_id)
         logger.info(f"User {session['user_id']} sees {len(stores)} stores")
 
         # Batch-load feedback + staff counts and (for non-clients) user info in 3 queries
