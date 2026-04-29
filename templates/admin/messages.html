@@ -245,28 +245,64 @@ function selectConversation(conversationId, element) {
     }
 }
 
-function loadMessages(conversationId) {
+let lastMessageCount = 0;
+let lastLoadedConversationId = null;
+
+function buildAdminBubble(msg) {
+    const time = (msg.created_at || '').toString().substring(0, 16);
+    const safe = String(msg.message || '').replace(/</g, '&lt;').replace(/\n/g, '<br>');
+    return `
+        <div class="message message-${msg.sender_type}">
+            <div class="message-sender">${msg.sender_name || ''}</div>
+            <div class="message-content">${safe}</div>
+            <div class="message-time">${time}</div>
+        </div>`;
+}
+
+function appendAdminMessage(msg) {
     const container = document.getElementById('messages-container');
-    container.innerHTML = '<div style="text-align:center;padding:2rem;"><div class="spinner-border text-primary"></div></div>';
-    
+    if (!container) return;
+    if (!container.querySelector('.message')) {
+        container.innerHTML = '';
+    }
+    container.insertAdjacentHTML('beforeend', buildAdminBubble(msg));
+    container.scrollTop = container.scrollHeight;
+    lastMessageCount += 1;
+}
+
+function loadMessages(conversationId, showLoading = false) {
+    const container = document.getElementById('messages-container');
+    const switching = lastLoadedConversationId !== conversationId;
+    if (switching || showLoading || !container.querySelector('.message')) {
+        container.innerHTML = '<div style="text-align:center;padding:2rem;"><div class="spinner-border text-primary"></div></div>';
+        lastMessageCount = 0;
+    }
+    lastLoadedConversationId = conversationId;
+
     fetch(`/api/admin/conversations/${conversationId}/messages`)
         .then(r => r.json())
         .then(data => {
-            if (data.messages && data.messages.length > 0) {
-                container.innerHTML = data.messages.map(msg => `
-                    <div class="message message-${msg.sender_type}">
-                        <div class="message-sender">${msg.sender_name}</div>
-                        <div class="message-content">${msg.message.replace(/\n/g, '<br>')}</div>
-                        <div class="message-time">${msg.created_at.substring(0, 16)}</div>
-                    </div>
-                `).join('');
-                container.scrollTop = container.scrollHeight;
+            const msgs = data.messages || [];
+            if (msgs.length > 0) {
+                // Skip re-render if count unchanged (avoids polling flicker)
+                if (!switching && msgs.length === lastMessageCount && container.querySelector('.message')) {
+                    return;
+                }
+                const wasAtBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 50;
+                container.innerHTML = msgs.map(buildAdminBubble).join('');
+                if (switching || msgs.length !== lastMessageCount || wasAtBottom) {
+                    container.scrollTop = container.scrollHeight;
+                }
+                lastMessageCount = msgs.length;
             } else {
                 container.innerHTML = '<div class="empty-state"><i class="bi bi-chat-left-dots"></i><h3>No messages yet</h3><p>Start the conversation by sending a message</p></div>';
+                lastMessageCount = 0;
             }
         })
         .catch(err => {
-            container.innerHTML = '<div class="empty-state"><i class="bi bi-exclamation-triangle"></i><h3>Error loading messages</h3></div>';
+            if (switching || !container.querySelector('.message')) {
+                container.innerHTML = '<div class="empty-state"><i class="bi bi-exclamation-triangle"></i><h3>Error loading messages</h3></div>';
+            }
             console.error(err);
         });
 }
@@ -292,7 +328,12 @@ function sendMessage(event) {
         if (data.success) {
             input.value = '';
             input.style.height = 'auto';
-            loadMessages(currentConversationId);
+            appendAdminMessage({
+                sender_type: 'admin',
+                sender_name: 'Support Team',
+                message: message,
+                created_at: new Date().toISOString()
+            });
         } else {
             alert(data.error || 'Failed to send message');
         }

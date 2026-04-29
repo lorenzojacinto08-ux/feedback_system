@@ -416,6 +416,30 @@ function toggleEditLicense() {
   }
 
   let lastMessageCount = 0;
+
+  function buildBubbleHTML(msg) {
+    const timeStr = new Date(msg.created_at).toLocaleString('en-US', {month:'short',day:'numeric',hour:'numeric',minute:'2-digit'});
+    const isClient = msg.sender_type === 'client';
+    return `
+        <div class="message-bubble ${isClient ? 'client' : 'admin'}">
+          <div class="message-sender">${isClient ? 'You' : 'Support Team'}</div>
+          <div>${String(msg.message || '').replace(/</g,'&lt;').replace(/\n/g, '<br>')}</div>
+          <div class="message-time">${timeStr}</div>
+        </div>`;
+  }
+
+  function appendMessage(msg) {
+    const container = document.getElementById('messages-container');
+    if (!container) return;
+    // Clear empty-state placeholder if present
+    if (!container.querySelector('.message-bubble')) {
+      container.innerHTML = '';
+    }
+    container.insertAdjacentHTML('beforeend', buildBubbleHTML(msg));
+    container.scrollTop = container.scrollHeight;
+    lastMessageCount += 1;
+  }
+
   function loadMessages(showLoading = false) {
     const container = document.getElementById('messages-container');
     if (showLoading || !container.querySelector('.message-bubble')) {
@@ -455,9 +479,12 @@ function toggleEditLicense() {
         </div>`;
     }).join('');
 
+    // Skip re-render if message count is unchanged (avoids flicker from polling)
+    if (messages.length === lastMessageCount && container.querySelector('.message-bubble')) {
+      return;
+    }
     const wasAtBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 50;
     container.innerHTML = bubbles;
-    // Auto-scroll if new messages arrived or user was already at bottom
     if (messages.length !== lastMessageCount || wasAtBottom) {
       container.scrollTop = container.scrollHeight;
     }
@@ -484,7 +511,11 @@ function toggleEditLicense() {
       if (r.ok && data.success) {
         input.value = '';
         input.style.height = 'auto';
-        loadMessages();
+        appendMessage({
+          sender_type: 'client',
+          message: message,
+          created_at: new Date().toISOString()
+        });
       } else {
         const errMsg = data.error || `Failed to send (HTTP ${r.status})`;
         console.error('Send failed:', errMsg, data);
