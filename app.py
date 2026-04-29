@@ -3319,17 +3319,23 @@ def create_app() -> Flask:
     def _ensure_portal_conversation(license_key, contact_email, company_name=""):
         """Ensure conversation exists on portal and return its ID"""
         client_identifier = license_key or contact_email
+        # Fallback contact_email if empty (portal requires it)
+        effective_email = contact_email or company_name or client_identifier or "client@unknown"
         portal_url = _get_portal_url()
         import requests as http_requests
         try:
+            logger.info(f"Ensuring portal conversation at {portal_url} for {client_identifier}")
             resp = http_requests.post(f"{portal_url}/api/conversations/create", json={
                 "client_identifier": client_identifier,
                 "license_key": license_key or "",
-                "contact_email": contact_email,
-                "company_name": company_name or contact_email
+                "contact_email": effective_email,
+                "company_name": company_name or effective_email
             }, timeout=10)
             if resp.status_code in (200, 201):
-                return resp.json().get('conversation', {}).get('id')
+                conv_id = resp.json().get('conversation', {}).get('id')
+                logger.info(f"Portal conversation ID: {conv_id}")
+                return conv_id
+            logger.error(f"Portal create failed: {resp.status_code} - {resp.text}")
         except Exception as e:
             logger.error(f"Failed to ensure portal conversation: {e}")
         return None

@@ -479,17 +479,20 @@ function toggleEditLicense() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ message })
     })
-    .then(r => r.json())
-    .then(data => {
-      if (data.success) {
+    .then(async r => {
+      const data = await r.json().catch(() => ({}));
+      if (r.ok && data.success) {
         input.value = '';
+        input.style.height = 'auto';
         loadMessages();
       } else {
-        alert(data.error || 'Failed to send message');
+        const errMsg = data.error || `Failed to send (HTTP ${r.status})`;
+        console.error('Send failed:', errMsg, data);
+        alert(errMsg);
       }
     })
     .catch(err => {
-      alert('Failed to send message');
+      alert('Failed to send message: ' + err.message);
       console.error(err);
     })
     .finally(() => {

@@ -775,12 +775,17 @@ def create_app() -> Flask:
         """API endpoint to create a conversation from external system"""
         data = request.get_json() or {}
         client_identifier = data.get("client_identifier", "").strip()
-        company_name = data.get("company_name", "").strip()
-        license_key = data.get("license_key", "").strip()
-        contact_email = data.get("contact_email", "").strip()
+        company_name = (data.get("company_name") or "").strip()
+        license_key = (data.get("license_key") or "").strip()
+        contact_email = (data.get("contact_email") or "").strip()
 
-        if not client_identifier or not contact_email:
-            return jsonify({"error": "client_identifier and contact_email are required"}), 400
+        if not client_identifier:
+            return jsonify({"error": "client_identifier is required"}), 400
+        # Fallback contact_email to client_identifier if empty
+        if not contact_email:
+            contact_email = client_identifier
+        if not company_name:
+            company_name = contact_email
 
         conn = get_db_connection()
         try:
