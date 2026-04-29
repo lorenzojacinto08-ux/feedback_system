@@ -3455,35 +3455,50 @@ def create_app() -> Flask:
             try:
                 portal_url = (config.get("licensing_portal_url") if config else None) or DEFAULT_PORTAL_URL
                 import requests as http_requests
+                logger.info(f"Syncing client message to portal at {portal_url}")
                 # Use portal_conversation_id if available, otherwise try to get conversation by identifier
                 portal_conv_id = conv.get('portal_conversation_id')
                 if portal_conv_id:
-                    http_requests.post(f"{portal_url}/api/conversations/{portal_conv_id}/send", json={
+                    logger.info(f"Using portal_conversation_id: {portal_conv_id}")
+                    resp = http_requests.post(f"{portal_url}/api/conversations/{portal_conv_id}/send", json={
                         "message": message,
                         "sender_type": "client",
                         "sender_name": contact_email
                     }, timeout=5)
+                    if resp.status_code in (200, 201):
+                        logger.info("Successfully synced client message to portal")
+                    else:
+                        logger.error(f"Failed to sync client message: {resp.status_code} - {resp.text}")
                 else:
                     # Try to get portal conversation by identifier
+                    logger.info(f"No portal_conversation_id, fetching by identifier: {conv['client_identifier']}")
                     resp = http_requests.get(f"{portal_url}/api/conversations/by-identifier/{conv['client_identifier']}", timeout=5)
                     if resp.status_code == 200:
                         portal_conv = resp.json().get('conversation')
                         if portal_conv:
                             portal_conv_id = portal_conv.get('id')
+                            logger.info(f"Found portal conversation: {portal_conv_id}")
                             # Update local conversation with portal_conversation_id
                             conn = get_db_connection()
                             try:
                                 cursor = conn.cursor()
                                 cursor.execute("UPDATE client_conversations SET portal_conversation_id = %s WHERE id = %s", (portal_conv_id, conv['id']))
                                 conn.commit()
+                                logger.info(f"Updated portal_conversation_id to {portal_conv_id}")
                             finally:
                                 conn.close()
                             # Send message to portal
-                            http_requests.post(f"{portal_url}/api/conversations/{portal_conv_id}/send", json={
+                            resp = http_requests.post(f"{portal_url}/api/conversations/{portal_conv_id}/send", json={
                                 "message": message,
                                 "sender_type": "client",
                                 "sender_name": contact_email
                             }, timeout=5)
+                            if resp.status_code in (200, 201):
+                                logger.info("Successfully synced client message to portal")
+                            else:
+                                logger.error(f"Failed to sync client message: {resp.status_code} - {resp.text}")
+                    else:
+                        logger.error(f"Portal conversation not found for identifier: {resp.status_code}")
             except Exception as e:
                 logger.error(f"Failed to sync message to portal: {e}")
 

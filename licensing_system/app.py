@@ -685,17 +685,25 @@ def create_app() -> Flask:
             conn.commit()
 
             # If admin message, sync to main feedback system
-            if sender_type == 'admin' and conv['license_key']:
+            if sender_type == 'admin':
                 try:
-                    # Get main feedback system URL from environment or use default
-                    main_system_url = os.getenv("MAIN_SYSTEM_URL", "http://localhost:5000")
-                    import requests as http_requests
-                    http_requests.post(f"{main_system_url}/api/portal/sync/message", json={
-                        "client_identifier": conv['client_identifier'],
-                        "message": message,
-                        "sender_type": "admin",
-                        "sender_name": sender_name
-                    }, timeout=5)
+                    # Get main feedback system URL from environment
+                    main_system_url = os.getenv("MAIN_SYSTEM_URL")
+                    if not main_system_url:
+                        logger.warning("MAIN_SYSTEM_URL not set, skipping sync to main system")
+                    else:
+                        import requests as http_requests
+                        logger.info(f"Syncing admin message to main system at {main_system_url}")
+                        resp = http_requests.post(f"{main_system_url}/api/portal/sync/message", json={
+                            "client_identifier": conv['client_identifier'],
+                            "message": message,
+                            "sender_type": "admin",
+                            "sender_name": sender_name
+                        }, timeout=5)
+                        if resp.status_code in (200, 201):
+                            logger.info("Successfully synced admin message to main system")
+                        else:
+                            logger.error(f"Failed to sync admin message: {resp.status_code} - {resp.text}")
                 except Exception as e:
                     logger.error(f"Failed to sync admin message to main system: {e}")
 
