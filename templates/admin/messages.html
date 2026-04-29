@@ -322,6 +322,13 @@ if (textarea) {
 loadMessages({{ conversations[0].id }});
 {% endif %}
 
+// Poll for new messages every 5 seconds
+setInterval(() => {
+    if (currentConversationId) {
+        loadMessages(currentConversationId);
+    }
+}, 5000);
+
 // Mobile back button
 if (window.innerWidth <= 768) {
     const header = document.getElementById('chat-header');

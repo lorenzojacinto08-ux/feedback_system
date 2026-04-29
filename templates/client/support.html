@@ -415,9 +415,12 @@ function toggleEditLicense() {
     }
   }
 
-  function loadMessages() {
+  let lastMessageCount = 0;
+  function loadMessages(showLoading = false) {
     const container = document.getElementById('messages-container');
-    container.innerHTML = '<div class="text-center py-3"><div class="spinner-border spinner-border-sm text-muted"></div><p class="small text-muted mt-2 mb-0">Loading messages...</p></div>';
+    if (showLoading || !container.querySelector('.message-bubble')) {
+      container.innerHTML = '<div class="text-center py-3"><div class="spinner-border spinner-border-sm text-muted"></div><p class="small text-muted mt-2 mb-0">Loading messages...</p></div>';
+    }
 
     fetch('/api/client/messages')
       .then(r => r.json())
@@ -427,7 +430,9 @@ function toggleEditLicense() {
       })
       .catch(err => {
         console.error(err);
-        container.innerHTML = '<div class="text-center py-4"><i class="bi bi-exclamation-triangle text-muted"></i><p class="text-muted mt-2 mb-0">Failed to load messages.</p></div>';
+        if (!container.querySelector('.message-bubble')) {
+          container.innerHTML = '<div class="text-center py-4"><i class="bi bi-exclamation-triangle text-muted"></i><p class="text-muted mt-2 mb-0">Failed to load messages.</p></div>';
+        }
       });
   }
 
@@ -435,6 +440,7 @@ function toggleEditLicense() {
     const container = document.getElementById('messages-container');
     if (!messages.length) {
       container.innerHTML = '<div class="text-center py-5"><i class="bi bi-chat-dots text-muted" style="font-size:3rem;opacity:.3;"></i><p class="text-muted mt-3 mb-0">No messages yet.</p><p class="text-muted small mb-0">Start a conversation with our support team!</p></div>';
+      lastMessageCount = 0;
       return;
     }
 
@@ -449,8 +455,13 @@ function toggleEditLicense() {
         </div>`;
     }).join('');
 
+    const wasAtBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 50;
     container.innerHTML = bubbles;
-    container.scrollTop = container.scrollHeight;
+    // Auto-scroll if new messages arrived or user was already at bottom
+    if (messages.length !== lastMessageCount || wasAtBottom) {
+      container.scrollTop = container.scrollHeight;
+    }
+    lastMessageCount = messages.length;
   }
 
   function sendMessage(event) {
@@ -498,11 +509,25 @@ function toggleEditLicense() {
 
   // Load messages when drawer opens
   const drawer = document.getElementById('tickets-drawer');
+  let pollingInterval = null;
   if (drawer) {
     const observer = new MutationObserver((mutations) => {
       mutations.forEach((mutation) => {
-        if (mutation.target.classList.contains('open') && !document.getElementById('messages-container').querySelector('.message-bubble')) {
-          loadMessages();
+        const isOpen = mutation.target.classList.contains('open');
+        if (isOpen) {
+          if (!document.getElementById('messages-container').querySelector('.message-bubble')) {
+            loadMessages();
+          }
+          // Start polling for new messages every 5 seconds while drawer is open
+          if (!pollingInterval) {
+            pollingInterval = setInterval(loadMessages, 5000);
+          }
+        } else {
+          // Stop polling when drawer is closed
+          if (pollingInterval) {
+            clearInterval(pollingInterval);
+            pollingInterval = null;
+          }
         }
       });
     });
