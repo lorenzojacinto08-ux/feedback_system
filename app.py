@@ -3567,6 +3567,85 @@ def create_app() -> Flask:
         finally:
             conn.close()
 
+    # ── Admin Messaging Interface ───────────────────────────────────────
+    @app.route("/admin/messages")
+    @login_required
+    @role_required('superadmin')
+    def admin_messages():
+        """Admin messages page - view all client conversations from licensing portal"""
+        # Fetch conversations from licensing portal
+        config = get_license_config()
+        portal_url = (config.get("licensing_portal_url") if config else None) or DEFAULT_PORTAL_URL
+        conversations = []
+        try:
+            import requests as http_requests
+            resp = http_requests.get(f"{portal_url}/api/conversations", timeout=5)
+            if resp.status_code == 200:
+                conversations = resp.json().get('conversations', [])
+        except Exception as e:
+            logger.error(f"Failed to fetch conversations from portal: {e}")
+        return render_template("admin/messages.html", conversations=conversations)
+
+    @app.route("/api/admin/conversations")
+    @login_required
+    @role_required('superadmin')
+    def api_admin_get_conversations():
+        """API endpoint to get all conversations from licensing portal"""
+        config = get_license_config()
+        portal_url = (config.get("licensing_portal_url") if config else None) or DEFAULT_PORTAL_URL
+        try:
+            import requests as http_requests
+            resp = http_requests.get(f"{portal_url}/api/conversations", timeout=5)
+            if resp.status_code == 200:
+                return jsonify(resp.json())
+            return jsonify({"conversations": []})
+        except Exception as e:
+            logger.error(f"Failed to fetch conversations from portal: {e}")
+            return jsonify({"conversations": []})
+
+    @app.route("/api/admin/conversations/<int:conversation_id>/messages")
+    @login_required
+    @role_required('superadmin')
+    def api_admin_get_conversation_messages(conversation_id):
+        """API endpoint to get messages for a conversation from licensing portal"""
+        config = get_license_config()
+        portal_url = (config.get("licensing_portal_url") if config else None) or DEFAULT_PORTAL_URL
+        try:
+            import requests as http_requests
+            resp = http_requests.get(f"{portal_url}/api/conversations/{conversation_id}/messages", timeout=5)
+            if resp.status_code == 200:
+                return jsonify(resp.json())
+            return jsonify({"messages": []})
+        except Exception as e:
+            logger.error(f"Failed to fetch messages from portal: {e}")
+            return jsonify({"messages": []})
+
+    @app.route("/api/admin/conversations/<int:conversation_id>/send", methods=["POST"])
+    @login_required
+    @role_required('superadmin')
+    def api_admin_send_message(conversation_id):
+        """API endpoint to send a message as admin to licensing portal"""
+        data = request.get_json() or {}
+        message = data.get("message", "").strip()
+        if not message:
+            return jsonify({"error": "Message is required"}), 400
+
+        config = get_license_config()
+        portal_url = (config.get("licensing_portal_url") if config else None) or DEFAULT_PORTAL_URL
+        try:
+            import requests as http_requests
+            resp = http_requests.post(f"{portal_url}/api/conversations/{conversation_id}/send", json={
+                "message": message,
+                "sender_type": "admin",
+                "sender_name": "Support Team"
+            }, timeout=5)
+            if resp.status_code in (200, 201):
+                return jsonify({"success": True})
+            return jsonify({"error": "Failed to send message"}), 500
+        except Exception as e:
+            logger.error(f"Error sending message to portal: {e}")
+            return jsonify({"error": "Failed to send message"}), 500
+
     @app.route("/admin/reset-database", methods=["POST"])
     @role_required('superadmin')
     def admin_reset_database():
