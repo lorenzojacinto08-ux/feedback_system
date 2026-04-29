@@ -280,7 +280,7 @@
       </div>
     </div>
     <div class="message-input-area">
-      <form class="message-input-wrapper" onsubmit="sendMessage(event)">
+      <form class="message-input-wrapper" id="message-form">
         <textarea class="form-control" id="message-input" placeholder="Type your message..." rows="1"></textarea>
         <button type="submit" class="btn btn-primary" id="send-btn">
           <i class="bi bi-send"></i>
@@ -501,12 +501,25 @@ function toggleEditLicense() {
     });
   }
 
+  // Wire up message form submit
+  const messageForm = document.getElementById('message-form');
+  if (messageForm) {
+    messageForm.addEventListener('submit', sendMessage);
+  }
+
   // Auto-resize textarea
   const textarea = document.getElementById('message-input');
   if (textarea) {
     textarea.addEventListener('input', function() {
       this.style.height = 'auto';
       this.style.height = Math.min(this.scrollHeight, 120) + 'px';
+    });
+    // Send on Enter (Shift+Enter for newline)
+    textarea.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        if (messageForm) messageForm.requestSubmit();
+      }
     });
   }
 
