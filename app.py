@@ -2376,6 +2376,79 @@ def create_app() -> Flask:
         
         return redirect(url_for("admin_users"))
 
+    @app.route("/account/password", methods=["GET", "POST"])
+    @login_required
+    def account_change_password():
+        """Allow any logged-in user to change their own password."""
+        user_id = session.get('user_id')
+        if not user_id:
+            return redirect(url_for('login'))
+
+        conn = get_db_connection()
+        try:
+            cursor = conn.cursor(dictionary=True)
+            cursor.execute("SELECT id, username, email, role, password_hash FROM users WHERE id = %s", (user_id,))
+            user = cursor.fetchone()
+
+            if not user:
+                session.clear()
+                flash("Your account could not be found. Please log in again.", "danger")
+                return redirect(url_for('login'))
+
+            if request.method == "POST":
+                current_password = request.form.get("current_password", "")
+                new_password = request.form.get("new_password", "")
+                confirm_password = request.form.get("confirm_password", "")
+
+                if not current_password or not new_password or not confirm_password:
+                    flash("All fields are required.", "danger")
+                    return redirect(url_for("account_change_password"))
+
+                if not verify_password(current_password, user['password_hash']):
+                    flash("Current password is incorrect.", "danger")
+                    return redirect(url_for("account_change_password"))
+
+                if len(new_password) < 4:
+                    flash("New password must be at least 4 characters long.", "danger")
+                    return redirect(url_for("account_change_password"))
+
+                if new_password != confirm_password:
+                    flash("New password and confirmation do not match.", "danger")
+                    return redirect(url_for("account_change_password"))
+
+                if new_password == current_password:
+                    flash("New password must be different from your current password.", "warning")
+                    return redirect(url_for("account_change_password"))
+
+                new_hash = hash_password(new_password)
+                cursor.execute(
+                    "UPDATE users SET password_hash = %s WHERE id = %s",
+                    (new_hash, user_id)
+                )
+                conn.commit()
+
+                try:
+                    log_audit(
+                        entity_type="user",
+                        entity_id=user_id,
+                        action="password_changed",
+                        new_values="self-service password change",
+                        user_id=user_id
+                    )
+                except Exception:
+                    pass
+
+                flash("Password updated successfully.", "success")
+                return redirect(url_for("account_change_password"))
+
+            return render_template("account/change_password.html", user=user)
+        except Exception as e:
+            logger.error(f"Error changing password: {e}")
+            flash(f"Error changing password: {e}", "danger")
+            return redirect(url_for("admin_dashboard"))
+        finally:
+            conn.close()
+
     @app.route("/admin/users/<int:user_id>/edit", methods=["GET", "POST"])
     @role_required('dev', 'superadmin')
     def admin_edit_user(user_id: int):
