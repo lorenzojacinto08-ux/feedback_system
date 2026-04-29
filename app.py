@@ -5752,7 +5752,8 @@ def create_app() -> Flask:
             if status in ('all', 'unseen'):
                 # Fetch ALL unseen feedback responses (no cap so user always sees them)
                 query = f"""
-                    SELECT r.id, r.user_email, r.submitted_at as created_at, s.store_name, s.id as store_id, r.is_read, 'feedback' as notification_type, NULL as message, NULL as type
+                    SELECT r.id, r.user_email, r.submitted_at as created_at, s.store_name, s.id as store_id, r.is_read, 'feedback' as notification_type, NULL as message, NULL as type,
+                           (SELECT AVG(a.rating_value) FROM answers a WHERE a.response_id = r.id AND a.rating_value IS NOT NULL) as avg_rating
                     FROM responses r
                     JOIN stores s ON r.store_id = s.id
                     WHERE s.store_name IS NOT NULL AND r.is_read = FALSE {store_filter}
@@ -5836,7 +5837,8 @@ def create_app() -> Flask:
                     try:
                         cleared_dt_parsed = datetime.fromisoformat(cleared_at)
                         query = f"""
-                            SELECT r.id, r.user_email, r.submitted_at as created_at, s.store_name, s.id as store_id, r.is_read, 'feedback' as notification_type, NULL as message, NULL as type
+                            SELECT r.id, r.user_email, r.submitted_at as created_at, s.store_name, s.id as store_id, r.is_read, 'feedback' as notification_type, NULL as message, NULL as type,
+                                   (SELECT AVG(a.rating_value) FROM answers a WHERE a.response_id = r.id AND a.rating_value IS NOT NULL) as avg_rating
                             FROM responses r
                             JOIN stores s ON r.store_id = s.id
                             WHERE s.store_name IS NOT NULL AND r.is_read = TRUE AND r.submitted_at > %s {store_filter}
@@ -5850,7 +5852,8 @@ def create_app() -> Flask:
                     except ValueError:
                         cleared_dt = None
                         query = f"""
-                            SELECT r.id, r.user_email, r.submitted_at as created_at, s.store_name, s.id as store_id, r.is_read, 'feedback' as notification_type, NULL as message, NULL as type
+                            SELECT r.id, r.user_email, r.submitted_at as created_at, s.store_name, s.id as store_id, r.is_read, 'feedback' as notification_type, NULL as message, NULL as type,
+                                   (SELECT AVG(a.rating_value) FROM answers a WHERE a.response_id = r.id AND a.rating_value IS NOT NULL) as avg_rating
                             FROM responses r
                             JOIN stores s ON r.store_id = s.id
                             WHERE s.store_name IS NOT NULL AND r.is_read = TRUE {store_filter}
@@ -5863,7 +5866,8 @@ def create_app() -> Flask:
                             cursor.execute(query, [window])
                 else:
                     query = f"""
-                        SELECT r.id, r.user_email, r.submitted_at as created_at, s.store_name, s.id as store_id, r.is_read, 'feedback' as notification_type, NULL as message, NULL as type
+                        SELECT r.id, r.user_email, r.submitted_at as created_at, s.store_name, s.id as store_id, r.is_read, 'feedback' as notification_type, NULL as message, NULL as type,
+                               (SELECT AVG(a.rating_value) FROM answers a WHERE a.response_id = r.id AND a.rating_value IS NOT NULL) as avg_rating
                         FROM responses r
                         JOIN stores s ON r.store_id = s.id
                         WHERE s.store_name IS NOT NULL AND r.is_read = TRUE {store_filter}

@@ -528,6 +528,27 @@ PURPOSE: This is the main "shell" for all Admin pages. It contains the
         let loadingMore = false;
 
         function renderItem(n) {
+          const avgRating = n.avg_rating ? parseFloat(n.avg_rating).toFixed(1) : null;
+          let ratingBadge = '';
+          if (avgRating !== null) {
+            const rating = parseFloat(avgRating);
+            let bgClass, textClass, icon;
+            if (rating >= 4) {
+              bgClass = 'bg-success bg-opacity-10';
+              textClass = 'text-success';
+              icon = 'bi-star-fill';
+            } else if (rating <= 2) {
+              bgClass = 'bg-danger bg-opacity-10';
+              textClass = 'text-danger';
+              icon = 'bi-star-fill';
+            } else {
+              bgClass = 'bg-warning bg-opacity-10';
+              textClass = 'text-warning';
+              icon = 'bi-star-half';
+            }
+            ratingBadge = `<span class="badge ${bgClass} ${textClass} ms-2" style="font-size: 0.7rem;"><i class="bi ${icon} me-1"></i>${avgRating}</span>`;
+          }
+
           return `
             <li>
               <a href="/admin/stores/${n.store_id}/feedback?mark_read=${n.id}"
@@ -543,7 +564,7 @@ PURPOSE: This is the main "shell" for all Admin pages. It contains the
                       <small class="text-muted flex-shrink-0" style="font-size: 0.7rem;">${n.created_at || ''}</small>
                     </div>
                     <p class="mb-0 text-muted small text-truncate" style="font-size: 0.8rem;">
-                      ${n.store_name ? `Feedback for <span class="${n.is_read ? 'text-muted' : 'fw-bold text-dark'}">${n.store_name}</span>` : 'Feedback submission'}
+                      ${n.store_name ? `Feedback for <span class="${n.is_read ? 'text-muted' : 'fw-bold text-dark'}">${n.store_name}</span>${ratingBadge}` : 'Feedback submission'}
                     </p>
                   </div>
                 </div>
