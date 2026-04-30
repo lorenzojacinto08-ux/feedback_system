@@ -705,17 +705,15 @@ function initOverallCharts() {
           datasets: [{
             label: 'Responses', data: responseData,
             backgroundColor: [
-              'rgba(161, 98, 7, 0.95)','rgba(202, 138, 4, 0.95)','rgba(217, 119, 6, 0.9)',
-              'rgba(234, 179, 8, 0.9)','rgba(245, 158, 11, 0.9)','rgba(250, 204, 21, 0.9)',
-              'rgba(253, 186, 116, 0.9)','rgba(253, 224, 71, 0.9)','rgba(252, 211, 77, 0.9)',
-              'rgba(254, 215, 170, 0.9)'
+              '#4A90E2', '#4A90E2', '#357ABD', '#357ABD', '#357ABD', '#357ABD',
+              '#facc15', '#eab308', '#d97706', '#ca8a04', '#a16207'
             ],
             borderWidth: 0, borderRadius: 5, barThickness: 26
           }, {
             label: 'Avg Rating', data: ratingData,
-            backgroundColor: 'rgba(234, 179, 8, 0.15)', borderColor: '#a16207',
+            backgroundColor: 'rgba(250, 204, 21, 0.15)', borderColor: '#facc15',
             borderWidth: 2, type: 'line', yAxisID: 'y1', tension: 0.4,
-            pointBackgroundColor: '#a16207', pointBorderColor: '#fff',
+            pointBackgroundColor: '#facc15', pointBorderColor: '#fff',
             pointBorderWidth: 2, pointRadius: 4
           }]
         },
