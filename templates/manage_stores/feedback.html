@@ -523,13 +523,13 @@ PURPOSE: "Feedback Management" page. Displays all customer responses/submissions
 
 <!-- Store Dashboard Header -->
 <div class="card border-0 shadow-sm mb-3" style="border-radius: 1rem; overflow: hidden;">
-  <div style="height: 4px; background: linear-gradient(90deg, #4A90E2, #7ba8ff, #a3c2ff);"></div>
+  <div style="height: 4px; background: linear-gradient(90deg, #4A90E2, #357ABD, #357ABD);"></div>
   <div class="card-body py-3 px-4">
     <div class="row g-3 align-items-center">
       <!-- Store Info -->
       <div class="col-lg-5">
         <div class="d-flex align-items-start gap-3">
-          <div class="d-flex align-items-center justify-content-center rounded-circle" style="width: 48px; height: 48px; min-width: 48px; background: linear-gradient(135deg, #4A90E2, #7ba8ff); color: white; font-size: 1.2rem; font-weight: 700;">
+          <div class="d-flex align-items-center justify-content-center rounded-circle" style="width: 48px; height: 48px; min-width: 48px; background: linear-gradient(135deg, #4A90E2, #357ABD); color: white; font-size: 1.2rem; font-weight: 700;">
             {{ store.store_name[0] | upper }}
           </div>
           <div>
@@ -1457,7 +1457,7 @@ PURPOSE: "Feedback Management" page. Displays all customer responses/submissions
           labels: ['5 Star', '4 Star', '3 Star', '2 Star', '1 Star'],
           datasets: [{
             data: [...(data.rating_metrics?.distribution || [0,0,0,0,0])].reverse(),
-            backgroundColor: ['#4A90E2', '#7ba8ff', '#a3c2ff', '#c4d9ff', '#e7f2ff'],
+            backgroundColor: ['#4A90E2', '#4A90E2', '#357ABD', '#357ABD', '#357ABD'],
             borderRadius: 4,
             barThickness: 14
           }]
@@ -1511,7 +1511,7 @@ PURPOSE: "Feedback Management" page. Displays all customer responses/submissions
           labels: ['Resolved', 'Unresolved'],
           datasets: [{
             data: [overview.resolved || 0, overview.unresolved || 0],
-            backgroundColor: ['#4A90E2', '#7ba8ff'],
+            backgroundColor: ['#4A90E2', '#357ABD'],
             borderWidth: 0
           }]
         },
@@ -1865,7 +1865,7 @@ PURPOSE: "Feedback Management" page. Displays all customer responses/submissions
                 </tr></thead>
                 <tbody>
     `;
-    const starColors = ['#e7f2ff','#c4d9ff','#a3c2ff','#7ba8ff','#4A90E2'];
+    const starColors = ['#e7f2ff','#c4d9ff','#a3c2ff','#4A90E2','#357ABD'];
     for (let i = 4; i >= 0; i--) {
       const stars = '★'.repeat(i + 1) + '☆'.repeat(4 - i);
       html += `

@@ -551,7 +551,7 @@ function renderStoreDashboard(data, storeName) {
 
 /* ── Rating Breakdown Table builder ── */
 function buildRatingBreakdownTable(dist, distPcts) {
-  const starColors = ['#e7f2ff','#c4d9ff','#a3c2ff','#7ba8ff','#4A90E2'];
+  const starColors = ['#e7f2ff','#c4d9ff','#a3c2ff','#4A90E2','#357ABD'];
   let rows = '';
   for (let i = 4; i >= 0; i--) {
     const stars = '\u2605'.repeat(i + 1) + '\u2606'.repeat(4 - i);
@@ -625,7 +625,7 @@ function initStoreCharts(dist, trend, ov) {
         labels: ['5 Star', '4 Star', '3 Star', '2 Star', '1 Star'],
         datasets: [{
           data: [...dist].reverse(),
-          backgroundColor: ['#4A90E2', '#7ba8ff', '#a3c2ff', '#c4d9ff', '#e7f2ff'],
+          backgroundColor: ['#4A90E2', '#4A90E2', '#357ABD', '#357ABD', '#357ABD'],
           borderRadius: 4, barThickness: 14
         }]
       },
@@ -676,7 +676,7 @@ function initStoreCharts(dist, trend, ov) {
         labels: ['Resolved', 'Unresolved'],
         datasets: [{
           data: [ov.resolved || 0, ov.unresolved || 0],
-          backgroundColor: ['#4A90E2', '#7ba8ff'], borderWidth: 0
+          backgroundColor: ['#4A90E2', '#357ABD'], borderWidth: 0
         }]
       },
       options: {
@@ -923,7 +923,7 @@ initOverallCharts();
   transition: transform 0.2s ease;
   box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
-.rank-gold   { background:linear-gradient(135deg, #e7f2ff, #c4d9ff); color:#1e3a8a; border:1px solid #4A90E2; }
+.rank-gold   { background:linear-gradient(135deg, #4A90E2, #357ABD); color:#fff; border:1px solid #357ABD; }
 .rank-silver { background:linear-gradient(135deg, #f3f4f6, #e5e7eb); color:#374151; border:1px solid #d1d5db; }
 .rank-bronze { background:linear-gradient(135deg, #eff6ff, #dbeafe); color:#1e40af; border:1px solid #3b82f6; }
 .rank-default{ background:linear-gradient(135deg, #f3f4f6, #e5e7eb); color:#6b7280; border:1px solid #d1d5db; }
