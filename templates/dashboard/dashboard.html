@@ -625,7 +625,7 @@ function initStoreCharts(dist, trend, ov) {
         labels: ['5 Star', '4 Star', '3 Star', '2 Star', '1 Star'],
         datasets: [{
           data: [...dist].reverse(),
-          backgroundColor: ['#4A90E2', '#4A90E2', '#357ABD', '#357ABD', '#357ABD'],
+          backgroundColor: ['#FF6B35', '#FF6B35', '#E85A2A', '#E85A2A', '#CC4A1F'],
           borderRadius: 4, barThickness: 14
         }]
       },
@@ -650,10 +650,10 @@ function initStoreCharts(dist, trend, ov) {
         labels: trend.labels || [],
         datasets: [{
           data: trend.values || [],
-          borderColor: '#4A90E2',
-          backgroundColor: 'rgba(74, 144, 226, 0.1)',
+          borderColor: '#FF6B35',
+          backgroundColor: 'rgba(255, 107, 53, 0.1)',
           fill: true, tension: 0.4, pointRadius: 3,
-          pointBackgroundColor: '#4A90E2', borderWidth: 2
+          pointBackgroundColor: '#FF6B35', borderWidth: 2
         }]
       },
       options: {
@@ -676,7 +676,7 @@ function initStoreCharts(dist, trend, ov) {
         labels: ['Resolved', 'Unresolved'],
         datasets: [{
           data: [ov.resolved || 0, ov.unresolved || 0],
-          backgroundColor: ['#4A90E2', '#357ABD'], borderWidth: 0
+          backgroundColor: ['#FF6B35', '#E85A2A'], borderWidth: 0
         }]
       },
       options: {
@@ -705,15 +705,15 @@ function initOverallCharts() {
           datasets: [{
             label: 'Responses', data: responseData,
             backgroundColor: [
-              '#4A90E2', '#4A90E2', '#357ABD', '#357ABD', '#357ABD', '#357ABD',
-              '#facc15', '#eab308', '#d97706', '#ca8a04', '#a16207'
+              '#FF6B35', '#FF6B35', '#E85A2A', '#E85A2A', '#E85A2A', '#E85A2A',
+              '#FF9933', '#FF6B35', '#E85A2A', '#CC4A1F', '#B03A14'
             ],
             borderWidth: 0, borderRadius: 5, barThickness: 26
           }, {
             label: 'Avg Rating', data: ratingData,
-            backgroundColor: 'rgba(250, 204, 21, 0.15)', borderColor: '#facc15',
+            backgroundColor: 'rgba(255, 107, 53, 0.15)', borderColor: '#FF6B35',
             borderWidth: 2, type: 'line', yAxisID: 'y1', tension: 0.4,
-            pointBackgroundColor: '#facc15', pointBorderColor: '#fff',
+            pointBackgroundColor: '#FF6B35', pointBorderColor: '#fff',
             pointBorderWidth: 2, pointRadius: 4
           }]
         },
@@ -743,9 +743,9 @@ function initOverallCharts() {
           labels: actLabels,
           datasets: [{
             label: 'Daily Responses', data: actData,
-            borderColor: '#4A90E2', backgroundColor: 'rgba(74, 144, 226, 0.1)',
+            borderColor: '#FF6B35', backgroundColor: 'rgba(255, 107, 53, 0.1)',
             borderWidth: 2, fill: true, tension: 0.4, pointRadius: 4, pointHoverRadius: 6,
-            pointBackgroundColor: '#4A90E2', pointBorderColor: '#fff', pointBorderWidth: 2
+            pointBackgroundColor: '#FF6B35', pointBorderColor: '#fff', pointBorderWidth: 2
           }]
         },
         options: {
@@ -848,10 +848,10 @@ initOverallCharts();
 .metric-card::before {
   content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
 }
-.metric-card--stores::before  { background: linear-gradient(90deg, #4A90E2, #3b7bc4); }
-.metric-card--responses::before { background: linear-gradient(90deg, #4A90E2, #3b7bc4); }
-.metric-card--users::before   { background: linear-gradient(90deg, #4A90E2, #3b7bc4); }
-.metric-card--rating::before  { background: linear-gradient(90deg, #4A90E2, #3b7bc4); }
+.metric-card--stores::before  { background: linear-gradient(90deg, #FF6B35, #E85A2A); }
+.metric-card--responses::before { background: linear-gradient(90deg, #FF6B35, #E85A2A); }
+.metric-card--users::before   { background: linear-gradient(90deg, #FF6B35, #E85A2A); }
+.metric-card--rating::before  { background: linear-gradient(90deg, #FF6B35, #E85A2A); }
 .metric-card:hover { box-shadow: 0 6px 20px rgba(0,0,0,0.1); transform: translateY(-2px); }
 
 .metric-icon-lg {
@@ -859,14 +859,14 @@ initOverallCharts();
   display: flex; align-items: center; justify-content: center;
   border-radius: 10px; flex-shrink: 0;
 }
-.metric-card--stores .metric-icon-lg  { background: rgba(74, 144, 226, 0.1); }
-.metric-card--stores .metric-icon-lg i { color: #4A90E2 !important; opacity: 1; font-size: 1.15rem; }
-.metric-card--responses .metric-icon-lg  { background: rgba(74, 144, 226, 0.1); }
-.metric-card--responses .metric-icon-lg i { color: #4A90E2 !important; opacity: 1; font-size: 1.15rem; }
-.metric-card--users .metric-icon-lg  { background: rgba(74, 144, 226, 0.1); }
-.metric-card--users .metric-icon-lg i { color: #4A90E2 !important; opacity: 1; font-size: 1.15rem; }
-.metric-card--rating .metric-icon-lg  { background: rgba(74, 144, 226, 0.1); }
-.metric-card--rating .metric-icon-lg i { color: #4A90E2 !important; opacity: 1; font-size: 1.15rem; }
+.metric-card--stores .metric-icon-lg  { background: rgba(255, 107, 53, 0.1); }
+.metric-card--stores .metric-icon-lg i { color: #FF6B35 !important; opacity: 1; font-size: 1.15rem; }
+.metric-card--responses .metric-icon-lg  { background: rgba(255, 107, 53, 0.1); }
+.metric-card--responses .metric-icon-lg i { color: #FF6B35 !important; opacity: 1; font-size: 1.15rem; }
+.metric-card--users .metric-icon-lg  { background: rgba(255, 107, 53, 0.1); }
+.metric-card--users .metric-icon-lg i { color: #FF6B35 !important; opacity: 1; font-size: 1.15rem; }
+.metric-card--rating .metric-icon-lg  { background: rgba(255, 107, 53, 0.1); }
+.metric-card--rating .metric-icon-lg i { color: #FF6B35 !important; opacity: 1; font-size: 1.15rem; }
 
 .metric-value { font-size: 1.6rem; line-height: 1.2; color: var(--neutral-900); }
 .metric-label { font-size: 0.75rem; letter-spacing: 0.3px; font-weight: 500; text-transform: uppercase; }

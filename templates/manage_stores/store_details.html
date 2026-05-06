@@ -84,9 +84,7 @@ PURPOSE: Comprehensive store details page showing feedback, analytics, and staff
             <h1 class="h2 mb-2 fw-bold">{{ store.store_name }}</h1>
             {% if store.address %}
               <p class="text-muted mb-2">
-                <i class="bi bi-geo-alt me-2"></i>
-                {{ store.address }}
-                {% if store.city %}, {{ store.city }}{% endif %}
+                <i class="bi bi-geo-alt-fill me-1" style="color: #FF6B35;">{{ store.address or 'No address' }}{% if store.city %}, {{ store.city }}{% endif %}
                 {% if store.province %}, {{ store.province }}{% endif %}
                 {% if store.postal_code %} {{ store.postal_code }}{% endif %}
               </p>
@@ -95,8 +93,7 @@ PURPOSE: Comprehensive store details page showing feedback, analytics, and staff
               <div class="d-flex gap-3 mb-2">
                 {% if store.contact_number %}
                   <span class="text-muted">
-                    <i class="bi bi-telephone me-1"></i>
-                    {{ store.contact_number }}
+                    <i class="bi bi-telephone-fill me-1" style="color: #FF6B35;">{{ store.contact_number }}
                   </span>
                 {% endif %}
                 {% if store.email %}
@@ -221,7 +218,7 @@ PURPOSE: Comprehensive store details page showing feedback, analytics, and staff
                   <option value="unresolved">Unresolved</option>
                   <option value="resolved">Resolved</option>
                 </select>
-                <a href="{{ url_for('store_feedback', store_id=store.id) }}" class="btn btn-primary btn-sm">
+                <a href="{{ request.url_root }}s/{{ store.id }}" target="_blank" class="btn btn-sm py-1 px-2" style="font-size: 0.75rem; background: rgba(255, 107, 53, 0.1); color: #FF6B35; border: 1px solid rgba(255, 107, 53, 0.3);">
                   <i class="bi bi-arrow-right me-1"></i>
                   View All Feedback
                 </a>
@@ -371,7 +368,7 @@ PURPOSE: Comprehensive store details page showing feedback, analytics, and staff
                     {% if top_staff %}
                       <!-- Top Performer -->
                       {% if top_staff[0] %}
-                      <div class="d-flex align-items-center justify-content-between mb-3 p-3 bg-success bg-opacity-10 border border-success rounded">
+                      <div class="d-flex align-items-center justify-content-center rounded-circle" style="width: 48px; height: 48px; min-width: 48px; background: linear-gradient(135deg, #FF6B35, #E85A2A); color: white; font-size: 1.2rem; font-weight: 700;">
                         <div>
                           <div class="fw-bold text-success">
                             <i class="bi bi-award-fill me-2"></i>
@@ -561,7 +558,7 @@ PURPOSE: Comprehensive store details page showing feedback, analytics, and staff
   <div class="modal fade" id="editStoreModal" tabindex="-1" aria-labelledby="editStoreModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg">
       <div class="modal-content">
-        <div class="modal-header">
+        <div class="modal-header" style="background: linear-gradient(135deg, #FF6B35 0%, #212529 100%); color: white; border-radius:14px 14px 0 0;">
           <h5 class="modal-title" id="editStoreModalLabel">Edit Store</h5>
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
@@ -682,18 +679,18 @@ document.addEventListener('DOMContentLoaded', function() {
                     label: 'Number of Ratings',
                     data: {{ rating_distribution|tojson }},
                     backgroundColor: [
-                        '#4A90E2',  // 1 star - blue
-                        '#4A90E2',  // 2 stars - blue
-                        '#357ABD',  // 3 stars - darker blue
-                        '#357ABD',  // 4 stars - darker blue
-                        '#357ABD'   // 5 stars - darkest blue
+                        '#FF6B35',  // 1 star - orange
+                        '#FF6B35',  // 2 stars - orange
+                        '#E85A2A',  // 3 stars - darker orange
+                        '#E85A2A',  // 4 stars - darker orange
+                        '#CC4A1F'   // 5 stars - darkest orange
                     ],
                     borderColor: [
-                        '#4A90E2',
-                        '#4A90E2', 
-                        '#357ABD',
-                        '#357ABD',
-                        '#357ABD'
+                        '#FF6B35',
+                        '#FF6B35', 
+                        '#E85A2A',
+                        '#E85A2A',
+                        '#CC4A1F'
                     ],
                     borderWidth: 1
                 }]
@@ -737,8 +734,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 datasets: [{
                     label: 'Feedback Count',
                     data: {{ feedback_trend_data|tojson }},
-                    borderColor: '#4A90E2',
-                    backgroundColor: 'rgba(74, 144, 226, 0.1)',
+                    borderColor: '#FF6B35',
+                    backgroundColor: '#FF6B35',
                     tension: 0.4
                 }]
             },

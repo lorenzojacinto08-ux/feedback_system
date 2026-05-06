@@ -523,13 +523,13 @@ PURPOSE: "Feedback Management" page. Displays all customer responses/submissions
 
 <!-- Store Dashboard Header -->
 <div class="card border-0 shadow-sm mb-3" style="border-radius: 1rem; overflow: hidden;">
-  <div style="height: 4px; background: linear-gradient(90deg, #4A90E2, #357ABD, #357ABD);"></div>
+  <div style="height: 4px; background: linear-gradient(90deg, #FF6B35, #E85A2A, #CC4A1F);"></div>
   <div class="card-body py-3 px-4">
     <div class="row g-3 align-items-center">
       <!-- Store Info -->
       <div class="col-lg-5">
         <div class="d-flex align-items-start gap-3">
-          <div class="d-flex align-items-center justify-content-center rounded-circle" style="width: 48px; height: 48px; min-width: 48px; background: linear-gradient(135deg, #4A90E2, #357ABD); color: white; font-size: 1.2rem; font-weight: 700;">
+          <div class="d-flex align-items-center justify-content-center rounded-circle" style="width: 48px; height: 48px; min-width: 48px; background: linear-gradient(135deg, #FF6B35, #E85A2A); color: white; font-size: 1.2rem; font-weight: 700;">
             {{ store.store_name[0] | upper }}
           </div>
           <div>
@@ -542,11 +542,11 @@ PURPOSE: "Feedback Management" page. Displays all customer responses/submissions
             </div>
             <div class="mt-1 d-flex flex-column gap-1">
               <div class="small text-muted">
-                <i class="bi bi-geo-alt-fill me-1" style="color: #4A90E2;"></i>{{ store.address or 'No address' }}{% if store.city %}, {{ store.city }}{% endif %}
+                <i class="bi bi-geo-alt-fill me-1" style="color: #FFA07A;">{{ store.address or 'No address' }}{% if store.city %}, {{ store.city }}{% endif %}
               </div>
               {% if store.contact_number %}
               <div class="small text-muted">
-                <i class="bi bi-telephone-fill me-1" style="color: #4A90E2;"></i>{{ store.contact_number }}
+                <i class="bi bi-telephone-fill me-1" style="color: #FFA07A;">{{ store.contact_number }}
               </div>
               {% endif %}
             </div>
@@ -558,7 +558,7 @@ PURPOSE: "Feedback Management" page. Displays all customer responses/submissions
       <div class="col-lg-4">
         <div class="d-flex gap-2 justify-content-center">
           <div class="text-center px-3 py-2 rounded-3" style="background: rgba(74, 144, 226, 0.1); min-width: 80px;">
-            <div class="fw-bold" style="font-size: 1.25rem; color: #4A90E2;">{{ responses|length }}</div>
+            <div class="fw-bold" style="font-size: 1.25rem; color: #FF6B35;">{{ responses|length }}</div>
             <div class="text-muted" style="font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.5px;">Feedback</div>
           </div>
           <div class="text-center px-3 py-2 rounded-3" style="background: #eff6ff; min-width: 80px;">
@@ -579,10 +579,10 @@ PURPOSE: "Feedback Management" page. Displays all customer responses/submissions
                alt="QR Code" class="rounded-2" style="width: 60px; height: 60px; border: 2px solid #f3f4f6;">
           <div class="d-flex flex-column gap-1">
             <div class="text-muted" style="font-size: 0.7rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">Feedback Link</div>
-            <a href="{{ request.url_root }}s/{{ store.id }}" target="_blank" class="btn btn-sm py-1 px-2" style="font-size: 0.75rem; background: rgba(74, 144, 226, 0.1); color: #4A90E2; border: 1px solid rgba(74, 144, 226, 0.3);">
+            <a href="{{ request.url_root }}s/{{ store.id }}" target="_blank" class="btn btn-sm py-1 px-2" style="font-size: 0.75rem; background: rgba(255, 107, 53, 0.1); color: #FF6B35; border: 1px solid rgba(255, 107, 53, 0.3);">
               <i class="bi bi-box-arrow-up-right me-1"></i>Preview
             </a>
-            <a href="{{ url_for('download_qr', store_id=store.id) }}" class="btn btn-sm py-1 px-2" style="font-size: 0.75rem; background: #4A90E2; color: white; border: none;">
+            <a href="{{ url_for('download_qr', store_id=store.id) }}" class="btn btn-sm py-1 px-2" style="font-size: 0.75rem; background: #FF6B35; color: white; border: none;">
               <i class="bi bi-download me-1"></i>Download QR
             </a>
           </div>
@@ -1457,7 +1457,7 @@ PURPOSE: "Feedback Management" page. Displays all customer responses/submissions
           labels: ['5 Star', '4 Star', '3 Star', '2 Star', '1 Star'],
           datasets: [{
             data: [...(data.rating_metrics?.distribution || [0,0,0,0,0])].reverse(),
-            backgroundColor: ['#4A90E2', '#4A90E2', '#357ABD', '#357ABD', '#357ABD'],
+            backgroundColor: ['#FF6B35', '#FF6B35', '#E85A2A', '#E85A2A', '#CC4A1F'],
             borderRadius: 4,
             barThickness: 14
           }]
@@ -1482,12 +1482,12 @@ PURPOSE: "Feedback Management" page. Displays all customer responses/submissions
           labels: data.trend?.labels || [],
           datasets: [{
             data: data.trend?.values || [],
-            borderColor: '#4A90E2',
-            backgroundColor: 'rgba(74, 144, 226, 0.1)',
+            borderColor: '#FF6B35',
+            backgroundColor: 'rgba(255, 107, 53, 0.1)',
             fill: true,
             tension: 0.4,
             pointRadius: 3,
-            pointBackgroundColor: '#4A90E2',
+            pointBackgroundColor: '#FF6B35',
             borderWidth: 2
           }]
         },
@@ -1511,7 +1511,7 @@ PURPOSE: "Feedback Management" page. Displays all customer responses/submissions
           labels: ['Resolved', 'Unresolved'],
           datasets: [{
             data: [overview.resolved || 0, overview.unresolved || 0],
-            backgroundColor: ['#4A90E2', '#357ABD'],
+            backgroundColor: ['#FF6B35', '#E85A2A'],
             borderWidth: 0
           }]
         },
@@ -1865,7 +1865,7 @@ PURPOSE: "Feedback Management" page. Displays all customer responses/submissions
                 </tr></thead>
                 <tbody>
     `;
-    const starColors = ['#e7f2ff','#c4d9ff','#a3c2ff','#4A90E2','#357ABD'];
+    const starColors = ['#FFF0E6','#FFE0CC','#FFCC99','#FF6B35','#E85A2A'];
     for (let i = 4; i >= 0; i--) {
       const stars = '★'.repeat(i + 1) + '☆'.repeat(4 - i);
       html += `

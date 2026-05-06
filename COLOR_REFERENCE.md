@@ -1,27 +1,27 @@
 # Color Reference
 
-## Primary Gradient Blue
+## Primary Gradient Orange
 
-- **Start:** `#4A90E2` (Medium Blue)
-- **End:** `#1e40af` (Dark Blue)
+- **Start:** `#FF6B35` (Vibrant Orange)
+- **End:** `#B03A14` (Dark Orange)
 - **Usage:** Header background, login page, message header, buttons
-- **Gradient:** `linear-gradient(135deg, #4A90E2 0%, #1e40af 100%)`
+- **Gradient:** `linear-gradient(135deg, #FF6B35 0%, #B03A14 100%)`
 
-## Accent Blue Gradient (Message Bubbles)
+## Accent Orange Gradient (Message Bubbles)
 
-- **Start:** `#4A90E2` (Medium Blue)
-- **End:** `#357ABD` (Blue)
+- **Start:** `#FF6B35` (Vibrant Orange)
+- **End:** `#E85A2A` (Orange)
 - **Usage:** Client message bubbles, avatar gradients
-- **Gradient:** `linear-gradient(135deg, #4A90E2 0%, #357ABD 100%)`
+- **Gradient:** `linear-gradient(135deg, #FF6B35 0%, #E85A2A 100%)`
 
-## Yellow Accent (CTA Buttons)
+## Orange Accent (CTA Buttons)
 
-- **Primary:** `#facc15` (Yellow-400)
-- **Secondary:** `#eab308` (Yellow-500)
-- **Dark:** `#a16207` (Yellow-700)
-- **Darker:** `#854d0e` (Yellow-800)
-- **Gradient:** `linear-gradient(135deg, #facc15 0%, #a16207 100%)`
-- **Hover Gradient:** `linear-gradient(135deg, #eab308 0%, #854d0e 100%)`
+- **Primary:** `#FF9933` (Orange-400)
+- **Secondary:** `#FF6B35` (Orange-500)
+- **Dark:** `#E85A2A` (Orange-600)
+- **Darker:** `#CC4A1F` (Orange-700)
+- **Gradient:** `linear-gradient(135deg, #FF6B35 0%, #E85A2A 100%)`
+- **Hover Gradient:** `linear-gradient(135deg, #E85A2A 0%, #CC4A1F 100%)`
 - **Usage:** Primary action buttons, highlights
 
 ## Neutral Colors
@@ -48,41 +48,40 @@
 ## CSS Variables (layout.html)
 
 ```css
---accent-50 through --accent-500: #4A90E2
---accent-600 through --accent-900: #357ABD
---header-color: #4A90E2
---yellow-400: #facc15
---yellow-500: #EAB308
---yellow-600: #ca8a04
+--accent-50: #fff0e6 --accent-100: #ffe0cc --accent-200: #ffcc99
+  --accent-300: #ffb366 --accent-400: #ff9933 --accent-500: #ff6b35
+  --accent-600: #e85a2a --accent-700: #cc4a1f --accent-800: #b03a14
+  --accent-900: #942a09 --header-color: #ff6b35 --yellow-400: #ff9933
+  --yellow-500: #ff6b35 --yellow-600: #e85a2a;
 ```
 
 ## Page-Specific Colors
 
 ### Header (header.html)
 
-- Background: `linear-gradient(135deg, #4A90E2 0%, #1e40af 100%)`
+- Background: `linear-gradient(135deg, #FF6B35 0%, #B03A14 100%)`
 
 ### Login Page (auth/login.html)
 
-- Background: `linear-gradient(135deg, #4A90E2 0%, #1e40af 100%)`
-- Header: `linear-gradient(135deg, #4A90E2 0%, #1e40af 100%)`
+- Background: `linear-gradient(135deg, #FF6B35 0%, #B03A14 100%)`
+- Header: `linear-gradient(135deg, #FF6B35 0%, #B03A14 100%)`
 
 ### Client Support (client/support.html)
 
-- Message Header: `linear-gradient(135deg, #4A90E2 0%, #1e40af 100%)`
-- Client Message Bubble: `linear-gradient(135deg, #4A90E2 0%, #357ABD 100%)`
+- Message Header: `linear-gradient(135deg, #FF6B35 0%, #B03A14 100%)`
+- Client Message Bubble: `linear-gradient(135deg, #FF6B35 0%, #E85A2A 100%)`
 
 ### Change Password (account/change_password.html)
 
-- Hero: `linear-gradient(135deg, #1f2937 0%, #4A90E2 100%)`
-- Submit Button: `linear-gradient(135deg, #facc15, #eab308)`
+- Hero: `linear-gradient(135deg, #1f2937 0%, #FF6B35 100%)`
+- Submit Button: `linear-gradient(135deg, #FF6B35, #E85A2A)`
 
 ### Admin Messages (admin/messages.html)
 
-- Active Conversation: `rgba(13,110,253,.08)` with `#0d6efd` border
-- Send Button: `#0d6efd`
+- Active Conversation: `rgba(255,107,53,.08)` with `#FF6B35` border
+- Send Button: `#FF6B35`
 
 ### Survey Error (survey_error.html)
 
-- Background: `linear-gradient(135deg, #667eea 0%, #764ba2 100%)`
-- Icon: `#4A90E2`
+- Background: `linear-gradient(135deg, #FF6B35 0%, #B03A14 100%)`
+- Icon: `#FF6B35`

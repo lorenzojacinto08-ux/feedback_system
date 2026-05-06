@@ -700,7 +700,7 @@ PURPOSE: "Store Management" page. Allows adding/editing stores, viewing
   <div class="modal fade" id="viewersModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-lg">
       <div class="modal-content border-0 shadow-lg" style="border-radius:14px;">
-        <div class="modal-header" style="background: linear-gradient(135deg, #4A90E2 0%, #212529 100%); color: white; border-radius:14px 14px 0 0;">
+        <div class="modal-header" style="background: linear-gradient(135deg, #FF6B35 0%, #212529 100%); color: white; border-radius:14px 14px 0 0;">
           <h5 class="modal-title fw-bold">
             <i class="bi bi-eye me-2"></i>Manage Store Viewers
           </h5>
@@ -772,7 +772,7 @@ PURPOSE: "Store Management" page. Allows adding/editing stores, viewing
 .store-card-accent {
     height: 4px;
     border-radius: 0.75rem 0.75rem 0 0;
-    background: linear-gradient(90deg, #4A90E2, #357ABD);
+    background: linear-gradient(90deg, #FF6B35, #E85A2A);
 }
 
 .store-card-btn {
@@ -1751,11 +1751,11 @@ function initializeChartsWithData(analyticsData, staffData) {
                     label: 'Rating Distribution',
                     data: ratingMetrics.distribution || [0, 0, 0, 0, 0],
                     backgroundColor: [
-                        '#4A90E2',
-                        '#4A90E2',
-                        '#357ABD',
-                        '#357ABD',
-                        '#357ABD'
+                        '#FF6B35',
+                        '#FF6B35',
+                        '#E85A2A',
+                        '#E85A2A',
+                        '#CC4A1F'
                     ],
                     borderWidth: 0
                 }]
@@ -1793,11 +1793,11 @@ function initializeChartsWithData(analyticsData, staffData) {
                 datasets: [{
                     data: staffCommendations,
                     backgroundColor: [
-                        '#4A90E2',
-                        '#4A90E2',
-                        '#357ABD',
-                        '#357ABD',
-                        '#357ABD'
+                        '#FF6B35',
+                        '#FF6B35',
+                        '#E85A2A',
+                        '#E85A2A',
+                        '#CC4A1F'
                     ],
                     borderWidth: 0
                 }]
@@ -1897,11 +1897,11 @@ function initializeCharts() {
                     label: 'Rating Distribution',
                     data: [34, 18, 8, 3, 2],
                     backgroundColor: [
-                        '#4A90E2',
-                        '#4A90E2',
-                        '#357ABD',
-                        '#357ABD',
-                        '#357ABD'
+                        '#FF6B35',
+                        '#FF6B35',
+                        '#E85A2A',
+                        '#E85A2A',
+                        '#CC4A1F'
                     ],
                     borderWidth: 0
                 }]
@@ -1936,11 +1936,11 @@ function initializeCharts() {
                 datasets: [{
                     data: [15, 12, 10, 8, 2],
                     backgroundColor: [
-                        '#4A90E2',
-                        '#4A90E2',
-                        '#357ABD',
-                        '#357ABD',
-                        '#357ABD'
+                        '#FF6B35',
+                        '#FF6B35',
+                        '#E85A2A',
+                        '#E85A2A',
+                        '#CC4A1F'
                     ],
                     borderWidth: 0
                 }]
@@ -2004,7 +2004,7 @@ async function openViewersModal(storeId, storeName) {
         <div class="d-flex align-items-center justify-content-between py-2 px-2 mb-1 rounded" style="background: var(--neutral-100);">
           <div class="d-flex align-items-center gap-2">
             <div class="rounded-circle d-flex align-items-center justify-content-center"
-                 style="width:32px;height:32px;background:linear-gradient(135deg,#4A90E2,#357ABD);color:white;font-weight:700;font-size:.85rem;">
+                 style="width:32px;height:32px;background:linear-gradient(135deg,#FF6B35,#E85A2A);color:white;font-weight:700;font-size:.85rem;">
               ${escapeHtml((u.username || '?')[0].toUpperCase())}
             </div>
             <div>
