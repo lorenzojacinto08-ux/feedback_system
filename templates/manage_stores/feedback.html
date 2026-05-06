@@ -749,59 +749,153 @@ PURPOSE: "Feedback Management" page. Displays all customer responses/submissions
   <!-- Reports Tab -->
   <div class="tab-pane fade" id="reports" role="tabpanel">
     <div class="pt-3">
-      <h4 class="mb-3">Download Reports</h4>
-      <div class="card border-0 shadow-sm">
-        <div class="card-body p-4">
-          <div class="row align-items-end g-3">
-            <div class="col-md-4">
-              <label for="reportMonth" class="form-label fw-semibold">Select Period</label>
-              <div class="input-group">
-                <span class="input-group-text"><i class="bi bi-calendar3"></i></span>
-                <input type="text" id="reportMonth" class="form-control" placeholder="Click to select month..." readonly>
-                <button type="button" class="btn btn-outline-secondary" onclick="document.getElementById('reportMonth')._flatpickr.clear()" title="Clear">
-                  <i class="bi bi-x-lg"></i>
-                </button>
-              </div>
-              <div class="form-text">Leave empty for all-time report.</div>
-            </div>
-            <div class="col-md-8">
-              <div class="d-flex gap-2 flex-wrap">
-                <button class="btn btn-danger d-flex align-items-center" onclick="downloadReport('pdf')">
-                  <i class="bi bi-file-earmark-pdf me-2"></i>Download PDF
-                </button>
-                <button class="btn btn-success d-flex align-items-center" onclick="downloadReport('csv')">
-                  <i class="bi bi-filetype-csv me-2"></i>Download CSV
-                </button>
-              </div>
-            </div>
-          </div>
+
+      <!-- Section Header -->
+      <div class="d-flex align-items-center gap-3 mb-4">
+        <div class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
+             style="width:44px;height:44px;background:linear-gradient(135deg,#FF6B35,#E85A2A);">
+          <i class="bi bi-cloud-arrow-down text-white fs-5"></i>
+        </div>
+        <div>
+          <h4 class="mb-0 fw-bold">Backup &amp; Export</h4>
+          <p class="text-muted small mb-0">Download feedback data for this store as a structured CSV file.</p>
         </div>
       </div>
 
-      <div class="card border-0 shadow-sm mt-3">
-        <div class="card-body p-4">
-          <h6 class="fw-bold mb-3"><i class="bi bi-info-circle me-2"></i>Report Contents</h6>
-          <div class="row g-3">
-            <div class="col-md-6">
-              <div class="d-flex align-items-start gap-2 mb-2">
-                <i class="bi bi-file-earmark-pdf text-danger mt-1"></i>
-                <div>
-                  <strong>PDF Report</strong>
-                  <p class="text-muted small mb-0">Summary with KPIs, rating distribution, top commended staff, and feedback details table. Ideal for presentations and management review.</p>
+      <div class="row g-4">
+
+        <!-- LEFT: Export Settings -->
+        <div class="col-lg-7">
+
+          <!-- Step 1: Period -->
+          <div class="card border-0 shadow-sm mb-3">
+            <div class="card-body p-4">
+              <div class="d-flex align-items-center gap-2 mb-3">
+                <span class="badge rounded-circle d-flex align-items-center justify-content-center fw-bold"
+                      style="width:24px;height:24px;background:#FF6B35;color:#fff;font-size:.75rem;flex-shrink:0;">1</span>
+                <h6 class="mb-0 fw-bold">Select Period</h6>
+              </div>
+              <div class="row g-3">
+                <div class="col-sm-6">
+                  <label class="form-label small fw-semibold text-muted text-uppercase" style="letter-spacing:.05em;">From</label>
+                  <div class="input-group">
+                    <span class="input-group-text bg-white"><i class="bi bi-calendar3 text-muted"></i></span>
+                    <input type="text" id="exportDateFrom" class="form-control" placeholder="Start date..." readonly>
+                  </div>
+                </div>
+                <div class="col-sm-6">
+                  <label class="form-label small fw-semibold text-muted text-uppercase" style="letter-spacing:.05em;">To</label>
+                  <div class="input-group">
+                    <span class="input-group-text bg-white"><i class="bi bi-calendar3 text-muted"></i></span>
+                    <input type="text" id="exportDateTo" class="form-control" placeholder="End date..." readonly>
+                  </div>
                 </div>
               </div>
+              <div class="d-flex gap-2 mt-3 flex-wrap">
+                <button type="button" class="btn btn-sm btn-outline-secondary" onclick="setExportPreset('all')">All Time</button>
+                <button type="button" class="btn btn-sm btn-outline-secondary" onclick="setExportPreset('this_month')">This Month</button>
+                <button type="button" class="btn btn-sm btn-outline-secondary" onclick="setExportPreset('last_month')">Last Month</button>
+                <button type="button" class="btn btn-sm btn-outline-secondary" onclick="setExportPreset('last_30')">Last 30 Days</button>
+                <button type="button" class="btn btn-sm btn-outline-secondary" onclick="setExportPreset('this_year')">This Year</button>
+              </div>
+              <div class="form-text mt-2"><i class="bi bi-info-circle me-1"></i>Leave both dates empty to export all feedback.</div>
             </div>
-            <div class="col-md-6">
-              <div class="d-flex align-items-start gap-2 mb-2">
-                <i class="bi bi-filetype-csv text-success mt-1"></i>
-                <div>
-                  <strong>CSV Export</strong>
-                  <p class="text-muted small mb-0">Raw feedback data with all questions, ratings, answers, and commended staff. Ideal for data analysis in Excel or Google Sheets.</p>
+          </div>
+
+          <!-- Step 2: Status Filter -->
+          <div class="card border-0 shadow-sm mb-3">
+            <div class="card-body p-4">
+              <div class="d-flex align-items-center gap-2 mb-3">
+                <span class="badge rounded-circle d-flex align-items-center justify-content-center fw-bold"
+                      style="width:24px;height:24px;background:#FF6B35;color:#fff;font-size:.75rem;flex-shrink:0;">2</span>
+                <h6 class="mb-0 fw-bold">Filter by Status</h6>
+              </div>
+              <div class="d-flex gap-3 flex-wrap">
+                <div class="form-check">
+                  <input class="form-check-input" type="radio" name="exportStatus" id="exportStatusAll" value="all" checked>
+                  <label class="form-check-label" for="exportStatusAll">All feedback</label>
+                </div>
+                <div class="form-check">
+                  <input class="form-check-input" type="radio" name="exportStatus" id="exportStatusResolved" value="resolved">
+                  <label class="form-check-label" for="exportStatusResolved">Resolved only</label>
+                </div>
+                <div class="form-check">
+                  <input class="form-check-input" type="radio" name="exportStatus" id="exportStatusUnresolved" value="unresolved">
+                  <label class="form-check-label" for="exportStatusUnresolved">Unresolved only</label>
                 </div>
               </div>
             </div>
           </div>
+
+          <!-- Step 3: Format & Download -->
+          <div class="card border-0 shadow-sm">
+            <div class="card-body p-4">
+              <div class="d-flex align-items-center gap-2 mb-3">
+                <span class="badge rounded-circle d-flex align-items-center justify-content-center fw-bold"
+                      style="width:24px;height:24px;background:#FF6B35;color:#fff;font-size:.75rem;flex-shrink:0;">3</span>
+                <h6 class="mb-0 fw-bold">Download</h6>
+              </div>
+              <div class="row g-3">
+                <div class="col-sm-6">
+                  <button class="btn w-100 py-3 d-flex flex-column align-items-center gap-1"
+                          style="background:linear-gradient(135deg,#16a34a,#15803d);color:#fff;border:none;border-radius:.75rem;"
+                          onclick="downloadBackupCSV()">
+                    <i class="bi bi-filetype-csv fs-3"></i>
+                    <span class="fw-semibold">Export CSV</span>
+                    <span style="font-size:.75rem;opacity:.85;">Spreadsheet / Excel</span>
+                  </button>
+                </div>
+                <div class="col-sm-6">
+                  <button class="btn w-100 py-3 d-flex flex-column align-items-center gap-1"
+                          style="background:linear-gradient(135deg,#dc2626,#b91c1c);color:#fff;border:none;border-radius:.75rem;"
+                          onclick="downloadReport('pdf')">
+                    <i class="bi bi-file-earmark-pdf fs-3"></i>
+                    <span class="fw-semibold">Export PDF</span>
+                    <span style="font-size:.75rem;opacity:.85;">Summary Report</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
         </div>
+
+        <!-- RIGHT: What's Included -->
+        <div class="col-lg-5">
+          <div class="card border-0 shadow-sm h-100">
+            <div class="card-body p-4">
+              <h6 class="fw-bold mb-1"><i class="bi bi-table me-2 text-success"></i>CSV Columns Included</h6>
+              <p class="text-muted small mb-3">Each row represents one feedback submission.</p>
+              <div class="d-flex flex-column gap-2">
+                {% set csv_columns = [
+                  ('bi-hash', 'Feedback ID', 'Unique identifier'),
+                  ('bi-calendar-date', 'Submitted Date', 'Date & time of submission'),
+                  ('bi-star-half', 'Overall Rating', '1–5 star score'),
+                  ('bi-person', 'Customer Email', 'Submitter email if provided'),
+                  ('bi-chat-left-text', 'Feedback Comments', 'Open-ended responses'),
+                  ('bi-question-circle', 'Survey Questions', 'All question answers'),
+                  ('bi-award', 'Commended Staff', 'Staff members mentioned'),
+                  ('bi-check-circle', 'Status', 'Resolved or Unresolved'),
+                  ('bi-reply', 'Reply Sent', 'Whether a reply was sent')
+                ] %}
+                {% for icon, label, desc in csv_columns %}
+                <div class="d-flex align-items-start gap-2 py-2 px-3 rounded-2" style="background:#f8f9fa;">
+                  <i class="bi {{ icon }} mt-1 flex-shrink-0" style="color:#FF6B35;"></i>
+                  <div>
+                    <div class="fw-semibold small">{{ label }}</div>
+                    <div class="text-muted" style="font-size:.75rem;">{{ desc }}</div>
+                  </div>
+                </div>
+                {% endfor %}
+              </div>
+              <div class="mt-3 p-2 rounded-2 d-flex align-items-center gap-2" style="background:rgba(255,107,53,.08);border:1px solid rgba(255,107,53,.2);">
+                <i class="bi bi-shield-check" style="color:#FF6B35;"></i>
+                <span class="small text-muted">File is generated server-side and downloaded securely.</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
       </div>
     </div>
   </div>
@@ -1746,16 +1840,84 @@ PURPOSE: "Feedback Management" page. Displays all customer responses/submissions
     window.location.href = `/admin/stores/${storeId}/edit`;
   }
 
-  // Function to download report (PDF or CSV)
+  // Function to download report (PDF only — legacy)
   function downloadReport(format) {
-    const fp = document.getElementById('reportMonth')._flatpickr;
-    const month = fp && fp.selectedDates.length > 0 ? fp.formatDate(fp.selectedDates[0], 'Y-m') : '';
+    const from = document.getElementById('exportDateFrom')?.value || '';
+    const to   = document.getElementById('exportDateTo')?.value   || '';
+    const status = document.querySelector('input[name="exportStatus"]:checked')?.value || 'all';
     let url = `/admin/stores/{{ store.id }}/report/${format}`;
-    if (month) url += `?month=${month}`;
+    const params = new URLSearchParams();
+    if (from)           params.set('date_from', from);
+    if (to)             params.set('date_to',   to);
+    if (status !== 'all') params.set('status', status);
+    if ([...params].length) url += '?' + params.toString();
     window.location.href = url;
   }
 
-  // Initialize flatpickr month picker
+  // Download backup CSV with date range + status filters
+  function downloadBackupCSV() {
+    const from   = document.getElementById('exportDateFrom')?.value || '';
+    const to     = document.getElementById('exportDateTo')?.value   || '';
+    const status = document.querySelector('input[name="exportStatus"]:checked')?.value || 'all';
+    let url = `/admin/stores/{{ store.id }}/report/csv`;
+    const params = new URLSearchParams();
+    if (from)               params.set('date_from', from);
+    if (to)                 params.set('date_to',   to);
+    if (status !== 'all')   params.set('status',    status);
+    if ([...params].length) url += '?' + params.toString();
+    window.location.href = url;
+  }
+
+  // Quick-select date presets
+  function setExportPreset(preset) {
+    const now   = new Date();
+    let from = '', to = '';
+    const fmt = d => d.toISOString().slice(0, 10);
+
+    if (preset === 'this_month') {
+      from = fmt(new Date(now.getFullYear(), now.getMonth(), 1));
+      to   = fmt(now);
+    } else if (preset === 'last_month') {
+      const first = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+      const last  = new Date(now.getFullYear(), now.getMonth(), 0);
+      from = fmt(first);
+      to   = fmt(last);
+    } else if (preset === 'last_30') {
+      const d = new Date(now); d.setDate(d.getDate() - 30);
+      from = fmt(d);
+      to   = fmt(now);
+    } else if (preset === 'this_year') {
+      from = fmt(new Date(now.getFullYear(), 0, 1));
+      to   = fmt(now);
+    }
+    // 'all' → clear both
+    const fromEl = document.getElementById('exportDateFrom');
+    const toEl   = document.getElementById('exportDateTo');
+    if (fromEl._flatpickr) { fromEl._flatpickr.setDate(from || null); }
+    else fromEl.value = from;
+    if (toEl._flatpickr)   { toEl._flatpickr.setDate(to   || null); }
+    else toEl.value = to;
+  }
+
+  // Initialize flatpickr for export date range inputs
+  if (typeof flatpickr !== 'undefined') {
+    flatpickr('#exportDateFrom', {
+      dateFormat: 'Y-m-d',
+      maxDate: 'today',
+      disableMobile: true,
+      altInput: true,
+      altFormat: 'M j, Y',
+    });
+    flatpickr('#exportDateTo', {
+      dateFormat: 'Y-m-d',
+      maxDate: 'today',
+      disableMobile: true,
+      altInput: true,
+      altFormat: 'M j, Y',
+    });
+  }
+
+  // Initialize flatpickr month picker (legacy)
   if (typeof flatpickr !== 'undefined') {
     flatpickr('#reportMonth', {
       plugins: [],
