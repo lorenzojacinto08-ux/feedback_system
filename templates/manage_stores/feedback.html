@@ -542,11 +542,11 @@ PURPOSE: "Feedback Management" page. Displays all customer responses/submissions
             </div>
             <div class="mt-1 d-flex flex-column gap-1">
               <div class="small text-muted">
-                <i class="bi bi-geo-alt-fill me-1" style="color: #FFA07A;">{{ store.address or 'No address' }}{% if store.city %}, {{ store.city }}{% endif %}
+                <i class="bi bi-geo-alt-fill me-1" style="color: #FF6B35;"></i>{{ store.address or 'No address' }}{% if store.city %}, {{ store.city }}{% endif %}
               </div>
               {% if store.contact_number %}
               <div class="small text-muted">
-                <i class="bi bi-telephone-fill me-1" style="color: #FFA07A;">{{ store.contact_number }}
+                <i class="bi bi-telephone-fill me-1" style="color: #FF6B35;"></i>{{ store.contact_number }}
               </div>
               {% endif %}
             </div>
