@@ -47,50 +47,31 @@ PURPOSE: "Store Management" page. Allows adding/editing stores, viewing
 
   <!-- Search and Filter Section -->
   <div class="card mb-4 border-0 shadow-sm">
-    <div class="card-body p-4">
-      <div class="row g-3">
-        <div class="col-md-4">
+    <div class="card-body p-3">
+      <div class="row g-3 align-items-center">
+        <div class="col-md-6">
           <div class="input-group">
-            <span class="input-group-text bg-light border-0">
+            <span class="input-group-text bg-white border-end-0">
               <i class="bi bi-search text-muted"></i>
             </span>
-            <input type="text" class="form-control border-start-0" id="storeSearch" placeholder="Search stores by name, address, or type...">
+            <input type="text" class="form-control border-start-0" id="storeSearch" placeholder="Search by name or address..." oninput="filterStores()">
+            <button type="button" class="btn btn-outline-secondary" id="clearSearch" onclick="document.getElementById('storeSearch').value='';filterStores();" title="Clear search">
+              <i class="bi bi-x-lg"></i>
+            </button>
           </div>
         </div>
-        <div class="col-md-2">
-          <select class="form-select" id="statusFilter">
+        <div class="col-md-3">
+          <select class="form-select" id="statusFilter" onchange="filterStores()">
             <option value="">All Status</option>
             <option value="active">Active</option>
             <option value="inactive">Inactive</option>
             <option value="maintenance">Maintenance</option>
           </select>
         </div>
-        <div class="col-md-2">
-          <select class="form-select" id="typeFilter">
-            <option value="">All Types</option>
-            <option value="retail">Retail</option>
-            <option value="restaurant">Restaurant</option>
-            <option value="service">Service</option>
-            <option value="office">Office</option>
-          </select>
-        </div>
-        <div class="col-md-2">
-          <select class="form-select" id="sortBy">
-            <option value="name">Sort by Name</option>
-            <option value="date">Sort by Date</option>
-            <option value="status">Sort by Status</option>
-            <option value="type">Sort by Type</option>
-          </select>
-        </div>
-        <div class="col-md-2">
-          <div class="btn-group w-100" role="group">
-            <button type="button" class="btn btn-outline-secondary" id="clearFilters">
-              <i class="bi bi-x-circle me-1"></i>Clear
-            </button>
-            <button type="button" class="btn btn-primary" id="applyFilters">
-              <i class="bi bi-funnel me-1"></i>Apply
-            </button>
-          </div>
+        <div class="col-md-3">
+          <button type="button" class="btn btn-outline-secondary w-100" id="clearFilters">
+            <i class="bi bi-x-circle me-1"></i>Clear Filters
+          </button>
         </div>
       </div>
     </div>
@@ -915,39 +896,15 @@ const storesData = {{ stores | tojson | safe }};
 let selectedStores = new Set();
 
 document.addEventListener('DOMContentLoaded', function() {
-    // Search functionality
-    const searchInput = document.getElementById('storeSearch');
-    if (searchInput) {
-        searchInput.addEventListener('input', filterStores);
-    }
-    
-    // Filter functionality
-    const statusFilter = document.getElementById('statusFilter');
-    const typeFilter = document.getElementById('typeFilter');
-    const sortBy = document.getElementById('sortBy');
-    
-    if (statusFilter) statusFilter.addEventListener('change', filterStores);
-    if (typeFilter) typeFilter.addEventListener('change', filterStores);
-    if (sortBy) sortBy.addEventListener('change', filterStores);
-    
-    // Clear filters
+    // Clear filters button
     const clearFilters = document.getElementById('clearFilters');
     if (clearFilters) {
         clearFilters.addEventListener('click', function() {
-            if (searchInput) searchInput.value = '';
-            if (statusFilter) statusFilter.value = '';
-            if (typeFilter) typeFilter.value = '';
-            if (sortBy) sortBy.value = 'name';
+            const s = document.getElementById('storeSearch');
+            const f = document.getElementById('statusFilter');
+            if (s) s.value = '';
+            if (f) f.value = '';
             filterStores();
-        });
-    }
-    
-    // Apply filters
-    const applyFilters = document.getElementById('applyFilters');
-    if (applyFilters) {
-        applyFilters.addEventListener('click', function() {
-            filterStores();
-            showNotification('Filters applied successfully', 'success');
         });
     }
     
@@ -1019,39 +976,37 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // Helper functions
 function filterStores() {
-    const searchInput = document.getElementById('storeSearch');
-    const statusFilter = document.getElementById('statusFilter');
-    const typeFilter = document.getElementById('typeFilter');
-    const sortBy = document.getElementById('sortBy');
-    
-    const searchTerm = searchInput ? searchInput.value.toLowerCase() : '';
-    const status = statusFilter ? statusFilter.value : '';
-    const type = typeFilter ? typeFilter.value : '';
-    const sort = sortBy ? sortBy.value : 'name';
-    
-    const cards = document.querySelectorAll('.store-card');
-    
-    cards.forEach(card => {
+    const searchTerm = (document.getElementById('storeSearch')?.value || '').toLowerCase().trim();
+    const status     = document.getElementById('statusFilter')?.value || '';
+
+    let visibleCount = 0;
+    document.querySelectorAll('.store-card').forEach(card => {
         const storeId = parseInt(card.dataset.storeId);
-        const store = storesData.find(s => s.id === storeId);
-        
+        const store   = storesData.find(s => s.id === storeId);
         if (!store) return;
-        
-        // Apply filters
-        let matchesSearch = !searchTerm || 
+
+        const matchesSearch = !searchTerm ||
             store.store_name.toLowerCase().includes(searchTerm) ||
-            (store.address && store.address.toLowerCase().includes(searchTerm)) ||
-            (store.store_type && store.store_type.toLowerCase().includes(searchTerm));
-        
-        let matchesStatus = !status || store.status === status;
-        let matchesType = !type || store.store_type === type;
-        
-        const visible = matchesSearch && matchesStatus && matchesType;
-        card.closest('.col-md-6').style.display = visible ? '' : 'none';
+            (store.address && store.address.toLowerCase().includes(searchTerm));
+
+        const matchesStatus = !status || store.status === status;
+
+        const col = card.closest('[class*="col-"]');
+        const visible = matchesSearch && matchesStatus;
+        if (col) col.style.display = visible ? '' : 'none';
+        if (visible) visibleCount++;
     });
-    
-    // Apply sorting
-    sortStores(sort);
+
+    // Show/hide empty state
+    let emptyState = document.getElementById('noResultsMsg');
+    if (!emptyState) {
+        emptyState = document.createElement('div');
+        emptyState.id = 'noResultsMsg';
+        emptyState.className = 'col-12 text-center py-5 text-muted';
+        emptyState.innerHTML = '<i class="bi bi-search fs-2 d-block mb-2"></i>No stores match your filters.';
+        document.querySelector('.row.g-3.mb-3')?.appendChild(emptyState);
+    }
+    emptyState.style.display = visibleCount === 0 ? '' : 'none';
 }
 
 function sortStores(sortBy) {
